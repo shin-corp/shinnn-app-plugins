@@ -1,0 +1,16 @@
+{
+  "name": "shinnn",
+  "description": "アプリ開発標準に沿ってアプリを作るための Claude Code プラグインの配布元",
+  "owner": {
+    "name": "shinnn",
+    "url": "https://github.com/shinnn"
+  },
+  "plugins": [
+    {
+      "name": "shinnn-app",
+      "source": "./plugins/shinnn-app",
+      "version": "0.2.0",
+      "description": "アプリ開発標準（app-starter テンプレート）向けのスキル・レビューエージェント・ガード hooks を配布するプラグイン"
+    }
+  ]
+}

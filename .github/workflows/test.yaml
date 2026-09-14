@@ -1,0 +1,22 @@
+# hooks と setup を動かす Node スクリプトの回帰テストを、PR と main への push で実行する。
+# プラグインは npm パッケージではないので、依存の導入なしに node --test だけで完結する。
+name: test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: node --test "plugins/shinnn-app/scripts/**/*.test.mjs"
