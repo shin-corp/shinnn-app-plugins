@@ -19,7 +19,7 @@ Claude Code が入っていることが前提です（Node 24 / npm 11 / Git / g
 claude plugin marketplace add shin-corp/shinnn-app-plugins
 ```
 
-`app-starter` から作ったリポジトリなら、`.claude/settings.json` に marketplace と有効化の設定が
+`shinnn-app-starter` から作ったリポジトリなら、`.claude/settings.json` に marketplace と有効化の設定が
 入っているので、リポジトリを開いて信頼（trust）とインストールを承認するだけで使えるようになります。
 
 自分で入れる場合は次のとおりです。

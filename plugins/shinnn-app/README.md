@@ -1,7 +1,7 @@
 # shinnn-app
 
 アプリ開発標準に沿ってアプリを作るための Claude Code プラグインです。
-テンプレート `app-starter` から作ったリポジトリで使います。
+テンプレート `shinnn-app-starter` から作ったリポジトリで使います。
 
 ## 何をするもの
 

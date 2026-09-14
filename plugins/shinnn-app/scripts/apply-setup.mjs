@@ -124,7 +124,7 @@ const setupPath = join(root, '.shinnn', 'setup.json');
 if (!existsSync(setupPath)) {
   fail(
     `${setupPath} がありません。`,
-    'テンプレート app-starter から作ったリポジトリのルートで実行する（--repo-dir でも指定できる）',
+    'テンプレート shinnn-app-starter から作ったリポジトリのルートで実行する（--repo-dir でも指定できる）',
   );
 }
 
