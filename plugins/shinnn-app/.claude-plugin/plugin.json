@@ -5,8 +5,8 @@
   "author": {
     "name": "shinnn"
   },
-  "homepage": "https://github.com/shinnn/claude-plugins",
-  "repository": "https://github.com/shinnn/claude-plugins",
+  "homepage": "https://github.com/shin-corp/shinnn-app-plugins",
+  "repository": "https://github.com/shin-corp/shinnn-app-plugins",
   "license": "MIT",
   "keywords": ["app-starter", "express", "angular", "drizzle", "zod"],
   "hooks": "./hooks/hooks.json"

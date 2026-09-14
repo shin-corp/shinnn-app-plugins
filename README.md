@@ -3,7 +3,7 @@
 Claude Code のプラグインを配布する marketplace（プラグインの配布元）です。
 
 アプリ開発標準に沿ってアプリを作るための、コマンド・レビュー担当・自動チェックをまとめて配ります。
-テンプレート [`app-starter`](https://github.com/shinnn/app-starter) と対で使います。
+テンプレート [`shinnn-app-starter`](https://github.com/shin-corp/shinnn-app-starter) と対で使います。
 
 ## 収録しているプラグイン
 
@@ -16,7 +16,7 @@ Claude Code のプラグインを配布する marketplace（プラグインの�
 Claude Code が入っていることが前提です（Node 24 / npm 11 / Git / gh も必要）。
 
 ```
-claude plugin marketplace add shinnn/claude-plugins
+claude plugin marketplace add shin-corp/shinnn-app-plugins
 ```
 
 `app-starter` から作ったリポジトリなら、`.claude/settings.json` に marketplace と有効化の設定が
