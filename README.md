@@ -48,7 +48,7 @@ claude plugin marketplace add shin-corp/shinnn-app-plugins
 
 | コマンド | いつ使うか |
 |:--|:--|
-| `/shinnn-app:feature <一行>` | 作りたいことがあるとき。Issue から実装まで通す |
+| `/shinnn-app:feature <作りたいこと>` | 作りたいことがあるとき（まとめていくつでも）。Issue に分けて、1 つずつ実装まで通す |
 | `/shinnn-app:check` | 変更が一段落したとき。CI と同じ内容を手元で通す |
 | `/shinnn-app:pr` | レビューに出すとき |
 | `/shinnn-app:why <話題>` | 決まりの理由が分からないとき |

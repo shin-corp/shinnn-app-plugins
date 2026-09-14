@@ -27,7 +27,7 @@
 
 | コマンド | 内容 |
 |:--|:--|
-| `/shinnn-app:feature <一行>` | Issue の作成 → 仕様書への反映 → 実装 → テスト |
+| `/shinnn-app:feature <作りたいこと>` | PR 1 本ずつの Issue に分けて順番を決め、Issue の作成 → 仕様書への反映 → 実装 → テスト |
 | `/shinnn-app:check` | 型検査・lint・テストと、受入条件および API 定義のカバレッジ |
 | `/shinnn-app:pr` | コミット → プッシュ → ドラフト PR → レビューの収束 |
 | `/shinnn-app:why <話題>` | 決まりの理由を、根拠を引いて説明する |
@@ -35,7 +35,7 @@
 
 内部スキル: `add-api` / `add-screen` / `db-migrate` / `code-review` / `commit-message` /
 `draft-pr` / `build-check` / `lint-check` / `pre-commit-check` / `test-run` / `dev-stack-start` /
-`large-change` / `handover-check` / `sync-standards` / `session-retro`
+`handover-check` / `sync-standards` / `session-retro`
 
 `coding-guide` は `client/CLAUDE.md` と `standards/rules/` に吸収したため未提供です。
 

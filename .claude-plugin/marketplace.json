@@ -9,7 +9,7 @@
     {
       "name": "shinnn-app",
       "source": "./plugins/shinnn-app",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "アプリ開発標準（shinnn-app-starter テンプレート）向けのスキル・レビューエージェント・ガード hooks を配布するプラグイン"
     }
   ]
