@@ -16,7 +16,7 @@ CI の `policy` job と同じ観点で、手元でも見られるようにした
 |:--|:--|:--|
 | 1 | `main` の CI が緑 | `gh run list --branch main --limit 1` |
 | 2 | 受入条件 `AC-n` すべてに対応するテストがある | `node scripts/check-ac-coverage.mjs` |
-| 3 | `AC-n` の確認結果が `docs/results/` にある | `docs/results/` のファイル名と AC の突き合わせ |
+| 3 | 自動テストで確かめられないもの（規約が手元での確認を求めているもの）の記録が `docs/results/` にある | `.claude/rules/` で `docs/results/` への記録を求めている規約（`ai-integration.md` など）と、その対象がリポジトリにあるかを突き合わせる |
 | 4 | API 定義の全ルートにテストがある | `node scripts/check-api-coverage.mjs` |
 | 5 | 「引き継ぎメモ」Issue が埋まっていて、最終更新が最後のマージと同じ週 | `gh issue view <handoverIssue>` と `git log -1 --date=iso main` |
 | 6 | open Issue すべてに `status` ラベルと次の一手がある | `gh issue list --state open --json number,labels,title` |
@@ -31,6 +31,8 @@ CI の `policy` job と同じ観点で、手元でも見られるようにした
 | 15 | 当社担当のアカウントが maintain 権限を持っている | `gh api repos/{owner}/{repo}/collaborators` |
 | 16 | 必須項目が宣言も実体も残っている（ファイル・deny・規約） | `node scripts/check-mandatory.mjs` |
 
+受入条件は #2 のテストで確かめる。受入条件ごとに手で確かめた記録は求めない（テストと二重に管理しないため）。
+
 `gh` が使えない場合、GitHub に依存する項目（1 / 5 / 6 / 15）は「確認できず」として、手で確認する手順を示す。
 
 ## 報告
@@ -39,8 +41,8 @@ CI の `policy` job と同じ観点で、手元でも見られるようにした
 引き継ぎ判定: 満たしている N / 16
 
 NG の項目
-- #3 AC-2 の確認結果が docs/results/ に無い
-  → 実行した手順と結果を docs/results/ac-2.md に残す
+- #3 AI の呼び出し（server/src/provider/）を手元で動かした記録が docs/results/ に無い
+  → 動かした手順と結果を docs/results/ に残す
 ```
 
 **NG を勝手に直さない。** 何が足りないかを示し、直すかどうかは人が決める。

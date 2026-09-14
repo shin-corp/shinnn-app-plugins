@@ -17,7 +17,7 @@ Claude Code がこのリポジトリで作業するときの全体方針です�
 | `shared/`  | 画面とサーバーが共有する **API 定義**（zod スキーマ）。業務ロジックと DB 依存は置かない |
 | `server/`  | Express 5 のサーバー。`api/` → `service/` → `db/` の一方向                              |
 | `client/`  | Angular の画面。API 呼び出しは `api-client.ts` の `call()` のみ                         |
-| `docs/`    | 仕様書・環境変数・設計判断の記録・受入条件の確認結果                                    |
+| `docs/`    | 仕様書・環境変数・設計判断の記録・自動テストで確かめられないものの確認結果              |
 | `scripts/` | セットアップと CI が使う Node スクリプト                                                |
 | `.claude/` | Claude Code の設定とルール                                                              |
 | `.shinnn/` | セットアップの記録とプロファイル                                                        |
