@@ -28,10 +28,13 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'no
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
-import { isTemplateRepo, readJson, run, TEMPLATE_MARKER } from './lib/hook-io.mjs';
+import { readJson, run } from './lib/hook-io.mjs';
 
 /** テンプレートの公開リポジトリ */
 const STARTER_REPOSITORY = 'shin-corp/shinnn-app-starter';
+
+/** テンプレートから作ったリポジトリには必ず入っているファイル。取得済みかと、取得元がテンプレートかを見るのに使う */
+const TEMPLATE_MARKER = '.claude/rules/.standards-version';
 
 /** このプラグインが対応しているテンプレートの版を書いたファイル */
 const STARTER_VERSION_FILE = fileURLToPath(new URL('../.starter-version', import.meta.url));
@@ -351,7 +354,7 @@ const options = parseArgs(process.argv.slice(2));
 const version = readStarterVersion();
 const dest = resolve(options.dest || process.env.CLAUDE_PROJECT_DIR || process.cwd());
 
-if (isTemplateRepo(dest)) {
+if (existsSync(join(dest, TEMPLATE_MARKER))) {
   console.log(
     `[shinnn-app:setup] テンプレートは取得済みです（${dest} に ${TEMPLATE_MARKER} があります）。何もしません。`,
   );

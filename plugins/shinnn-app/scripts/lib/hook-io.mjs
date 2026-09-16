@@ -1,7 +1,8 @@
 /**
  * hook スクリプト共通のユーティリティ。
  * Claude Code の hook は標準入力に JSON を 1 件渡し、終了コードで結果を伝える。
- * exit 0 = 通す / exit 2 = ブロック（stderr が Claude に渡る）。
+ * 操作を止める hook は無いので、どれも exit 0 で終える。
+ * Claude に伝えたいことは標準出力の JSON（hookOutput）に書く。
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -29,18 +30,17 @@ export function projectDir(input) {
   return process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();
 }
 
-/** テンプレートから作ったリポジトリの目印になるファイル（リポジトリルート起点） */
-export const TEMPLATE_MARKER = '.claude/rules/.standards-version';
+/** setup の記録を書くファイル（リポジトリルート起点）。hooks が動く条件はこのファイルの有無だけ */
+const SETUP_FILE = '.shinnn/setup.json';
 
 /**
- * テンプレート shinnn-app-starter から作ったリポジトリか。
+ * テンプレートから作ったアプリのリポジトリか。hooks はここでだけ動く。
  *
- * テンプレートから作ったリポジトリには必ず入っているファイル（TEMPLATE_MARKER）を目印にする。
- * hooks は規約がこのテンプレートの構成を前提にしているため、テンプレート以外のリポジトリ
- * （プラグインを user スコープで入れたときの他のリポジトリ）や、テンプレートを取得する前の空のフォルダでは何もしない。
+ * プラグインを user スコープで入れると hooks は開いたすべてのリポジトリで呼ばれるため、
+ * 目印のファイル 1 つで判定し、それが無いリポジトリでは何もしない。
  */
-export function isTemplateRepo(root) {
-  return existsSync(join(root, TEMPLATE_MARKER));
+export function isAppRepo(root) {
+  return existsSync(join(root, SETUP_FILE));
 }
 
 /** 絶対パス・相対パスのどちらで来ても、リポジトリルート起点の POSIX 相対パスに正規化する */
@@ -54,41 +54,6 @@ export function toRepoPath(filePath, root) {
     return '';
   }
   return rel.split(sep).join('/');
-}
-
-/**
- * glob 風パターン（`**` と `*` のみ対応）に一致するか。
- * ライブラリを足さずに済ませるため、hook で必要な範囲だけを実装する。
- * 二重アスタリスクとスラッシュの並びは 0 階層以上のディレクトリ、単独のアスタリスクは 1 階層内の任意の文字列にあたる。
- */
-const REGEXP_SPECIAL = new Set(['.', '+', '^', '$', '{', '}', '(', ')', '|', '[', ']', '?']);
-
-export function matchPath(pattern, repoPath) {
-  let source = '';
-  for (let i = 0; i < pattern.length; i += 1) {
-    const char = pattern[i];
-    if (char !== '*') {
-      source += REGEXP_SPECIAL.has(char) ? '\\' + char : char;
-      continue;
-    }
-    if (pattern[i + 1] !== '*') {
-      source += '[^/]*';
-      continue;
-    }
-    if (pattern[i + 2] === '/') {
-      source += '(?:[^/]+/)*';
-      i += 2;
-    } else {
-      source += '.*';
-      i += 1;
-    }
-  }
-  return new RegExp(`^${source}$`).test(repoPath);
-}
-
-/** どのパターンにも一致しないなら false */
-export function matchesAny(patterns, repoPath) {
-  return patterns.some((pattern) => matchPath(pattern, repoPath));
 }
 
 /**
@@ -159,17 +124,20 @@ export function fromRoot(root, ...parts) {
 }
 
 /**
- * ブロック時のメッセージ。学習の仕組みとして「何を / なぜ / どう直す / 規約」の 4 点を必ず出す。
+ * 操作を止めない hook が標準出力に出す JSON を組み立てる。
+ * additionalContext は Claude に渡り、systemMessage は transcript に 1 行出る。
+ *
+ * @param eventName - hook の種類（PostToolUse / Stop など）
  */
-export function blockMessage({ what, why, how, rule }) {
-  const lines = [
-    '[shinnn-app] 操作をブロックしました。',
-    `何を: ${what}`,
-    `なぜ: ${why}`,
-    `どう直す: ${how}`,
-  ];
-  if (rule) {
-    lines.push(`規約: ${rule}`);
+export function hookOutput(eventName, { additionalContext, systemMessage } = {}) {
+  const hookSpecificOutput = { hookEventName: eventName };
+  if (additionalContext !== undefined) {
+    hookSpecificOutput.additionalContext = additionalContext;
   }
-  return lines.join('\n');
+
+  const output = { hookSpecificOutput };
+  if (systemMessage !== undefined) {
+    output.systemMessage = systemMessage;
+  }
+  return JSON.stringify(output);
 }

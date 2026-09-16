@@ -2,9 +2,9 @@
 /**
  * /shinnn-app:setup の「適用」を実際に行う唯一のスクリプト。
  *
- * `.shinnn/setup.json` / `.github/workflows/` / `.github/CODEOWNERS` は Edit / Write のガードと
- * settings.json の deny で守られている。ここを変えてよいのは setup だけなので、変更手段を
- * このスクリプト 1 つに集めて、何をどう変えたかが必ず出力に残るようにする。
+ * `.shinnn/` / `.github/workflows/` / `.github/CODEOWNERS` は settings.json の deny で守られている。
+ * ここを変えてよいのは setup だけなので、変更手段をこのスクリプト 1 つに集めて、
+ * 何をどう変えたかが必ず出力に残るようにする。
  *
  * 実行例:
  *   node <プラグイン>/scripts/apply-setup.mjs --profile full --reviewer @octocat

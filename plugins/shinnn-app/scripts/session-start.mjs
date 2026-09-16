@@ -5,7 +5,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { fromRoot, hasCommand, isTemplateRepo, projectDir, readHookInput, run } from './lib/hook-io.mjs';
+import { fromRoot, hasCommand, isAppRepo, projectDir, readHookInput, run } from './lib/hook-io.mjs';
 
 const MAX_LINES = 10;
 
@@ -34,11 +34,43 @@ function readVersion(path) {
   }
 }
 
+/**
+ * セットアップの節。setupCompletedAt が空なら、まだ /shinnn-app:setup を終えていないものとして案内する。
+ *
+ * @param setupPath - .shinnn/setup.json の絶対パス
+ * @param installed - リポジトリに入っている標準のバージョン
+ */
+function setupSection(setupPath, installed) {
+  let setup;
+  try {
+    setup = JSON.parse(readFileSync(setupPath, 'utf8'));
+  } catch {
+    return section('セットアップ', '.shinnn/setup.json を読めませんでした。/shinnn-app:setup を再実行してください。');
+  }
+
+  const completedAt = setup.setupCompletedAt ?? null;
+  if (completedAt === null) {
+    return [
+      '## セットアップが未完了',
+      '.shinnn/setup.json の setupCompletedAt がまだ空です。',
+      '最初に `/shinnn-app:setup` を実行して、テンプレートの選択・環境の確認・必要な機能の決定を済ませてください。',
+    ].join('\n');
+  }
+
+  const profile = setup.profile ?? '不明';
+  const mergePolicy = setup.mergePolicy ?? 'human';
+  const standards = installed ?? setup.standardsVersion ?? '不明';
+  return section(
+    'セットアップ',
+    `プロファイル: ${profile} / マージ方針: ${mergePolicy} / 標準バージョン: ${standards}`,
+  );
+}
+
 const input = await readHookInput();
 
-// テンプレートから作ったリポジトリでだけ動く
+// テンプレートから作ったアプリのリポジトリでだけ動く
 const root = projectDir(input);
-if (!isTemplateRepo(root)) {
+if (!isAppRepo(root)) {
   process.exit(0);
 }
 
@@ -47,23 +79,7 @@ const out = [];
 const distributed = readVersion(fileURLToPath(new URL('../standards/.standards-version', import.meta.url)));
 const installed = readVersion(fromRoot(root, '.claude', 'rules', '.standards-version'));
 
-const setupPath = fromRoot(root, '.shinnn', 'setup.json');
-if (!existsSync(setupPath)) {
-  out.push(
-    [
-      '## セットアップが未完了',
-      'このリポジトリにはまだ .shinnn/setup.json がありません。',
-      '最初に `/shinnn-app:setup` を実行して、テンプレートの選択・環境の確認・必要な機能の決定を済ませてください。',
-    ].join('\n'),
-  );
-} else {
-  try {
-    const setup = JSON.parse(readFileSync(setupPath, 'utf8'));
-    out.push(section('セットアップ', `プロファイル: ${setup.profile ?? '不明'} / マージ方針: ${setup.mergePolicy ?? 'human'} / 標準バージョン: ${installed ?? setup.standardsVersion ?? '不明'}`));
-  } catch {
-    out.push(section('セットアップ', '.shinnn/setup.json を読めませんでした。/shinnn-app:setup を再実行してください。'));
-  }
-}
+out.push(setupSection(fromRoot(root, '.shinnn', 'setup.json'), installed));
 
 if (distributed !== null && installed !== distributed) {
   out.push(
