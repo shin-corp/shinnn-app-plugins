@@ -3,7 +3,7 @@
   "description": "アプリ開発標準に沿ってアプリを作るための Claude Code プラグインの配布元",
   "owner": {
     "name": "shinnn",
-    "url": "https://github.com/shinnn"
+    "url": "https://github.com/shin-corp"
   },
   "plugins": [
     {
