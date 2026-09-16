@@ -8,6 +8,5 @@
   "homepage": "https://github.com/shin-corp/shinnn-app-plugins",
   "repository": "https://github.com/shin-corp/shinnn-app-plugins",
   "license": "MIT",
-  "keywords": ["shinnn-app-starter", "express", "angular", "drizzle", "zod"],
-  "hooks": "./hooks/hooks.json"
+  "keywords": ["shinnn-app-starter", "express", "angular", "drizzle", "zod"]
 }
