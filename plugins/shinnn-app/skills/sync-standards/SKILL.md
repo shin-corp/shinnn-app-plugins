@@ -44,7 +44,7 @@ git switch -c chore/sync-standards-<新バージョン> origin/main
 - `standards/.standards-version` の値を `.claude/rules/.standards-version` に書く
 - `.shinnn/setup.json` の `standardsVersion` も更新する
 
-コピーは Bash 経由で行う（`.claude/rules/` は Edit / Write のガードが止める）。
+コピーは Bash 経由で行う（`.claude/rules/` への Edit / Write は `.claude/settings.json` の deny が止める）。
 
 ## 4. PR にする
 

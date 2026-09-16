@@ -9,7 +9,7 @@ Claude Code のプラグインを配布する marketplace（プラグインの�
 
 | プラグイン | 内容 |
 |:--|:--|
-| `shinnn-app` | 初回の setup と日常の 5 コマンド（feature / check / pr / why / retro）、内部スキル、レビューエージェント 3 体、規約を守るための hooks |
+| `shinnn-app` | 初回の setup と日常の 5 コマンド（feature / check / pr / why / retro）、内部スキル、レビューエージェント 3 体、取り決めを案内する hooks |
 
 ## 導入
 
@@ -23,8 +23,8 @@ claude plugin install shinnn-app@shinnn --scope project
 claude
 ```
 
-project スコープ（そのフォルダだけ）で入れるのは、hooks がファイルの編集とコマンドを確認するためです。
-hooks は、テンプレートから作ったリポジトリ（`.claude/rules/.standards-version` がある）でだけ動きます。
+project スコープ（そのフォルダだけ）で入れるのは、hooks をそのアプリのフォルダだけで動かすためです。
+hooks は、テンプレートから作ったアプリのリポジトリ（`.shinnn/setup.json` がある）でだけ動きます。
 
 ## 最初にやること
 
@@ -66,6 +66,20 @@ claude plugin install shinnn-app@shinnn --scope local
 
 このほかに、`add-api` / `add-screen` / `db-migrate` / `code-review` などの内部スキルがあり、
 必要な場面で自動的に使われます。
+
+## hooks（自動で動くもの）
+
+`.shinnn/setup.json` があるフォルダ（テンプレートから作ったアプリのリポジトリ）でだけ動きます。
+ほかのフォルダでは何もしません。
+
+| いつ | 何をするか |
+|:--|:--|
+| ファイルを編集した後 | そのパッケージの `eslint --fix` を掛け、直せなかった指摘を知らせる |
+| 応答を終える前 | 変更したファイルの lint と関連するテストを走らせ、結果を知らせる |
+| セッションの開始時 | 次に着手する Issue、open な PR、直近の CI を表示する |
+
+hooks は**取り決めの案内**です。編集そのものを止めるのは `.claude/settings.json` の `deny`、
+品質を落とさないようにするのは CI・husky・レビューが担います。
 
 ## 更新
 

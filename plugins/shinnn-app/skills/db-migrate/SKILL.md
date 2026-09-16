@@ -6,7 +6,7 @@ description: DB のスキーマ変更を drizzle-kit generate で migration に�
 # DB のマイグレーション
 
 **スキーマの正は `server/src/db/schema/*.ts`。** SQL を手で書かず、そこから生成する。
-生成された `server/drizzle/` のファイルは手で編集しない（保護 hook がブロックする）。
+生成された `server/drizzle/` のファイルは手で編集しない（`.claude/settings.json` の deny が止める）。
 
 ## 1. スキーマを直す
 
@@ -41,7 +41,6 @@ npm run db:migrate -w server
 ```
 
 `drizzle-kit push` は使わない（マイグレーションを残さず DB を直接変えるため、他の環境で同じ状態を再現できない）。
-Bash ガードがブロックする。
 
 ## 5. 確認する
 

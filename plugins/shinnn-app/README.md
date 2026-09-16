@@ -10,7 +10,7 @@
 | コマンド | 初回の `setup` と、日常の 5 つ（feature / check / pr / why / retro） |
 | 内部スキル | API の追加、画面の追加、マイグレーション、レビュー、コミット規約 など 15 |
 | レビュー担当 | 正確性 / セキュリティ / 規約 の 3 体。`code-review` から同時に動く |
-| hooks | 保護されたファイルの編集と危険なコマンドを止め、保存のたびに `eslint --fix` を掛ける |
+| hooks | 取り決めの案内。保存のたびの `eslint --fix`、変更したファイルの lint とテスト、セッション開始時の状況 |
 | 適用スクリプト | `scripts/apply-setup.mjs`。`setup` が `.shinnn/setup.json` / ワークフロー / `CODEOWNERS` を書き換える唯一の手段 |
 | 標準 | 規約の正本とレビュー観点（`standards/`） |
 
@@ -39,18 +39,18 @@
 
 `coding-guide` は `client/CLAUDE.md` と `standards/rules/` に吸収したため未提供です。
 
-## hooks が止めるもの
+## hooks
+
+`.shinnn/setup.json` があるフォルダ（テンプレートから作ったアプリのリポジトリ）でだけ動きます。
 
 | きっかけ | 内容 |
 |:--|:--|
-| ファイルの編集・作成 | `.env` / CI の設定 / 規約 / lock ファイル / マイグレーションの生成物 / `docs/progress.md` などを保護する。編集してよいのは `src` `tests` `docs` `shared` と一部の文書 |
-| コマンドの実行 | force push、`git reset --hard`、`rm -rf`、`--no-verify`、`drizzle-kit push` などを止める |
 | ファイルの保存後 | そのファイルに `eslint --fix` を掛け、直せなかった指摘を返す |
-| 応答の終了時 | 変更したファイルの lint と関連するテストだけを走らせる |
+| 応答の終了時 | 変更したファイルの lint と関連するテストだけを走らせ、結果を知らせる |
 | セッションの開始時 | 次に着手する Issue、open な PR、直近の CI を表示する |
 
-止めるときは必ず**何を / なぜ / どう直す / 規約**の 4 点を出します。
-保護されたファイルを変える必要があるときは、`/shinnn-app:setup` か `/shinnn-app:sync-standards` を使ってください。
+hooks は取り決めの案内で、`.env` や CI の設定や規約の編集を止めるのは `.claude/settings.json` の `deny` です。
+`deny` で止まるファイルを変える必要があるときは、`/shinnn-app:setup` か `/shinnn-app:sync-standards` を使ってください。
 
 ## 前提
 

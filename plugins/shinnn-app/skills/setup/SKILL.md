@@ -14,9 +14,9 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 `node ${CLAUDE_PLUGIN_ROOT}/scripts/fetch-template.mjs`（「0. テンプレートの取得」）、選択の適用は
 `node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs`（引数は「5. 適用」）。
 
-Edit / Write は保護 hook がブロックする。`node -e` や `sed -i` で直接書くのも Bash ガードが止める
-（何をどう変えたかが残らないため）。`.claude/settings.json` は、手順 0 の取得スクリプトが `claude plugin install` の
-書いたものをテンプレートのものに置き換える場合を除き、setup でも書き換えない。
+`.github/workflows/`、`.shinnn/`、`CODEOWNERS` への Edit / Write は `.claude/settings.json` の deny が止める。
+スクリプトで書くのは、何をどう変えたかが差分に残るようにするため。`.claude/settings.json` は、手順 0 の取得スクリプトが
+`claude plugin install` の書いたものをテンプレートのものに置き換える場合を除き、setup でも書き換えない。
 標準の更新は `/shinnn-app:sync-standards` が扱う。
 
 ## 進め方

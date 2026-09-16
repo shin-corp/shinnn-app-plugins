@@ -46,7 +46,7 @@ pin されている「引き継ぎメモ」Issue（番号は `.shinnn/setup.json
 node scripts/progress-snapshot.mjs
 ```
 
-`docs/progress.md` を Issues から生成し直す。**このファイルを手で書かない**（保護 hook がブロックする）。
+`docs/progress.md` を Issues から生成し直す。**このファイルを手で書かない**（`.claude/settings.json` の deny が止める）。
 `gh` が使えない環境では、このスクリプトは動かない。その場合はスキップし、その旨を報告する。
 
 ## 5. 報告
