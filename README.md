@@ -15,31 +15,41 @@ Claude Code のプラグインを配布する marketplace（プラグインの�
 
 Claude Code が入っていることが前提です（Node 24 / npm 11 / Git / gh も必要）。
 
+アプリ用の空のフォルダを作り、その中で次を実行します。フォルダの信頼を聞かれたら承認してください。
+
 ```
 claude plugin marketplace add shin-corp/shinnn-app-plugins
+claude plugin install shinnn-app@shinnn --scope project
+claude
 ```
 
-`shinnn-app-starter` から作ったリポジトリなら、`.claude/settings.json` に marketplace と有効化の設定が
-入っているので、リポジトリを開いて信頼（trust）とインストールを承認するだけで使えるようになります。
-
-自分で入れる場合は次のとおりです。
-
-```
-/plugin install shinnn-app@shinnn
-```
-
-インストール後に `Run /reload-plugins to activate.` と表示されたら、`/reload-plugins` を実行してください。
+project スコープ（そのフォルダだけ）で入れるのは、hooks がファイルの編集とコマンドを確認するためです。
+hooks は、テンプレートから作ったリポジトリ（`.claude/rules/.standards-version` がある）でだけ動きます。
 
 ## 最初にやること
-
-リポジトリを作った直後に 1 回だけ実行します。
 
 ```
 /shinnn-app:setup
 ```
 
-対話でテンプレートと必要な機能を決め、`.shinnn/setup.json` に記録します。
+空のフォルダでは、まずテンプレート `shinnn-app-starter` のうちプラグインが対応する版を取得して展開し、
+git のリポジトリと GitHub の非公開リポジトリを作ります。終わったら `/exit` で終了し、同じフォルダで `claude` を
+起動し直して、もう一度 `/shinnn-app:setup` を実行してください。`CLAUDE.md` と `.claude/rules/` は起動時に読み込まれるためです。
+
+2 回目は、対話でテンプレートの種類と必要な機能を決め、`.shinnn/setup.json` に記録します。
 あとから選択を変えたくなったら、もう一度実行してください（変更は PR になります）。
+
+## 既にあるアプリのリポジトリに加わる
+
+clone したフォルダで `claude` を起動すると、`.claude/settings.json` の `extraKnownMarketplaces` で配布元が
+自動で登録されます。プラグインは次で入れます。
+
+```
+claude plugin install shinnn-app@shinnn --scope local
+```
+
+`--scope project` にしないのは、共有の `.claude/settings.json` のキーの並びが書き直されて差分ができるためです。
+入れた後は、開いている Claude Code で `/reload-plugins` を実行するか、起動し直してください。
 
 ## 日常の 5 コマンド
 
@@ -59,8 +69,11 @@ claude plugin marketplace add shin-corp/shinnn-app-plugins
 
 ## 更新
 
+アプリのフォルダで、入れたときと同じスコープを付けて実行し、Claude Code を起動し直します
+（既にあるリポジトリに加わった人は `--scope local`）。スコープを付けないと user スコープが対象になります。
+
 ```
-claude plugin update shinnn-app
+claude plugin update shinnn-app@shinnn --scope project
 ```
 
 規約（`.claude/rules/` と `CLAUDE.md`）はプラグインでは配れない仕組みのため、
@@ -73,10 +86,11 @@ claude plugin update shinnn-app
 .claude-plugin/marketplace.json   配布するプラグインの一覧
 plugins/shinnn-app/
   .claude-plugin/plugin.json      プラグインの定義
+  .starter-version                setup が取得するテンプレート shinnn-app-starter の版
   skills/                         コマンドと内部スキル
   agents/                         レビュー担当 3 体
   hooks/hooks.json                自動チェックの設定
-  scripts/                        hooks から呼ぶ Node スクリプトと、setup の適用スクリプト
+  scripts/                        hooks から呼ぶ Node スクリプトと、setup の取得・適用スクリプト
   standards/                      規約の正本とレビュー観点
 ```
 
@@ -88,7 +102,15 @@ plugins/shinnn-app/
 claude --plugin-dir ./plugins/shinnn-app
 ```
 
-変更したら `/reload-plugins` で読み直せます。公開前に検証します。
+変更したら `/reload-plugins` で読み直せます。
+
+setup のテンプレートの取得は、手元のテンプレートから空のフォルダへ展開して試せます（`--dry-run` を付けると版とファイル数だけを表示します）。
+
+```
+node plugins/shinnn-app/scripts/fetch-template.mjs --from <テンプレートのディレクトリ> --dest <空のフォルダ>
+```
+
+公開前に検証します。
 
 ```
 claude plugin validate ./plugins/shinnn-app

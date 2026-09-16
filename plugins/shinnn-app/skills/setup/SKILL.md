@@ -1,24 +1,73 @@
 ---
 name: setup
-description: テンプレートから作ったリポジトリの初回セットアップを対話で行う。テンプレートの選択・環境の検出・必須項目の確認・選択項目の決定・適用までを 1 回で通す。再実行すると選択の変更を差分の PR にする。「セットアップ」「初期設定」「最初に何をすればいい」で起動
+description: アプリの初回セットアップを対話で行う。空のフォルダではテンプレートを取得して git と GitHub のリポジトリを用意する。テンプレートを取得した後は、テンプレートの選択・環境の検出・必須項目の確認・選択項目の決定・適用までを 1 回で通す。再実行すると選択の変更を差分の PR にする。「セットアップ」「初期設定」「最初に何をすればいい」で起動
 ---
 
 # 初回セットアップ
 
-テンプレートからリポジトリを作った直後に 1 回実行する。決めたことは `.shinnn/setup.json` に記録し、
-ワークフローや設定ファイルを生成する。あとから選択を変えたくなったら、このスキルをもう一度実行する。
+アプリ用の空のフォルダでプラグインを入れた直後に実行する。テンプレートがまだ無ければ取得して、git と GitHub の
+リポジトリを用意し、Claude Code を起動し直してもらう。起動し直した後にもう一度実行し、決めたことを
+`.shinnn/setup.json` に記録して、ワークフローや設定ファイルを生成する。あとから選択を変えたくなったら、このスキルをもう一度実行する。
 
 **このスキルだけが `.github/`、`.shinnn/`、`CODEOWNERS` を書き換えてよい。**
-書き換えは Edit / Write ツールではなく、プラグイン同梱の適用スクリプト
-`node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs`（引数は「5. 適用」）で行う。
+書き換えは Edit / Write ツールではなく、プラグイン同梱のスクリプトで行う。テンプレートの取得は
+`node ${CLAUDE_PLUGIN_ROOT}/scripts/fetch-template.mjs`（「0. テンプレートの取得」）、選択の適用は
+`node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs`（引数は「5. 適用」）。
 
 Edit / Write は保護 hook がブロックする。`node -e` や `sed -i` で直接書くのも Bash ガードが止める
-（何をどう変えたかが残らないため）。`.claude/settings.json` は setup でも書き換えない。
+（何をどう変えたかが残らないため）。`.claude/settings.json` は、手順 0 の取得スクリプトが `claude plugin install` の
+書いたものをテンプレートのものに置き換える場合を除き、setup でも書き換えない。
 標準の更新は `/shinnn-app:sync-standards` が扱う。
 
 ## 進め方
 
-以下の 6 手順を順に行う。各手順の結果を短くまとめてから次に進み、**利用者が決める項目は必ず質問する**。
+最初に `.claude/rules/.standards-version` があるかを見る。
+
+- **無い**（テンプレートがまだ無いフォルダ）: 手順 0 だけを行い、起動し直すよう伝えて終える
+- **ある**: 手順 1〜6 を順に行う
+
+各手順の結果を短くまとめてから次に進み、**利用者が決める項目は必ず質問する**。
+
+### 0. テンプレートの取得
+
+`CLAUDE.md` と `.claude/rules/` はセッションの開始時に読み込まれるので、取得した直後のセッションには規約が入っていない。
+権限の設定（`.claude/settings.json`）も含めて確実に効かせるため、手順 0 を行ったセッションでは手順 1 に進まない。
+`node` と `git` が要る。無ければ導入を案内してから始める。
+
+1. **フォルダが空であることを確かめる。** `claude plugin install` が作った `.claude/` と `.git/` はあってよい。
+   ほかのファイルがあれば、空のフォルダで始め直すよう伝えて止める
+2. **取得する内容を見せてから展開する。** まず `--dry-run` で版とファイル数を示して確認を取り、`--dry-run` を外して実行する
+
+   ```
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/fetch-template.mjs --dry-run
+   ```
+
+   スクリプトは、プラグインが対応する版（プラグインの `.starter-version`）の公開リポジトリのタグの圧縮ファイル
+   `https://github.com/shin-corp/shinnn-app-starter/archive/refs/tags/v<版>.tar.gz` を取得して、今のフォルダに展開する。
+   既にファイルがあれば上書きせずに止まる。例外は `claude plugin install --scope project` が書いた `.claude/settings.json`
+   （`enabledPlugins` と `extraKnownMarketplaces` だけのもの）で、テンプレートの同じファイルに置き換える
+
+   | 引数 | 内容 |
+   |:--|:--|
+   | `--dest <パス>` | 展開先。既定はプロジェクトのフォルダ |
+   | `--from <ディレクトリ \| .tar.gz \| URL>` | 別の取得元。ネットワークが制限された環境や、公開前のテンプレートを手元で試すとき |
+   | `--dry-run` | 版とファイル数を示すだけで、書き込まない |
+
+3. **git に記録する。** `.git` が無ければ `git init -b main`。続けて `git add -A` →
+   `git commit -m "テンプレート shinnn-app-starter v<版> の取り込み"`。
+   最初のコミットには対象のパッケージが無いので、コミットの接頭辞（`[server]` など）を付けない
+4. **GitHub にリポジトリを作る。** リモートが無ければ、置き場所（組織かアカウント）とリポジトリ名（既定はフォルダ名）を聞いて実行する
+
+   ```
+   gh repo create <置き場所>/<名前> --private --source . --remote origin --push
+   ```
+
+   作れない場合（組織でリポジトリを作る権限が無い、`gh` が無い）は、GitHub の画面で空のリポジトリ（README なし）を
+   作ってもらい、`git remote add origin <URL>` と `git push -u origin main` を実行する
+5. **起動し直してもらう。** 次を伝えて、ここで終える
+   - `/exit` で終了し、同じフォルダで `claude` を起動し直す
+   - 起動したら、もう一度 `/shinnn-app:setup` を実行する
+   - 理由: 規約（`CLAUDE.md` と `.claude/rules/`）は起動時に読み込まれるため
 
 ### 1. テンプレートの選択
 
@@ -42,7 +91,7 @@ Edit / Write は保護 hook がブロックする。`node -e` や `sed -i` で�
 - Node は 24 系（24.15 以上）が前提。npm は Node.js 24 に同梱される 11 系をそのまま使う
 - `gh` が無い場合、Issue と PR を使う機能は動かない。`docs/progress.md` を手で更新する運用に切り替えるかを聞く
 - PostgreSQL は検出順に従って選ぶ。Docker が使えない場合は組み込み版（`embedded-postgres`）の導入まで代行する
-- GitHub 側は、当社担当アカウントの招待状況とブランチ保護が使えるかを確認する。使えるなら手順 5 で設定する
+- GitHub 側は、当社担当アカウントの招待状況とブランチ保護が使えるかを確認する。招待とブランチ保護の設定は手順 5 で行う
 - `gh auth status` でトークンのスコープを見る。`workflow` が無いと、ワークフローを変える PR を `gh` からマージできない。
   マージの方針を `self-review` にするなら `gh auth refresh -h github.com -s workflow` を案内する
 
@@ -135,10 +184,12 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --dry-run --profile full --re
 2. `docs/` の雛形（`仕様書.md` / `env.md` / `decisions/`）を、無いものだけ作る
 3. `README.md` の「有効な機能」表を、決めた内容で書き換える（マージの方針の行も含める）
 4. `docs/decisions/` の**空いている次の番号**で `<番号>-setup.md` を作り、**選んだ理由と選ばなかった理由**を残す
-   （テンプレートに `0001-template-stack.md` と `0002-package-manager.md` が同梱されているので、通常は `0003-setup.md`）
+   （テンプレートに `0001-template-stack.md`・`0002-package-manager.md`・`0003-node-version.md` が同梱されているので、通常は `0004-setup.md`）
 5. 「引き継ぎメモ」Issue を作成して pin する（`gh issue create` → `gh issue pin`）。
    番号が決まったら `--handover-issue <番号> --complete` でもう一度スクリプトを実行する
-6. 当社担当を collaborator に招待できているかを確認する（`gh api repos/{owner}/{repo}/collaborators`）。
+6. 当社担当が collaborator（リポジトリの共同作業者）に招待されていなければ招待する。
+   `gh api -X PUT repos/{owner}/{repo}/collaborators/<当社担当のアカウント（@ なし）> -f permission=maintain`
+   （リポジトリの管理者権限が要る。権限の指定は組織のリポジトリでだけ有効で、個人アカウントのリポジトリでは無視される）。
    招待されていないと `CODEOWNERS` に書いてもレビュー依頼が届かない
 7. マージの方針が `self-review` なら、リポジトリで auto-merge を許可するかを聞く。許可する場合は
    `gh api -X PATCH repos/{owner}/{repo} -f allow_auto_merge=true`（リポジトリの管理者権限が要る）。
@@ -177,6 +228,12 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --dry-run --profile full --re
 
 ## 失敗したとき
 
+- 取得スクリプトが HTTP のエラーで止まる: 対応する版のテンプレートがまだ公開されていないか、ネットワークが制限されている。
+  別の場所で取得した圧縮ファイル（手順 0 の URL）を `--from <.tar.gz のパス>` で渡せる。版が公開されていなければ当社に知らせてもらう
+- 取得スクリプトが既存のファイルとの衝突で止まる: 上書きしない。空のフォルダを作って始め直してもらう
+- `git commit` が名前とメールアドレスの未設定で止まる: `git config --global user.name` と `user.email` の設定を案内する
+- `gh repo create` が失敗する（組織でリポジトリを作る権限が無い、`gh` が無い）: GitHub の画面で空のリポジトリ（README なし）を
+  作ってもらい、`git remote add origin <URL>` と `git push -u origin main` を実行する
 - `gh` の認証が切れている: `gh auth login` を案内する。ラベルと Issue の投入だけを後回しにし、他は適用する
 - ブランチ保護が設定できない: プランで使えないことがある。**エラーにせず**「CI と週次レビューで担保する」と説明して続行する
 - すでに `.github/workflows/` に手を入れたファイルがある: 上書きせず、差分を示して人に判断してもらう
