@@ -2,9 +2,11 @@
  * PostToolUse（Edit / Write）フォーマッタ。
  * 触ったファイルが属するパッケージの eslint --fix を掛け、直せなかった error だけを Claude に返す。
  * これで「lint は最後にまとめて直す」を無くし、規約違反をその場で潰す。
+ *
+ * PostToolUse は操作を止められない（編集はもう済んでいる）ので、残った指摘は JSON の additionalContext で渡す。
  */
 import { existsSync } from 'node:fs';
-import { isTemplateRepo, readHookInput, projectDir, run, toRepoPath } from './lib/hook-io.mjs';
+import { hookOutput, isAppRepo, readHookInput, projectDir, run, toRepoPath } from './lib/hook-io.mjs';
 
 /** 対象拡張子。HTML と CSS は eslint の対象外なので触らない */
 const LINTABLE = /\.(ts|tsx|mjs|cjs|js)$/;
@@ -20,9 +22,9 @@ if (!['Edit', 'Write', 'MultiEdit'].includes(input.tool_name || '')) {
   process.exit(0);
 }
 
-// テンプレートから作ったリポジトリでだけ動く
+// テンプレートから作ったアプリのリポジトリでだけ動く
 const root = projectDir(input);
-if (!isTemplateRepo(root)) {
+if (!isAppRepo(root)) {
   process.exit(0);
 }
 
@@ -36,6 +38,12 @@ if (!existsSync(`${root}/${repoPath}`)) {
 
 const workspace = workspaceOf(repoPath);
 if (!workspace) {
+  process.exit(0);
+}
+
+// 依存をまだ入れていない（npm install の前の）リポジトリでは eslint が動かない。
+// 起動できない場合と違って npm は失敗の終了コードを返すので、指摘があったと誤って伝えないよう先に抜ける
+if (!existsSync(`${root}/node_modules`)) {
   process.exit(0);
 }
 
@@ -55,12 +63,15 @@ if (result.status === 0) {
 }
 
 const output = `${result.stdout}\n${result.stderr}`.trim();
-console.error(
-  [
-    `[shinnn-app] ${repoPath} に eslint --fix を掛けましたが、自動で直せない指摘が残りました。`,
-    'この場で直してください（後回しにすると pre-commit と CI で同じ指摘が出ます）。',
-    '',
-    output.slice(0, 4000),
-  ].join('\n'),
+console.log(
+  hookOutput('PostToolUse', {
+    additionalContext: [
+      `[shinnn-app] ${repoPath} に eslint --fix を掛けましたが、自動で直せない指摘が残りました。`,
+      'この場で直してください（後回しにすると pre-commit と CI で同じ指摘が出ます）。',
+      '',
+      output.slice(0, 4000),
+    ].join('\n'),
+    systemMessage: `[shinnn-app] ${repoPath} に eslint の指摘が残っています`,
+  }),
 );
-process.exit(2);
+process.exit(0);

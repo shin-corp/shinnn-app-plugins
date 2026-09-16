@@ -1,9 +1,11 @@
 /**
  * Stop hook。応答を終える直前に、今回触ったファイルの lint と関連テストだけを走らせる。
  * フルの check（build + typecheck + 全テスト）は /shinnn-app:check と CI に任せ、ここは数十秒で終える範囲に留める。
+ *
+ * 失敗しても応答は止めず、JSON の additionalContext で次の turn に伝える。
  */
 import { existsSync } from 'node:fs';
-import { blockMessage, fromRoot, isTemplateRepo, projectDir, readHookInput, run } from './lib/hook-io.mjs';
+import { fromRoot, hookOutput, isAppRepo, projectDir, readHookInput, run } from './lib/hook-io.mjs';
 
 const LINTABLE = /\.(ts|tsx|mjs|cjs|js)$/;
 const WORKSPACES = ['client', 'server', 'shared'];
@@ -61,14 +63,15 @@ function testArgs(workspace, targets) {
 
 const input = await readHookInput();
 
-// 自分のブロックで再び Stop が起きる無限ループを避ける
-if (input.stop_hook_active === true) {
+// テンプレートから作ったアプリのリポジトリでだけ動く
+const root = projectDir(input);
+if (!isAppRepo(root)) {
   process.exit(0);
 }
 
-// テンプレートから作ったリポジトリでだけ動く
-const root = projectDir(input);
-if (!isTemplateRepo(root)) {
+// 依存をまだ入れていない（npm install の前の）リポジトリでは lint もテストも動かない。
+// npm は失敗の終了コードを返すので、指摘があったと誤って伝えないよう先に抜ける
+if (!existsSync(fromRoot(root, 'node_modules'))) {
   process.exit(0);
 }
 
@@ -106,16 +109,20 @@ if (problems.length === 0) {
   process.exit(0);
 }
 
-console.error(
-  [
-    blockMessage({
-      what: '変更したファイルの lint または関連テストが失敗しています',
-      why: 'この状態でコミットすると pre-commit と CI が落ち、PR のレビューまで進めない',
-      how: '下の指摘を直してから終える。原因が分からない場合は /shinnn-app:why で規約の意図を確認する',
-      rule: '.claude/rules/testing.md',
-    }),
-    '',
-    ...problems,
-  ].join('\n'),
+// 応答を止めない（exit 2 を使わない）ので、この出力でまた Stop が呼ばれる無限ループは起きない
+const summary = '変更したファイルの lint または関連テストが失敗しています';
+
+console.log(
+  hookOutput('Stop', {
+    additionalContext: [
+      `[shinnn-app] ${summary}。`,
+      'なぜ: この状態でコミットすると pre-commit と CI が落ち、PR のレビューまで進めない',
+      'どう直す: 下の指摘を直す。原因が分からない場合は /shinnn-app:why で規約の意図を確認する',
+      '規約: .claude/rules/testing.md',
+      '',
+      ...problems,
+    ].join('\n'),
+    systemMessage: `[shinnn-app] ${summary}`,
+  }),
 );
-process.exit(2);
+process.exit(0);
