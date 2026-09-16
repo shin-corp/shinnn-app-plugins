@@ -3,7 +3,7 @@
  * 標準の必須ファイルと生成物を Claude から守り、編集してよい範囲だけを通す。
  * 通らないパスは exit 2 でブロックし、stderr に「何を / なぜ / どう直す / 規約」を出す。
  */
-import { blockMessage, matchesAny, projectDir, readHookInput, toRepoPath } from './lib/hook-io.mjs';
+import { blockMessage, isTemplateRepo, matchesAny, projectDir, readHookInput, toRepoPath } from './lib/hook-io.mjs';
 
 /** 標準の一部で、顧客リポジトリでは /shinnn-app:setup と /shinnn-app:sync-standards だけが書き換える */
 const PROTECTED = [
@@ -55,7 +55,12 @@ if (!['Edit', 'Write', 'NotebookEdit', 'MultiEdit'].includes(toolName)) {
   process.exit(0);
 }
 
+// テンプレートから作ったリポジトリでだけ動く
 const root = projectDir(input);
+if (!isTemplateRepo(root)) {
+  process.exit(0);
+}
+
 const target = input.tool_input?.file_path || input.tool_input?.notebook_path || '';
 const repoPath = toRepoPath(target, root);
 

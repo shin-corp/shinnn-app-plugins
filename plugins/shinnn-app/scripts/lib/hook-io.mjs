@@ -29,6 +29,20 @@ export function projectDir(input) {
   return process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();
 }
 
+/** テンプレートから作ったリポジトリの目印になるファイル（リポジトリルート起点） */
+export const TEMPLATE_MARKER = '.claude/rules/.standards-version';
+
+/**
+ * テンプレート shinnn-app-starter から作ったリポジトリか。
+ *
+ * テンプレートから作ったリポジトリには必ず入っているファイル（TEMPLATE_MARKER）を目印にする。
+ * hooks は規約がこのテンプレートの構成を前提にしているため、テンプレート以外のリポジトリ
+ * （プラグインを user スコープで入れたときの他のリポジトリ）や、テンプレートを取得する前の空のフォルダでは何もしない。
+ */
+export function isTemplateRepo(root) {
+  return existsSync(join(root, TEMPLATE_MARKER));
+}
+
 /** 絶対パス・相対パスのどちらで来ても、リポジトリルート起点の POSIX 相対パスに正規化する */
 export function toRepoPath(filePath, root) {
   if (!filePath) {

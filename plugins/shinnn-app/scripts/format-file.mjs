@@ -4,7 +4,7 @@
  * これで「lint は最後にまとめて直す」を無くし、規約違反をその場で潰す。
  */
 import { existsSync } from 'node:fs';
-import { readHookInput, projectDir, run, toRepoPath } from './lib/hook-io.mjs';
+import { isTemplateRepo, readHookInput, projectDir, run, toRepoPath } from './lib/hook-io.mjs';
 
 /** 対象拡張子。HTML と CSS は eslint の対象外なので触らない */
 const LINTABLE = /\.(ts|tsx|mjs|cjs|js)$/;
@@ -20,7 +20,12 @@ if (!['Edit', 'Write', 'MultiEdit'].includes(input.tool_name || '')) {
   process.exit(0);
 }
 
+// テンプレートから作ったリポジトリでだけ動く
 const root = projectDir(input);
+if (!isTemplateRepo(root)) {
+  process.exit(0);
+}
+
 const repoPath = toRepoPath(input.tool_input?.file_path || '', root);
 if (!repoPath || !LINTABLE.test(repoPath)) {
   process.exit(0);

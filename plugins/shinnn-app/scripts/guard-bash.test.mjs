@@ -1,18 +1,36 @@
 /**
  * guard-bash.mjs の回帰テスト。`node --test scripts/` で実行する。
  * hook の入力（JSON）を標準入力で渡し、終了コード（0: 通す / 2: 止める）を確かめる。
+ * hooks はテンプレートから作ったリポジトリでだけ動くので、目印のファイルを置いた一時ディレクトリを CLAUDE_PROJECT_DIR に渡す。
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { test } from 'node:test';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const script = fileURLToPath(new URL('./guard-bash.mjs', import.meta.url));
+
+/** テンプレートから作ったリポジトリに見立てた一時ディレクトリ */
+let projectRoot;
+
+before(() => {
+  projectRoot = mkdtempSync(join(tmpdir(), 'guard-bash-'));
+  mkdirSync(join(projectRoot, '.claude', 'rules'), { recursive: true });
+  writeFileSync(join(projectRoot, '.claude', 'rules', '.standards-version'), '0.0.0\n');
+});
+
+after(() => {
+  rmSync(projectRoot, { recursive: true, force: true });
+});
 
 function runGuard(command) {
   const result = spawnSync(process.execPath, [script], {
     input: JSON.stringify({ tool_name: 'Bash', tool_input: { command } }),
     encoding: 'utf8',
+    env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot },
   });
   return result.status;
 }

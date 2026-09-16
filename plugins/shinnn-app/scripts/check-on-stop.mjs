@@ -3,7 +3,7 @@
  * フルの check（build + typecheck + 全テスト）は /shinnn-app:check と CI に任せ、ここは数十秒で終える範囲に留める。
  */
 import { existsSync } from 'node:fs';
-import { blockMessage, fromRoot, projectDir, readHookInput, run } from './lib/hook-io.mjs';
+import { blockMessage, fromRoot, isTemplateRepo, projectDir, readHookInput, run } from './lib/hook-io.mjs';
 
 const LINTABLE = /\.(ts|tsx|mjs|cjs|js)$/;
 const WORKSPACES = ['client', 'server', 'shared'];
@@ -66,7 +66,12 @@ if (input.stop_hook_active === true) {
   process.exit(0);
 }
 
+// テンプレートから作ったリポジトリでだけ動く
 const root = projectDir(input);
+if (!isTemplateRepo(root)) {
+  process.exit(0);
+}
+
 const files = changedFiles(root);
 if (files.length === 0) {
   process.exit(0);

@@ -7,7 +7,7 @@
  * その中の語（`process.env` や `cat` など）には反応しない。ただし heredoc をシェルや node に流し込む
  * 場合は本文がそのまま実行されるので、取り除かずに判定する。
  */
-import { blockMessage, projectDir, readHookInput } from './lib/hook-io.mjs';
+import { blockMessage, isTemplateRepo, projectDir, readHookInput } from './lib/hook-io.mjs';
 
 /**
  * 認証情報のファイル（.env と .env.local など）をパスの語としてだけ一致させる。
@@ -161,8 +161,11 @@ if ((input.tool_name || '') !== 'Bash') {
   process.exit(0);
 }
 
-// 参照するだけで未使用にならないよう、ルート解決の副作用（環境変数の既定値）をここで確定させる
-projectDir(input);
+// テンプレートから作ったリポジトリでだけ動く
+const root = projectDir(input);
+if (!isTemplateRepo(root)) {
+  process.exit(0);
+}
 
 const original = input.tool_input?.command || '';
 const command = stripHeredocs(original);

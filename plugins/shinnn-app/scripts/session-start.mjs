@@ -5,7 +5,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { fromRoot, hasCommand, projectDir, readHookInput, run } from './lib/hook-io.mjs';
+import { fromRoot, hasCommand, isTemplateRepo, projectDir, readHookInput, run } from './lib/hook-io.mjs';
 
 const MAX_LINES = 10;
 
@@ -35,7 +35,13 @@ function readVersion(path) {
 }
 
 const input = await readHookInput();
+
+// テンプレートから作ったリポジトリでだけ動く
 const root = projectDir(input);
+if (!isTemplateRepo(root)) {
+  process.exit(0);
+}
+
 const out = [];
 
 const distributed = readVersion(fileURLToPath(new URL('../standards/.standards-version', import.meta.url)));
