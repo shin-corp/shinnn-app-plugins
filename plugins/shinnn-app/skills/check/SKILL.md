@@ -26,6 +26,7 @@ PR を出す前に、CI と同じ内容を手元で通す。**ここが緑にな
 | 4 | `node scripts/check-api-coverage.mjs` | `shared/src/api` の全ルートにテストがあるか |
 | 5 | `node scripts/check-test-naming.mjs` | テストのファイル名が `.test.ts` か（`.spec.ts` は CI で落ちる） |
 | 6 | `node scripts/check-mandatory.mjs` | 必須項目（ファイル・deny・規約）の実体が残っているか |
+| 7 | `node scripts/check-licenses.mjs` | 依存のライセンスが許可リスト（OSS）に収まっているか。外れたものは費用が発生する可能性があるので当社に相談する |
 
 `scripts/` の確認スクリプトが無い場合は、その項目を飛ばして「未導入」と報告する（勝手に作らない）。
 
