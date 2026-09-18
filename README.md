@@ -1,100 +1,122 @@
-# claude-plugins
+# shinnn-app-plugins
 
-Claude Code のプラグインを配布する marketplace（プラグインの配布元）です。
+Claude Code でアプリを作るための道具をまとめた置き場所です。当社が配っています。
+アプリの土台（テンプレート）も一緒に入っているので、必要なものはこれだけです。
 
-アプリ開発標準に沿ってアプリを作るための、コマンド・レビュー担当・自動チェックをまとめて配ります。
-アプリの土台になるテンプレートもプラグインに同梱してあり、`/shinnn-app:setup` が展開します。
+ここから下は、**アプリを作る方**向けの説明です。プログラミングの経験は要りません。
+当社の保守担当向けの説明は、いちばん下の「保守担当向け」にあります。
 
-## 収録しているプラグイン
+## 用意するもの
 
-| プラグイン | 内容 |
-|:--|:--|
-| `shinnn-app` | 初回の setup と日常の 5 コマンド（feature / check / pr / why / retro）、内部スキル、レビューエージェント 3 体、取り決めを案内する hooks |
+- Claude Code が使えること
+- Node.js 24・Git・GitHub CLI（`gh`）がパソコンに入っていること
+- GitHub で、自社の置き場所にリポジトリ（アプリの保管場所）を作れること
 
-## 導入
+入っているかどうかは、当社担当と一緒に確認します。
 
-Claude Code が入っていることが前提です（Node 24 / npm 11 / Git / gh も必要）。
+## アプリを新しく作る
 
-アプリ用の空のフォルダを作り、その中で次を実行します。フォルダの信頼を聞かれたら承認してください。
+1. アプリ用の**空のフォルダ**を作ります。フォルダの名前が、そのままアプリの名前の候補になります
+2. ターミナルでそのフォルダに移り、次の 3 行を実行します
 
-```
-claude plugin marketplace add shin-corp/shinnn-app-plugins
-claude plugin install shinnn-app@shinnn --scope project
-claude
-```
+   ```
+   claude plugin marketplace add shin-corp/shinnn-app-plugins
+   claude plugin install shinnn-app@shinnn --scope project
+   claude
+   ```
 
-project スコープ（そのフォルダだけ）で入れるのは、hooks をそのアプリのフォルダだけで動かすためです。
-hooks は、テンプレートから作ったアプリのリポジトリ（`.shinnn/setup.json` がある）でだけ動きます。
+   1 行目で当社の置き場所を登録し、2 行目で道具を**このフォルダだけで使う形**で入れ、3 行目で Claude Code を起動します。
+   ほかのフォルダでの作業には影響しません。
 
-## 最初にやること
+3. 「このフォルダを信頼しますか」と聞かれたら、承認します
+4. 次のように入力します
 
-```
-/shinnn-app:setup
-```
+   ```
+   /shinnn-app:setup
+   ```
 
-空のフォルダでは、まず同梱のテンプレート（`plugins/shinnn-app/template/`）を展開し、
-git のリポジトリと GitHub の非公開リポジトリを作ります。終わったら `/exit` で終了し、同じフォルダで `claude` を
-起動し直して、もう一度 `/shinnn-app:setup` を実行してください。`CLAUDE.md` と `.claude/rules/` は起動時に読み込まれるためです。
+   アプリの土台が展開され、GitHub に非公開のリポジトリが作られます
 
-2 回目は、対話でテンプレートの種類と必要な機能を決め、`.shinnn/setup.json` に記録します。
-あとから選択を変えたくなったら、もう一度実行してください（変更は PR になります）。
+5. 「終了して開き直してください」と案内されるので、`/exit` で終了し、**同じフォルダで** `claude` を起動し直します。
+   決まりごとは起動したときに読み込まれるため、一度開き直す必要があります
+6. もう一度 `/shinnn-app:setup` と入力します。あとは質問に答えるだけです。
+   分からない項目は、そのまま Enter で進めて構いません
 
-## 既にあるアプリのリポジトリに加わる
+## すでにあるアプリに参加する
 
-clone したフォルダで `claude` を起動すると、`.claude/settings.json` の `extraKnownMarketplaces` で配布元が
-自動で登録されます。プラグインは次で入れます。
+ほかの人が作ったアプリを手元に取得したら、そのフォルダで次を実行します。
 
 ```
 claude plugin install shinnn-app@shinnn --scope local
 ```
 
-`--scope project` にしないのは、共有の `.claude/settings.json` のキーの並びが書き直されて差分ができるためです。
-入れた後は、開いている Claude Code で `/reload-plugins` を実行するか、起動し直してください。
+自分の手元だけで使う形で入るので、ほかの人の設定は変わりません。
+入れたら Claude Code を一度終了して、開き直してください。
 
-## 日常の 5 コマンド
+## 毎日使う 5 つ
 
-上の `setup` は最初の 1 回（と設定を変えるとき）だけです。日常で使うのは次の 5 つで、
-毎日使うのは `feature` / `check` / `pr` の 3 つです。
+最初の `setup` は 1 回だけです。日常では次の 5 つを使い、毎日使うのは上の 3 つです。
 
-| コマンド | いつ使うか |
-|:--|:--|
-| `/shinnn-app:feature <作りたいこと>` | 作りたいことがあるとき（まとめていくつでも）。Issue に分けて、1 つずつ実装まで通す |
-| `/shinnn-app:check` | 変更が一段落したとき。CI と同じ内容を手元で通す |
-| `/shinnn-app:pr` | レビューに出すとき |
-| `/shinnn-app:why <話題>` | 決まりの理由が分からないとき |
-| `/shinnn-app:retro` | 作業が終わったとき |
+| 入力するもの | いつ使うか |
+| :-- | :-- |
+| `/shinnn-app:feature <作りたいこと>` | 作りたいことがあるとき。いくつでもまとめて伝えてよく、順番は Claude が決めます |
+| `/shinnn-app:check` | ひと区切りついたとき。おかしいところが無いかを調べます |
+| `/shinnn-app:pr` | できたものを提出するとき |
+| `/shinnn-app:why <知りたいこと>` | 決まりの理由が分からないとき |
+| `/shinnn-app:retro` | その日の作業が終わったとき |
 
-このほかに、`add-api` / `add-screen` / `db-migrate` / `code-review` などの内部スキルがあり、
-必要な場面で自動的に使われます。
+このほかにも細かい道具が入っていますが、必要な場面で Claude が自分で使います。覚える必要はありません。
 
-## hooks（自動で動くもの）
+## 頼まなくても行われること
 
-`.shinnn/setup.json` があるフォルダ（テンプレートから作ったアプリのリポジトリ）でだけ動きます。
-ほかのフォルダでは何もしません。
+アプリのフォルダでは、次が自動で行われます。ほかのフォルダでは何も起きません。
 
-| いつ | 何をするか |
-|:--|:--|
-| ファイルを編集した後 | そのパッケージの `eslint --fix` を掛け、直せなかった指摘を知らせる |
-| 応答を終える前 | 変更したファイルの lint と関連するテストを走らせ、結果を知らせる |
-| セッションの開始時 | 次に着手する Issue、open な PR、直近の CI を表示する |
+| いつ | 何が起きるか |
+| :-- | :-- |
+| ファイルを直した直後 | 書き方の細かい崩れを自動で整え、直せなかったものはその場で知らせます |
+| ひと区切りついたとき | 直した部分だけ検査とテストを走らせ、結果を知らせます |
+| Claude Code を開いたとき | 次にやる作業、提出中のもの、自動検査の結果を表示します |
 
-hooks は**取り決めの案内**です。編集そのものを止めるのは `.claude/settings.json` の `deny`、
-品質を落とさないようにするのは CI・husky・レビューが担います。
+どれも作業を止めることはありません。
+認証情報や決まりごとのファイルは設定で守られていて、Claude が書き換えられないようになっています。
 
-## 更新
+## 道具を新しくする
 
-アプリのフォルダで、入れたときと同じスコープを付けて実行し、Claude Code を起動し直します
-（既にあるリポジトリに加わった人は `--scope local`）。スコープを付けないと user スコープが対象になります。
+アプリのフォルダで、入れたときと同じ形を付けて実行し、Claude Code を開き直します。
 
 ```
 claude plugin update shinnn-app@shinnn --scope project
 ```
 
-規約（`.claude/rules/` と `CLAUDE.md`）はプラグインでは配れない仕組みのため、
-更新後に `/shinnn-app:sync-standards` を実行して、リポジトリ側へ取り込んで PR にします。
-セッションの開始時にバージョンの差があれば案内します。
+すでにあるアプリに参加した方は、`--scope project` のところを `--scope local` にします。
 
-## リポジトリの構成
+決まりごとが新しくなったときは、Claude Code を開いたときにお知らせします。
+`/shinnn-app:sync-standards` と入力すると取り込み、提出（PR）の形で残ります。
+
+## 困ったとき
+
+| こんなとき | どうするか |
+| :-- | :-- |
+| 決まりの理由が分からない | `/shinnn-app:why <知りたいこと>` と入力する |
+| 間違って消した、元に戻せない | **手を止めて当社に連絡する。**触るほど戻しにくくなります |
+| 有料のライブラリや、利用料のかかるサービスが必要になった | 当社が判断します。Claude が「引き継ぎメモ」に残します |
+
+アプリを作ったあとは、フォルダの中の `docs/アプリ作り方ガイド.md`（2 ページ）にも同じ内容があります。
+
+---
+
+## 保守担当向け
+
+### 収録しているプラグイン
+
+| プラグイン | 内容 |
+| :-- | :-- |
+| `shinnn-app` | 初回の setup と日常の 5 コマンド、内部スキル、レビューエージェント 3 体、取り決めを案内する hooks、アプリのテンプレート |
+
+hooks は `.shinnn/setup.json` があるフォルダでだけ動き、どれも作業を止めません。
+必須ファイルの編集を止めるのはテンプレートの `.claude/settings.json` の `deny` で、品質は CI・husky・レビューが担います。
+
+### リポジトリの構成
 
 ```
 .claude-plugin/marketplace.json   配布するプラグインの一覧
@@ -102,39 +124,27 @@ plugins/shinnn-app/
   .claude-plugin/plugin.json      プラグインの定義
   skills/                         コマンドと内部スキル
   agents/                         レビュー担当 3 体
-  hooks/hooks.json                自動チェックの設定
-  scripts/                        hooks から呼ぶ Node スクリプトと、setup の展開・適用スクリプト
+  hooks/hooks.json                自動で動くものの設定
+  scripts/                        hooks の実体と、setup の展開・適用スクリプト
   standards/                      規約の正本とレビュー観点
   template/                       setup が展開するテンプレート（アプリの土台）
 ```
 
-## 開発
-
-手元で動かして試す場合:
+### 開発
 
 ```
-claude --plugin-dir ./plugins/shinnn-app
+claude --plugin-dir ./plugins/shinnn-app              手元のプラグインで起動する
+claude plugin validate ./plugins/shinnn-app           構造を検証する
+node --test "plugins/shinnn-app/scripts/**/*.test.mjs"  回帰テスト（CI と同じもの）
 ```
 
-変更したら `/reload-plugins` で読み直せます。
-
-setup のテンプレートの展開は、空のフォルダを指定して試せます（`--dry-run` を付けると版とファイル数だけを表示します）。
+テンプレートの展開は、空のフォルダを指定して試せます（`--dry-run` を付けると版とファイル数だけを表示します）。
 
 ```
 node plugins/shinnn-app/scripts/fetch-template.mjs --dest <空のフォルダ>
 ```
 
-公開前に検証します。
-
-```
-claude plugin validate ./plugins/shinnn-app
-```
-
-hooks と setup の Node スクリプトには回帰テストがあります（CI でも同じものを実行します）。
-
-```
-node --test "plugins/shinnn-app/scripts/**/*.test.mjs"
-```
+変更したら `/reload-plugins` で読み直せます。
 
 **このリポジトリは公開されます。** 認証情報・顧客名・社内の URL・個人のローカルパスを書かないでください。
 
