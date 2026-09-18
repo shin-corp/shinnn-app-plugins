@@ -3,11 +3,17 @@
  * フルの check（build + typecheck + 全テスト）は /shinnn-app:check と CI に任せ、ここは数十秒で終える範囲に留める。
  *
  * 失敗しても応答は止めず、JSON の additionalContext で次の turn に伝える。
+ * 一時的に黙らせたいときは、環境変数 SHINNN_SKIP_STOP_CHECK に値を入れる（何も出さずに終える）。
  */
 import { existsSync } from 'node:fs';
 import { fromRoot, hookOutput, isAppRepo, projectDir, readHookInput, run } from './lib/hook-io.mjs';
 
 const LINTABLE = /\.(ts|tsx|mjs|cjs|js)$/;
+
+// 計測用（*.bench.test.ts）と一時的な確認用（*.tmp.test.ts）は、常に緑である前提が無い。
+// これらの失敗を直すべき指摘として伝えると、本来の変更から注意が逸れるので lint と関連テストの対象から外す。
+const EXCLUDED = /\.(bench|tmp)\.test\.ts$/;
+
 const WORKSPACES = ['client', 'server', 'shared'];
 
 /**
@@ -39,7 +45,7 @@ function changedFiles(root) {
     }
     paths.push(record.slice(3));
   }
-  return paths.filter((path) => LINTABLE.test(path) && existsSync(fromRoot(root, path)));
+  return paths.filter((path) => LINTABLE.test(path) && !EXCLUDED.test(path) && existsSync(fromRoot(root, path)));
 }
 
 /**
@@ -62,6 +68,12 @@ function testArgs(workspace, targets) {
 }
 
 const input = await readHookInput();
+
+// 明示的に飛ばす指定があれば何も出さない。
+// 標準入力を読み切ってから判定する（読まずに終えると、hook に JSON を渡す側の書き込みが失敗する）
+if (process.env.SHINNN_SKIP_STOP_CHECK) {
+  process.exit(0);
+}
 
 // テンプレートから作ったアプリのリポジトリでだけ動く
 const root = projectDir(input);
