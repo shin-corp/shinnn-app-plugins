@@ -1,0 +1,62 @@
+{
+  "APP_SERVER_STARTED": {
+    "type": "INFO",
+    "message": "サーバーを起動しました。ポート: %1"
+  },
+  "APP_SERVER_SHUTTING_DOWN": {
+    "type": "INFO",
+    "message": "終了要求を受け取りました。サーバーを停止します。"
+  },
+  "APP_SERVER_START_FAILED": {
+    "type": "FATAL",
+    "message": "サーバーを起動できませんでした。"
+  },
+  "APP_DB_MIGRATION_APPLIED": {
+    "type": "INFO",
+    "message": "マイグレーションを適用しました。"
+  },
+  "APP_DB_SEEDED": {
+    "type": "INFO",
+    "message": "初期データを %1 件登録しました。"
+  },
+  "APP_REQUEST_FAILED": {
+    "type": "ERROR",
+    "message": "要求の処理に失敗しました。%1 %2"
+  },
+  "APP_VALIDATION_FAILED": {
+    "type": "WARN",
+    "message": "入力値が正しくありません。"
+  },
+  "APP_INVALID_JSON": {
+    "type": "WARN",
+    "message": "リクエストの本文が JSON として読み取れません。"
+  },
+  "APP_PAYLOAD_TOO_LARGE": {
+    "type": "WARN",
+    "message": "リクエストの本文が大きすぎます。"
+  },
+  "APP_UNAUTHORIZED": {
+    "type": "WARN",
+    "message": "認証されていません。"
+  },
+  "APP_ROUTE_NOT_FOUND": {
+    "type": "WARN",
+    "message": "指定された URL は存在しません。"
+  },
+  "APP_RATE_LIMIT_EXCEEDED": {
+    "type": "WARN",
+    "message": "要求が多すぎます。しばらく待ってからやり直してください。"
+  },
+  "APP_INTERNAL_ERROR": {
+    "type": "ERROR",
+    "message": "サーバー内部でエラーが発生しました。"
+  },
+  "APP_ITEM_NOT_FOUND": {
+    "type": "WARN",
+    "message": "指定された item が見つかりません。id: %1"
+  },
+  "APP_ITEM_NAME_DUPLICATE": {
+    "type": "WARN",
+    "message": "同じ name の item が既に存在します。name: %1"
+  }
+}

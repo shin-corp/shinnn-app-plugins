@@ -1,0 +1,11 @@
+# CODEOWNERS: PR のレビュアーを自動で割り当てる仕組みです。
+#
+# @SHINNN_REVIEWER は差し替え用のプレースホルダです。
+# /shinnn-app:setup が、当社担当の GitHub アカウント名に置き換えます。
+# 手で書き換えないでください（このファイルは .claude/settings.json で編集が禁止されています）。
+#
+# 注意:
+# - チーム（@org/team）ではなく個人アカウントを指定します。組織をまたいで team を指定できないためです。
+# - ここに書いたアカウントは、あらかじめリポジトリの collaborator に招待されている必要があります。
+
+* @SHINNN_REVIEWER

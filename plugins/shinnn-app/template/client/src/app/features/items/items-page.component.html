@@ -1,0 +1,24 @@
+<section class="flex flex-col gap-4">
+  <header class="flex items-center justify-between">
+    <h1 class="text-xl font-bold">item 一覧</h1>
+    <button matButton="filled" type="button" (click)="openForm()">新規作成</button>
+  </header>
+
+  @if (itemsResource.isLoading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  <p class="text-sm">
+    全 {{ total() }} 件
+    @if (hasUnfetched()) {
+      <span>（先頭 {{ items().length }} 件のみ表示しています）</span>
+    }
+  </p>
+
+  <app-data-table [columns]="columns" [rows]="items()">
+    <ng-template #rowActions let-item>
+      <button matButton type="button" (click)="openForm(item)">編集</button>
+      <button matButton type="button" (click)="remove(item)">削除</button>
+    </ng-template>
+  </app-data-table>
+</section>

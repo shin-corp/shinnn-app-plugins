@@ -1,0 +1,38 @@
+# 【無効】@claude メンションへの応答（選択項目・費用は顧客負担）
+#
+# このファイルは雛形です。拡張子 .disabled が付いている間、GitHub は読み込みません。
+# 有効にするには /shinnn-app:setup を実行してください。
+#
+# 費用: 顧客の Pro・Max トークンまたは顧客の API キー。
+# 効果: Issue や PR のコメントで @claude と書くと、質問に答えます。
+# 入れない場合: 質問は当社の週次レビューで扱います。
+name: '@claude への応答'
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  respond:
+    name: 応答
+    # 発言者をリポジトリの関係者に限る。誰のコメントでも起動すると、第三者のコメント 1 件で
+    # 顧客の枠が消費され、書き込み権限を持つエージェントが動いてしまう。
+    if: >-
+      contains(github.event.comment.body, '@claude') &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # 使える道具も明示して絞る（質問に答えるのに書き込みは要らない）。
+          claude_args: --max-turns 15 --allowed-tools "Read,Glob,Grep,Bash(gh issue view:*),Bash(gh pr view:*),Bash(gh pr diff:*)"

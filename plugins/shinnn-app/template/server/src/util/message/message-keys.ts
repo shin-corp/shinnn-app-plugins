@@ -1,0 +1,27 @@
+/**
+ * @file メッセージキー（自動生成。手で編集しない）。
+ *
+ * 生成元は resources/messages.json。追加・変更したら `npm run messages -w server` を実行する。
+ */
+
+/** メッセージキー。値はエラー応答の messageKey としてそのまま画面へ返る。 */
+export const MessageKeys = {
+  APP_SERVER_STARTED: 'APP_SERVER_STARTED',
+  APP_SERVER_SHUTTING_DOWN: 'APP_SERVER_SHUTTING_DOWN',
+  APP_SERVER_START_FAILED: 'APP_SERVER_START_FAILED',
+  APP_DB_MIGRATION_APPLIED: 'APP_DB_MIGRATION_APPLIED',
+  APP_DB_SEEDED: 'APP_DB_SEEDED',
+  APP_REQUEST_FAILED: 'APP_REQUEST_FAILED',
+  APP_VALIDATION_FAILED: 'APP_VALIDATION_FAILED',
+  APP_INVALID_JSON: 'APP_INVALID_JSON',
+  APP_PAYLOAD_TOO_LARGE: 'APP_PAYLOAD_TOO_LARGE',
+  APP_UNAUTHORIZED: 'APP_UNAUTHORIZED',
+  APP_ROUTE_NOT_FOUND: 'APP_ROUTE_NOT_FOUND',
+  APP_RATE_LIMIT_EXCEEDED: 'APP_RATE_LIMIT_EXCEEDED',
+  APP_INTERNAL_ERROR: 'APP_INTERNAL_ERROR',
+  APP_ITEM_NOT_FOUND: 'APP_ITEM_NOT_FOUND',
+  APP_ITEM_NAME_DUPLICATE: 'APP_ITEM_NAME_DUPLICATE',
+} as const;
+
+/** @exports メッセージキー。 */
+export type MessageKey = (typeof MessageKeys)[keyof typeof MessageKeys];

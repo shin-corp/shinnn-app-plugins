@@ -1,0 +1,34 @@
+# 依存ライブラリの更新を週次で PR にする設定です。
+# セキュリティの修正を見落とさないために有効にしています。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: '[deps]'
+    groups:
+      # パッチ更新はまとめて 1 本の PR にする（レビューの手間を減らすため）
+      patch:
+        update-types:
+          - patch
+    ignore:
+      # Node.js の型定義は実行環境の版に合わせる（docs/decisions の Node の判断を参照）。
+      # 実行環境より新しいメジャー版を入れると、存在しない API が型検査を通ってしまう。
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: Asia/Tokyo
+    commit-message:
+      prefix: '[ci]'

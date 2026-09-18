@@ -1,0 +1,6 @@
+{
+  "shared/**/*.ts": "npm exec -w shared -- eslint --fix",
+  "server/**/*.ts": "npm exec -w server -- eslint --fix",
+  "client/**/*.ts": "npm exec -w client -- eslint --fix",
+  "**/*.{json,md,yaml,yml}": "prettier --write"
+}

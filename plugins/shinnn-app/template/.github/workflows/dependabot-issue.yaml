@@ -1,0 +1,65 @@
+# Dependabot の PR に対応する Issue を自動で作り、PR が閉じたら Issue も閉じる。
+# 作業の正本は Issues なので、bot の依存更新も Issue で一覧できるようにする（1 Issue = 1 PR を bot にも当てはめる）。
+# pull_request_target を使うのは、Dependabot の PR では pull_request の GITHUB_TOKEN が読み取り専用になるため。
+# PR のコードは checkout しない（PR の情報を読んで Issue を作り、本文を書き換えるだけ）。
+name: Dependabot の PR と Issue の対応づけ
+
+on:
+  pull_request_target:
+    types: [opened, reopened, closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: '対応する Issue を作る PR の番号（既存の PR に後から付けるとき）'
+        required: true
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  link:
+    name: Issue の作成と閉じ込み
+    # 判定は PR の作者で行う（閉じた人ではない）。人が bot の PR を取り下げたときも Issue を閉じるため。
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+    steps:
+      - name: PR に対応する Issue を作り、本文に Closes を足す
+        if: github.event_name == 'workflow_dispatch' || github.event.action != 'closed'
+        run: |
+          marker="<!-- dependabot-pr: ${PR_NUMBER} -->"
+          existing=$(gh issue list --state all --label type:deps --limit 200 --json number,body | jq -r --arg m "${marker}" '.[] | select(.body | contains($m)) | .number' | head -1)
+          if [ -n "${existing}" ]; then
+            echo "Issue #${existing} が既にあります。"
+            exit 0
+          fi
+          title=$(gh pr view "${PR_NUMBER}" --json title --jq .title)
+          url=$(gh pr view "${PR_NUMBER}" --json url --jq .url)
+          body=$(printf '%s\n' "Dependabot が作った依存更新の PR に対応する Issue です（自動作成）。" "" "- PR: ${url}" "- 判断: CI が緑ならマージする。メジャー更新（大きな版上げ）は動作への影響を見てから決める" "- この Issue は PR がマージまたはクローズされると自動で閉じる" "" "${marker}")
+          issue_url=$(gh issue create --title "[依存] ${title}" --label "type:deps" --label "status:next" --body "${body}")
+          issue_number=${issue_url##*/}
+          pr_body=$(gh pr view "${PR_NUMBER}" --json body --jq .body)
+          gh pr edit "${PR_NUMBER}" --body "$(printf 'Closes #%s\n\n%s' "${issue_number}" "${pr_body}")"
+          echo "Issue #${issue_number} を作り、PR #${PR_NUMBER} の本文に Closes を足しました。"
+
+      - name: PR が閉じたら Issue も閉じる
+        if: github.event_name == 'pull_request_target' && github.event.action == 'closed'
+        env:
+          MERGED: ${{ github.event.pull_request.merged }}
+        run: |
+          marker="<!-- dependabot-pr: ${PR_NUMBER} -->"
+          issue=$(gh issue list --state open --label type:deps --limit 200 --json number,body | jq -r --arg m "${marker}" '.[] | select(.body | contains($m)) | .number' | head -1)
+          if [ -z "${issue}" ]; then
+            echo "開いている対応 Issue はありません（マージで自動的に閉じた場合もここに来る）。"
+            exit 0
+          fi
+          if [ "${MERGED}" = "true" ]; then
+            gh issue close "${issue}" --comment "PR #${PR_NUMBER} がマージされました。"
+          else
+            gh issue close "${issue}" --reason "not planned" --comment "PR #${PR_NUMBER} がマージされずに閉じられました。"
+          fi

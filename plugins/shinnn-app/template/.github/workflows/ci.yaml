@@ -1,0 +1,138 @@
+# 型検査 / lint / テスト / 規約チェックを PR ごとに走らせる。
+# 3 つの job はすべて緑になる必要がある。赤いまま main へマージしない。
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  check:
+    name: 型検査と lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      # shared の dist が無いと server / client の型検査が @app/shared を解決できない
+      - run: npm run build
+
+      - run: npm run check
+
+  test:
+    name: テスト
+    runs-on: ubuntu-latest
+    # DB は PGlite（Postgres の WASM 版）を使うので service container は要らない
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: npm test
+
+  policy:
+    name: 規約チェック
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # gitleaks が履歴を走査するため全体を取得する
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: テストのファイル名（.spec.ts を禁止）
+        run: node scripts/check-test-naming.mjs
+
+      - name: 受入条件 AC-n ごとにテストがあること
+        run: node scripts/check-ac-coverage.mjs
+
+      - name: API 定義の全ルートにテストがあること
+        run: node scripts/check-api-coverage.mjs
+
+      # 必須項目は顧客側で外せない。宣言（.shinnn/setup.json）だけでなく、
+      # 必須ファイル・deny・規約の実体も見る（setup.json を触らずに実体を消しても気づけるように）。
+      - name: 必須項目が外されていないこと
+        run: node scripts/check-mandatory.mjs
+
+      - name: API 定義を変えたらテストも変えていること
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=50 origin "$BASE_REF"
+          CHANGED=$(git diff --name-only "origin/$BASE_REF...HEAD")
+          if echo "$CHANGED" | grep -q '^shared/src/api/'; then
+            if echo "$CHANGED" | grep -qE '(^server/tests/|[.]test[.]ts$)'; then
+              echo "API 定義の変更に対するテストの変更を確認しました。"
+            else
+              echo "shared/src/api を変えたのに、テストが 1 つも変わっていません。" >&2
+              echo "API 定義は画面とサーバーの入口です。入口を変えたら、その振る舞いを固定するテストも変えてください。" >&2
+              exit 1
+            fi
+          else
+            echo "API 定義の変更はありません。"
+          fi
+
+      # Dependabot の PR は dependabot-issue.yaml が後から Closes #n を足すので、ここでは免除する。
+      # 名前は引用符で囲む（囲まないと YAML が「 #n」以降をコメントとして落とす）。
+      - name: 'PR 本文に Closes #n があること'
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if printf '%s' "$PR_BODY" | grep -Eiq '(close[sd]?|fix(e[sd])?|resolve[sd]?) +#[0-9]+'; then
+            echo "対応する Issue の記載を確認しました。"
+          else
+            echo "PR 本文に 'Closes #<Issue 番号>' がありません。" >&2
+            echo "1 Issue = 1 ブランチ = 1 PR です。対応する Issue を本文に書いてください。" >&2
+            exit 1
+          fi
+
+      - name: 依存の脆弱性
+        run: npm audit --audit-level=high
+
+      - name: 依存のライセンス
+        run: node scripts/check-licenses.mjs
+
+      # 第三者の Action（gitleaks-action）は組織リポジトリでライセンスキーの登録と、実行時のライセンスサーバーへの
+      # 問い合わせを要する。本体（MIT ライセンス）を版とチェックサムを固定して直接実行すれば、登録も外部への通信も要らない。
+      # 版を上げるときは GITLEAKS_VERSION と、リリースの checksums.txt にある linux_x64 の sha256 を一緒に更新する。
+      - name: 認証情報の混入（gitleaks）
+        env:
+          GITLEAKS_VERSION: '8.30.1'
+          GITLEAKS_SHA256: '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb'
+        run: |
+          curl -sSL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum --check --strict
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks git --no-banner --redact --exit-code 1 .

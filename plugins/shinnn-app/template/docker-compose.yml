@@ -1,0 +1,53 @@
+# アプリの PostgreSQL。API と画面はホストで `npm run dev` するため、DB だけを Docker で立てる。
+# profile を付けているので、`docker compose up` だけでは何も起動しない。
+#   開発用   : docker compose --profile dev up -d
+#   テスト用 : docker compose --profile test up -d
+services:
+  db:
+    # 再現性のためパッチ版まで固定する。
+    image: postgres:16.15
+    container_name: app-db
+    profiles: ['dev']
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: app
+      TZ: Asia/Tokyo
+      # postgres:16 のイメージに ja_JP ロケールは無い。UTF-8 で初期化する
+      # （LANG に ja_JP.utf8 を渡すと initdb が invalid locale settings で落ちる）。
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C.UTF-8'
+    ports:
+      - '5432:5432'
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      # 起動直後は接続を受け付けないため、healthy を待ってから migrate する。
+      test: ['CMD-SHELL', 'pg_isready -U app -d app']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  db-test:
+    # 実 PostgreSQL が必要なテスト用。開発用と衝突しないようポートと保存先を分ける。
+    image: postgres:16.15
+    container_name: app-db-test
+    profiles: ['test']
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: app
+      TZ: Asia/Tokyo
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C.UTF-8'
+    ports:
+      - '5433:5432'
+    # テストデータは残さない。停止すると消える。
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U app -d app']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  db_data:

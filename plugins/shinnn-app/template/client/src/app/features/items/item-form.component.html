@@ -1,0 +1,32 @@
+<h2 mat-dialog-title>{{ isEdit ? 'item を編集' : 'item を作成' }}</h2>
+
+<form [formGroup]="form" (ngSubmit)="save()">
+  <mat-dialog-content class="flex flex-col gap-2 pt-2">
+    <mat-form-field>
+      <mat-label>名前</mat-label>
+      <input matInput formControlName="name" maxlength="100" required />
+      @if (form.controls.name.hasError('required')) {
+        <mat-error>名前を入力してください。</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>説明</mat-label>
+      <textarea matInput formControlName="description" maxlength="1000" rows="3"></textarea>
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>状態</mat-label>
+      <mat-select formControlName="status">
+        @for (status of statuses; track status) {
+          <mat-option [value]="status">{{ statusLabels[status] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button matButton type="button" mat-dialog-close>キャンセル</button>
+    <button matButton="filled" type="submit" [disabled]="form.invalid || saving()">保存</button>
+  </mat-dialog-actions>
+</form>

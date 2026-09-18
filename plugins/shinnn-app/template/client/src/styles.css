@@ -1,0 +1,45 @@
+/**
+ * 全画面共通のスタイル。ここに独自のクラス定義を書き足さない。
+ * 見た目は Tailwind のユーティリティと Angular Material の部品で作る。
+ *
+ * カスケードレイヤ（@layer）で Tailwind と Material の強さを固定する。
+ * 後に書いたレイヤほど強いので、Material のスタイルは Tailwind の土台（preflight）より強く、
+ * Tailwind のユーティリティ（p-4 など）より弱くなる。これで
+ * 「Material の見た目が preflight に潰されない」「Material の余白をユーティリティで調整できる」
+ * の両方が成り立つ。
+ */
+@layer tailwind-base, material, tailwind-utilities;
+
+@import 'tailwindcss/theme.css' layer(tailwind-base);
+@import 'tailwindcss/preflight.css' layer(tailwind-base);
+@import 'tailwindcss/utilities.css' layer(tailwind-utilities);
+
+@import '@angular/material/prebuilt-themes/azure-blue.css' layer(material);
+
+/* Tailwind に読ませる走査対象。ここに無いファイルのクラス名は出力されない。 */
+@source './app';
+
+/*
+ * Material のシステム変数（--mat-sys-*）を Tailwind の色として使えるようにする。
+ * これで text-primary や bg-surface がテーマと同じ色になり、配色が 1 か所に集まる。
+ */
+@theme {
+  --color-primary: var(--mat-sys-primary);
+  --color-on-primary: var(--mat-sys-on-primary);
+  --color-surface: var(--mat-sys-surface);
+  --color-on-surface: var(--mat-sys-on-surface);
+  --color-surface-container: var(--mat-sys-surface-container);
+  --color-outline: var(--mat-sys-outline);
+  --color-error: var(--mat-sys-error);
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+}

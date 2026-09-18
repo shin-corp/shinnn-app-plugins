@@ -1,0 +1,47 @@
+{
+  "$comment": "セットアップの記録。/shinnn-app:setup が書き換えます。手で編集しないでください（CI の規約チェックが標準と照合します）。",
+  "templateVersion": "0.0.0",
+  "standardsVersion": "0.6.0",
+  "setupCompletedAt": null,
+  "profile": "full",
+  "reviewer": "@SHINNN_REVIEWER",
+  "mergePolicy": "human",
+  "$mergePolicyComment": "human: 人が ready にしてマージする / self-review: /shinnn-app:pr がセルフレビューと CI の通過後にマージする。/shinnn-app:setup の --merge-policy で変えます。",
+  "database": {
+    "mode": "undecided",
+    "$comment": "database-url / local-postgres / docker / embedded-postgres / pglite / managed のいずれか。scripts/setup-env.mjs が検出します。"
+  },
+  "mandatory": [
+    "claude-md",
+    "claude-rules",
+    "claude-settings-deny",
+    "import-restriction-lint",
+    "husky-pre-commit",
+    "ci-check",
+    "ci-test",
+    "ci-policy",
+    "issue-templates",
+    "issue-labels",
+    "progress-snapshot",
+    "docs-specification",
+    "docs-env",
+    "security-defaults",
+    "dependabot",
+    "npm-audit",
+    "commit-convention",
+    "handover-definition",
+    "codeowners"
+  ],
+  "optional": {
+    "client-only-profile": false,
+    "playwright-e2e": false,
+    "e2e-nightly": false,
+    "health-report": false,
+    "copilot-review": false,
+    "github-projects-board": false,
+    "claude-pr-review": false,
+    "claude-mention": false,
+    "health-report-ai-summary": false
+  },
+  "$optionalComment": "true にするだけでは有効になりません。/shinnn-app:setup を実行すると、対応する .github/workflows/*.yaml.disabled の .disabled が外れ、必要な設定が生成されます。費用が発生する項目は PR 本文に目安が書かれます。"
+}

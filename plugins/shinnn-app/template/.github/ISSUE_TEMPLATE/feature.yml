@@ -1,0 +1,73 @@
+name: 機能の追加・変更
+description: 新しい画面や機能を作りたいときに使います
+title: '[機能] '
+labels:
+  - 'type:feature'
+  - 'status:next'
+body:
+  - type: markdown
+    attributes:
+      value: |
+        1 つの Issue につき 1 つのブランチ・1 つの PR で進めます。
+        作りたいことが複数あるときや、埋めにくい欄があるときは、`/shinnn-app:feature` にまとめて伝えてください。
+        会話しながら、1 つの PR に収まる大きさの Issue に分けて作ります。
+
+  - type: textarea
+    id: purpose
+    attributes:
+      label: 何がしたいか
+      description: 使う人が何をできるようになるかを 1〜3 行で書きます。
+      placeholder: 担当者が、自分に割り当てられた作業だけを一覧で見られるようにしたい。
+    validations:
+      required: true
+
+  - type: textarea
+    id: background
+    attributes:
+      label: なぜ必要か
+      description: 今どう困っているか。この欄が判断の根拠になります。
+    validations:
+      required: true
+
+  - type: textarea
+    id: screen
+    attributes:
+      label: 画面
+      description: どの画面に、どんな表示と操作が要るか。既存の画面を変える場合はその名前を書きます。
+      placeholder: |
+        - 作業一覧画面に「自分の担当のみ」の絞り込みを足す
+        - 絞り込みの状態は画面を開き直すと初期値に戻ってよい
+    validations:
+      required: false
+
+  - type: textarea
+    id: data
+    attributes:
+      label: データ
+      description: 扱うデータの項目。新しく保存するものがあれば書きます。
+      placeholder: |
+        - 作業: 担当者 ID（既存）
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受入条件（AC-n）
+      description: |
+        「これが確認できたら完成」と言える条件を、AC-1 から番号を振って書きます。
+        1 行ずつ、確認できる形（誰が何をすると何が起きるか）で書いてください。
+        ここに書いた条件ごとにテストを 1 つ以上作ります。CI が確認します。
+      value: |
+        - AC-1:
+        - AC-2:
+    validations:
+      required: true
+
+  - type: textarea
+    id: open-questions
+    attributes:
+      label: 未決事項
+      description: 決まっていないこと。決まるまで実装しません。無ければ空欄で構いません。
+    validations:
+      required: false

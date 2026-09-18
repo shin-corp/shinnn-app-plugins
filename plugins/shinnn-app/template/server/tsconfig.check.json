@@ -1,0 +1,10 @@
+{
+  // ビルド対象は src/ だけだが、tests / seed / 設定ファイルも型を検査する
+  // （tsx も vitest も型検査をしないため、ここを通さないと型の誤りに気付けない）。
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts", "seed/**/*.ts", "drizzle.config.ts", "vitest.config.ts"]
+}

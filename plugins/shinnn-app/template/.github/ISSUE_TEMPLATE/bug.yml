@@ -1,0 +1,66 @@
+name: 不具合の報告
+description: 期待どおりに動かないときに使います
+title: '[不具合] '
+labels:
+  - 'type:bug'
+  - 'status:next'
+body:
+  - type: markdown
+    attributes:
+      value: |
+        直し方が分からなくても構いません。**何をしたら何が起きたか**が書いてあれば調べられます。
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 何が起きたか
+      description: 実際に起きたこと。エラーメッセージが出た場合はそのまま貼ってください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: どうなるはずだったか
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現の手順
+      description: 番号を振って、上から順にやったことを書きます。
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: 環境
+      description: OS とブラウザ。サーバー側なら「サーバー」と書きます。
+      placeholder: Windows 11 / Chrome
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受入条件（AC-n）
+      description: |
+        直ったと判断できる条件です。分からなければ空欄で構いません（着手時に埋めます）。
+      value: |
+        - AC-1:
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 補足
+      description: 気づいたこと、いつから起きているか、影響の範囲など。
+    validations:
+      required: false

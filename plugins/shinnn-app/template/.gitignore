@@ -1,0 +1,20 @@
+node_modules/
+dist/
+.angular/
+out-tsc/
+coverage/
+test-results/
+playwright-report/
+.e2e/
+*.log
+
+.env
+.env.*
+!.env.example
+
+# 個人の設定と個人用のメモ。認証情報やローカルのパスを含みうるので共有しない。
+.claude/settings.local.json
+CLAUDE.local.md
+
+.DS_Store
+Thumbs.db

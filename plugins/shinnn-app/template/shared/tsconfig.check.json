@@ -1,0 +1,10 @@
+{
+  // テストと設定ファイルも型検査の対象にする（dist へは出力しない）。
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": ["src/**/*.ts", "vitest.config.ts"],
+  "exclude": []
+}
