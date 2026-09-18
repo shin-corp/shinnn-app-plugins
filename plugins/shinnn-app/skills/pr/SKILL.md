@@ -5,7 +5,7 @@ description: 変更をコミット・プッシュしてドラフト PR を作り
 
 # PR を出してレビューを収束させる
 
-`main` 向けのドラフト PR を作り、指摘が Critical / High = 0 になるまで回す。
+`main` 向けのドラフト PR を作り、指摘が Critical / Warning = 0 になるまで回す。
 その先は `.shinnn/setup.json` の `mergePolicy` で決まる（キーが無ければ `human`）。
 
 | `mergePolicy` | 収束したあと |
@@ -71,7 +71,7 @@ git -c core.quotepath=false diff --name-only origin/main...HEAD
 
 | PR の性質 | レビュー |
 |:--|:--|
-| コードを変える PR | `/shinnn-app:code-review` → （有効なら）Copilot。どちらも Critical / High が 0 件になるまで |
+| コードを変える PR | `/shinnn-app:code-review` → （有効なら）Copilot。どちらも Critical / Warning が 0 件になるまで |
 | 文書だけの PR（`docs/` と `*.md` のみ） | `/shinnn-app:code-review` を 1 巡だけ。Copilot には依頼しない |
 
 `core.quotepath=false` を省くと、日本語のファイル名がエスケープされて判定を誤る。
@@ -82,8 +82,8 @@ Copilot が有効な設定なら、コードレビューが 1 巡してから依
 ## 5. 指摘への対応
 
 - **1 コメント = 1 コミット**。どのコミットが何に対応したかを、コメントへの返信に SHA 付きで書く
-- Critical / High が 1 件でも残っている間は次の段階に進まない
-- Medium / Low は必須ではない。見送るなら**理由を返信と PR 本文に残す**（次に同じ指摘が来たとき再検証しないで済む）
+- Critical / Warning が 1 件でも残っている間は次の段階に進まない
+- Info は必須ではない。見送るなら**理由を返信と PR 本文に残す**（次に同じ指摘が来たとき再検証しないで済む）
 - **動作に影響が大きい指摘は自分で判断せず人に相談する**
 - 指摘が規約と食い違う場合は、指摘を鵜呑みにせず `/shinnn-app:why` で規約の意図を確認してから答える
 
@@ -96,7 +96,7 @@ Copilot が有効な設定なら、コードレビューが 1 巡してから依
 
 次の**すべて**を満たすときだけマージする。1 つでも欠けたら人に渡す。
 
-- Critical / High の指摘が 0 件で、見送った指摘の理由を PR 本文に書いてある
+- Critical / Warning の指摘が 0 件で、見送った指摘の理由を PR 本文に書いてある
 - 「規約で迷った点」に人の判断待ちの項目が無い
 - `/shinnn-app:check` が緑
 

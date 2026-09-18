@@ -139,7 +139,7 @@ PR を誰がマージするかを決める。既定は `human`。
 | 値 | 動き | 選ぶ場合 |
 |:--|:--|:--|
 | `human`（既定） | Claude はドラフトのまま渡し、人が ready にしてマージする | 当社のレビューを必ず通したい |
-| `self-review` | `/shinnn-app:pr` がセルフレビュー（Critical / High が 0）と CI の通過を確かめ、ready にしてマージまで行う | 顧客が「当社のレビューを待たずに進める」と明示した |
+| `self-review` | `/shinnn-app:pr` がセルフレビュー（Critical / Warning が 0）と CI の通過を確かめ、ready にしてマージまで行う | 顧客が「当社のレビューを待たずに進める」と明示した |
 
 `self-review` を選ぶ前に、次を相手に説明して同意を取る:
 
