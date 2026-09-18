@@ -1,21 +1,21 @@
 ---
 name: setup
-description: アプリの初回セットアップを対話で行う。空のフォルダではテンプレートを取得して git と GitHub のリポジトリを用意する。テンプレートを取得した後は、テンプレートの選択・環境の検出・必須項目の確認・選択項目の決定・適用までを 1 回で通す。再実行すると選択の変更を差分の PR にする。「セットアップ」「初期設定」「最初に何をすればいい」で起動
+description: アプリの初回セットアップを対話で行う。空のフォルダでは同梱のテンプレートを展開して git と GitHub のリポジトリを用意する。テンプレートを展開した後は、テンプレートの選択・環境の検出・必須項目の確認・選択項目の決定・適用までを 1 回で通す。再実行すると選択の変更を差分の PR にする。「セットアップ」「初期設定」「最初に何をすればいい」で起動
 ---
 
 # 初回セットアップ
 
-アプリ用の空のフォルダでプラグインを入れた直後に実行する。テンプレートがまだ無ければ取得して、git と GitHub の
+アプリ用の空のフォルダでプラグインを入れた直後に実行する。テンプレートがまだ無ければ同梱のものを展開して、git と GitHub の
 リポジトリを用意し、Claude Code を起動し直してもらう。起動し直した後にもう一度実行し、決めたことを
 `.shinnn/setup.json` に記録して、ワークフローや設定ファイルを生成する。あとから選択を変えたくなったら、このスキルをもう一度実行する。
 
 **このスキルだけが `.github/`、`.shinnn/`、`CODEOWNERS` を書き換えてよい。**
-書き換えは Edit / Write ツールではなく、プラグイン同梱のスクリプトで行う。テンプレートの取得は
-`node ${CLAUDE_PLUGIN_ROOT}/scripts/fetch-template.mjs`（「0. テンプレートの取得」）、選択の適用は
+書き換えは Edit / Write ツールではなく、プラグイン同梱のスクリプトで行う。テンプレートの展開は
+`node ${CLAUDE_PLUGIN_ROOT}/scripts/fetch-template.mjs`（「0. テンプレートの展開」）、選択の適用は
 `node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs`（引数は「5. 適用」）。
 
 `.github/workflows/`、`.shinnn/`、`CODEOWNERS` への Edit / Write は `.claude/settings.json` の deny が止める。
-スクリプトで書くのは、何をどう変えたかが差分に残るようにするため。`.claude/settings.json` は、手順 0 の取得スクリプトが
+スクリプトで書くのは、何をどう変えたかが差分に残るようにするため。`.claude/settings.json` は、手順 0 の展開スクリプトが
 `claude plugin install` の書いたものをテンプレートのものに置き換える場合を除き、setup でも書き換えない。
 標準の更新は `/shinnn-app:sync-standards` が扱う。
 
@@ -28,33 +28,32 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 
 各手順の結果を短くまとめてから次に進み、**利用者が決める項目は必ず質問する**。
 
-### 0. テンプレートの取得
+### 0. テンプレートの展開
 
-`CLAUDE.md` と `.claude/rules/` はセッションの開始時に読み込まれるので、取得した直後のセッションには規約が入っていない。
+`CLAUDE.md` と `.claude/rules/` はセッションの開始時に読み込まれるので、展開した直後のセッションには規約が入っていない。
 権限の設定（`.claude/settings.json`）も含めて確実に効かせるため、手順 0 を行ったセッションでは手順 1 に進まない。
 `node` と `git` が要る。無ければ導入を案内してから始める。
 
 1. **フォルダが空であることを確かめる。** `claude plugin install` が作った `.claude/` と `.git/` はあってよい。
    ほかのファイルがあれば、空のフォルダで始め直すよう伝えて止める
-2. **取得する内容を見せてから展開する。** まず `--dry-run` で版とファイル数を示して確認を取り、`--dry-run` を外して実行する
+2. **展開する内容を見せてから展開する。** まず `--dry-run` で版とファイル数を示して確認を取り、`--dry-run` を外して実行する
 
    ```
    node ${CLAUDE_PLUGIN_ROOT}/scripts/fetch-template.mjs --dry-run
    ```
 
-   スクリプトは、プラグインが対応する版（プラグインの `.starter-version`）の公開リポジトリのタグの圧縮ファイル
-   `https://github.com/shin-corp/shinnn-app-starter/archive/refs/tags/v<版>.tar.gz` を取得して、今のフォルダに展開する。
-   既にファイルがあれば上書きせずに止まる。例外は `claude plugin install --scope project` が書いた `.claude/settings.json`
+   スクリプトは、プラグインに同梱されたテンプレート（`${CLAUDE_PLUGIN_ROOT}/template/`）を今のフォルダにコピーして展開する。
+   ダウンロードしないので、ネットワークにも認証にも依存しない。既にファイルがあれば上書きせずに止まる。
+   例外は `claude plugin install --scope project` が書いた `.claude/settings.json`
    （`enabledPlugins` と `extraKnownMarketplaces` だけのもの）で、テンプレートの同じファイルに置き換える
 
    | 引数 | 内容 |
    |:--|:--|
    | `--dest <パス>` | 展開先。既定はプロジェクトのフォルダ |
-   | `--from <ディレクトリ \| .tar.gz \| URL>` | 別の取得元。ネットワークが制限された環境や、公開前のテンプレートを手元で試すとき |
    | `--dry-run` | 版とファイル数を示すだけで、書き込まない |
 
 3. **git に記録する。** `.git` が無ければ `git init -b main`。続けて `git add -A` →
-   `git commit -m "テンプレート shinnn-app-starter v<版> の取り込み"`。
+   `git commit -m "テンプレートの取り込み"`。
    最初のコミットには対象のパッケージが無いので、コミットの接頭辞（`[server]` など）を付けない
 4. **GitHub にリポジトリを作る。** リモートが無ければ、置き場所（組織かアカウント）とリポジトリ名（既定はフォルダ名）を聞いて実行する
 
@@ -228,9 +227,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --dry-run --profile full --re
 
 ## 失敗したとき
 
-- 取得スクリプトが HTTP のエラーで止まる: 対応する版のテンプレートがまだ公開されていないか、ネットワークが制限されている。
-  別の場所で取得した圧縮ファイル（手順 0 の URL）を `--from <.tar.gz のパス>` で渡せる。版が公開されていなければ当社に知らせてもらう
-- 取得スクリプトが既存のファイルとの衝突で止まる: 上書きしない。空のフォルダを作って始め直してもらう
+- 展開スクリプトが既存のファイルとの衝突で止まる: 上書きしない。空のフォルダを作って始め直してもらう
 - `git commit` が名前とメールアドレスの未設定で止まる: `git config --global user.name` と `user.email` の設定を案内する
 - `gh repo create` が失敗する（組織でリポジトリを作る権限が無い、`gh` が無い）: GitHub の画面で空のリポジトリ（README なし）を
   作ってもらい、`git remote add origin <URL>` と `git push -u origin main` を実行する

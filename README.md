@@ -3,7 +3,7 @@
 Claude Code のプラグインを配布する marketplace（プラグインの配布元）です。
 
 アプリ開発標準に沿ってアプリを作るための、コマンド・レビュー担当・自動チェックをまとめて配ります。
-テンプレート [`shinnn-app-starter`](https://github.com/shin-corp/shinnn-app-starter) と対で使います。
+アプリの土台になるテンプレートもプラグインに同梱してあり、`/shinnn-app:setup` が展開します。
 
 ## 収録しているプラグイン
 
@@ -32,7 +32,7 @@ hooks は、テンプレートから作ったアプリのリポジトリ（`.shi
 /shinnn-app:setup
 ```
 
-空のフォルダでは、まずテンプレート `shinnn-app-starter` のうちプラグインが対応する版を取得して展開し、
+空のフォルダでは、まず同梱のテンプレート（`plugins/shinnn-app/template/`）を展開し、
 git のリポジトリと GitHub の非公開リポジトリを作ります。終わったら `/exit` で終了し、同じフォルダで `claude` を
 起動し直して、もう一度 `/shinnn-app:setup` を実行してください。`CLAUDE.md` と `.claude/rules/` は起動時に読み込まれるためです。
 
@@ -100,12 +100,12 @@ claude plugin update shinnn-app@shinnn --scope project
 .claude-plugin/marketplace.json   配布するプラグインの一覧
 plugins/shinnn-app/
   .claude-plugin/plugin.json      プラグインの定義
-  .starter-version                setup が取得するテンプレート shinnn-app-starter の版
   skills/                         コマンドと内部スキル
   agents/                         レビュー担当 3 体
   hooks/hooks.json                自動チェックの設定
-  scripts/                        hooks から呼ぶ Node スクリプトと、setup の取得・適用スクリプト
+  scripts/                        hooks から呼ぶ Node スクリプトと、setup の展開・適用スクリプト
   standards/                      規約の正本とレビュー観点
+  template/                       setup が展開するテンプレート（アプリの土台）
 ```
 
 ## 開発
@@ -118,10 +118,10 @@ claude --plugin-dir ./plugins/shinnn-app
 
 変更したら `/reload-plugins` で読み直せます。
 
-setup のテンプレートの取得は、手元のテンプレートから空のフォルダへ展開して試せます（`--dry-run` を付けると版とファイル数だけを表示します）。
+setup のテンプレートの展開は、空のフォルダを指定して試せます（`--dry-run` を付けると版とファイル数だけを表示します）。
 
 ```
-node plugins/shinnn-app/scripts/fetch-template.mjs --from <テンプレートのディレクトリ> --dest <空のフォルダ>
+node plugins/shinnn-app/scripts/fetch-template.mjs --dest <空のフォルダ>
 ```
 
 公開前に検証します。
