@@ -100,10 +100,19 @@ if (selected === null) {
 
   results.push(`docker: ${dockerAvailable ? '使えます' : '使えません'}`);
 
+  // Docker Desktop に限らず、`docker` コマンドが動けばよい（WSL の Docker Engine も同じ）。
+  // WSL の中だけに入れている場合、Windows 側からは `docker` が見えないので「使えません」になる。
+  // その場合も WSL でコンテナを起動すれば localhost:5432 に出るので、上の検出 2 で拾える。
+  if (!dockerAvailable) {
+    results.push(
+      'docker の補足: WSL の中だけに Docker がある場合は、WSL でコンテナを起動すると localhost:5432 経由で使えます',
+    );
+  }
+
   if (dockerAvailable) {
     selected = {
       id: 'docker',
-      label: 'Docker の PostgreSQL 16（docker-compose.yml）',
+      label: 'Docker の PostgreSQL 16（docker-compose.yml。Docker Desktop でも WSL の Docker Engine でも動きます）',
       howToStart: [
         '起動: `docker compose --profile dev up -d`',
         '停止: `docker compose --profile dev down`',

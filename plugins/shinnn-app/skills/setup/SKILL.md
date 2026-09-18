@@ -89,7 +89,9 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 
 - Node は 24 系（24.15 以上）が前提。npm は Node.js 24 に同梱される 11 系をそのまま使う
 - `gh` が無い場合、Issue と PR を使う機能は動かない。`docs/progress.md` を手で更新する運用に切り替えるかを聞く
-- PostgreSQL は検出順に従って選ぶ。Docker が使えない場合は組み込み版（`embedded-postgres`）の導入まで代行する
+- PostgreSQL は検出順に従って選ぶ。Docker は `docker` コマンドが動けばよく、Docker Desktop でも WSL の Docker Engine でも構わない
+  （WSL の中だけにある場合、Windows 側からは見えないので「使えません」になる。WSL でコンテナを起動すれば `localhost:5432` の検出で拾える）
+- Docker が使えない場合は組み込み版（`embedded-postgres`）の導入まで代行する。手で PostgreSQL を入れてもらう案内はしない（管理者権限が要らない組み込み版で足りる）
 - GitHub 側は、当社担当アカウントの招待状況とブランチ保護が使えるかを確認する。招待とブランチ保護の設定は手順 5 で行う
 - `gh auth status` でトークンのスコープを見る。`workflow` が無いと、ワークフローを変える PR を `gh` からマージできない。
   マージの方針を `self-review` にするなら `gh auth refresh -h github.com -s workflow` を案内する
