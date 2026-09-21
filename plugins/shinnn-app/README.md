@@ -11,11 +11,11 @@
 | 種類 | 内容 |
 |:--|:--|
 | コマンド | 初回の `setup` と、日常の 5 つ（feature / check / pr / why / retro） |
-| 内部スキル | API の追加、画面の追加、マイグレーション、レビュー、コミット規約 など 15 |
+| 内部スキル | API の追加、画面の追加、マイグレーション、レビュー、コミット規約 など 16 |
 | レビュー担当 | 正確性 / セキュリティ / 規約 の 3 体。`code-review` から同時に動く |
 | hooks | 取り決めの案内。保存のたびの `eslint --fix`、変更したファイルの lint とテスト、セッション開始時の状況 |
 | 適用スクリプト | `scripts/apply-setup.mjs`。`setup` が `.shinnn/setup.json` / ワークフロー / `CODEOWNERS` を書き換える唯一の手段 |
-| 標準 | 規約の正本とレビュー観点（`standards/`） |
+| レビュー観点 | `standards/REVIEW.md`。顧客には配らず、レビュー担当が読む |
 | テンプレート | アプリの土台（`template/`）。`setup` が空のフォルダに展開する |
 
 ## コマンド
@@ -38,10 +38,10 @@
 | `/shinnn-app:retro` | Issue への振り返りコメントと引き継ぎメモの追記 |
 
 内部スキル: `add-api` / `add-screen` / `db-migrate` / `code-review` / `commit-message` /
-`draft-pr` / `build-check` / `lint-check` / `pre-commit-check` / `test-run` / `dev-stack-start` /
-`handover-check` / `sync-standards` / `session-retro`
+`draft-pr` / `build-check` / `lint-check` / `pre-commit-check` / `test-run` / `mutation-check` /
+`dev-stack-start` / `handover-check` / `sync-standards` / `session-retro`
 
-`coding-guide` は `client/CLAUDE.md` と `standards/rules/` に吸収したため未提供です。
+`coding-guide` は `template/client/CLAUDE.md` と `template/.claude/rules/` に吸収したため未提供です。
 
 ## hooks
 
