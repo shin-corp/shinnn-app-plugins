@@ -1,19 +1,19 @@
 ---
 name: sync-standards
-description: プラグインが配布する標準（CLAUDE.md 雛形・rules・レビュー観点）の更新を、リポジトリへ取り込んで PR にする。標準バージョンに差があるときに実行する。「標準を更新」「rules を最新に」「バージョンが古いと言われた」で起動
+description: プラグインが配布する標準（CLAUDE.md 雛形・rules・アプリ作り方ガイド）の更新を、リポジトリへ取り込んで PR にする。標準バージョンに差があるときに実行する。「標準を更新」「rules を最新に」「バージョンが古いと言われた」で起動
 ---
 
 # 標準の更新を取り込む
 
-プラグインの `standards/` が規約の正本。リポジトリ側の `.claude/rules/` はその写しなので、
-食い違ったら**標準側で上書きする**。
+規約の正本は、プラグインに同梱されたテンプレート `${CLAUDE_PLUGIN_ROOT}/template/` の中にある。
+リポジトリ側の `.claude/rules/` や `CLAUDE.md` はその写しなので、食い違ったら**テンプレート側で上書きする**。
 
 ## 1. 差を確認する
 
 | 見る場所 | 意味 |
 |:--|:--|
 | `.claude/rules/.standards-version` | 今のリポジトリが持っている標準のバージョン |
-| プラグインの `standards/.standards-version` | 配布されている標準のバージョン |
+| `${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/.standards-version` | 配布されている標準のバージョン |
 
 同じなら「更新はありません」と報告して終わる。**同じなのにファイルが違う場合**は、
 リポジトリ側が手で書き換えられている。その差分を示し、どちらを採るか人に確認する。
@@ -36,15 +36,21 @@ description: プラグインが配布する標準（CLAUDE.md 雛形・rules・�
 git switch -c chore/sync-standards-<新バージョン> origin/main
 ```
 
-- `standards/rules/` の規約を `.claude/rules/` へ上書きコピーする（`README.md` は配らない）
-- `standards/claude-md/root|client|server/CLAUDE.md` を、それぞれ `CLAUDE.md` / `client/CLAUDE.md` /
-  `server/CLAUDE.md` へ当てる。**案件固有の記述を消さないように**マージする
-  （雛形が変わった箇所だけを当て、埋めてある内容は残す）
-- `standards/アプリ作り方ガイド.md` を `docs/アプリ作り方ガイド.md` へ上書きコピーする
-- `standards/.standards-version` の値を `.claude/rules/.standards-version` に書く
-- `.shinnn/setup.json` の `standardsVersion` も更新する
+コピー元はすべて `${CLAUDE_PLUGIN_ROOT}/template/` の下にある。
 
-コピーは Bash 経由で行う（`.claude/rules/` への Edit / Write は `.claude/settings.json` の deny が止める）。
+```
+cp ${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/*.md .claude/rules/
+cp ${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/.standards-version .claude/rules/
+cp ${CLAUDE_PLUGIN_ROOT}/template/docs/アプリ作り方ガイド.md docs/
+```
+
+- コピーは Bash 経由で行う（`.claude/rules/` への Edit / Write は `.claude/settings.json` の deny が止める）
+- サーバー側を持たないリポジトリには、**元から無かった規約を増やさない**。
+  コピー前に `.claude/rules/` の顔ぶれを控えておき、増えた分は消す
+- `${CLAUDE_PLUGIN_ROOT}/template/CLAUDE.md` / `.../template/client/CLAUDE.md` / `.../template/server/CLAUDE.md`
+  を、それぞれ `CLAUDE.md` / `client/CLAUDE.md` / `server/CLAUDE.md` へ当てる。**案件固有の記述を消さないように**
+  マージする（雛形が変わった箇所だけを当て、埋めてある内容は残す）
+- `.shinnn/setup.json` の `standardsVersion` も新しいバージョンにする
 
 ## 4. PR にする
 

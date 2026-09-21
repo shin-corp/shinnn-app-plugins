@@ -1,39 +1,37 @@
 # 標準（standards）
 
-アプリ開発標準の**正本**を置く場所。顧客リポジトリの `.claude/rules/` と `CLAUDE.md` は、
-ここにあるものの写しです。食い違ったら**こちらが正**として上書きします。
+アプリ開発標準のうち、**顧客リポジトリへ配らないもの**を置く場所。
 
-## 中身
+配る規約と雛形の実体は、同梱のテンプレート `template/` の中にあります。テンプレートを展開した直後の
+リポジトリが最初から最新の標準を持っているように、そこを唯一の正本にしています。
 
-| 場所 | 内容 | 顧客リポジトリでの置き場所 |
+## どこに何があるか
+
+| 内容 | 場所 | 顧客リポジトリでの置き場所 |
 |:--|:--|:--|
-| `.standards-version` | 標準のバージョン。プラグインの `version` と同じ値を入れる | `.claude/rules/.standards-version` |
-| `claude-md/root/CLAUDE.md` | 全体方針の雛形（案件固有の節は空） | `CLAUDE.md` |
-| `claude-md/client/CLAUDE.md` | 画面側の方針 | `client/CLAUDE.md` |
-| `claude-md/server/CLAUDE.md` | サーバー側の方針 | `server/CLAUDE.md` |
-| `rules/*.md` | ファイル種別ごとの規約（`README.md` は配らない） | `.claude/rules/` |
-| `アプリ作り方ガイド.md` | 顧客向けの 2 ページ | `docs/アプリ作り方ガイド.md` |
-| `REVIEW.md` | レビューの観点と書き方 | 配布しない。当社のレビュアーとレビューエージェントが読む |
+| ファイル種別ごとの規約 | `template/.claude/rules/*.md` | `.claude/rules/` |
+| 全体方針の雛形（案件固有の節は空） | `template/CLAUDE.md` | `CLAUDE.md` |
+| 画面側の方針 | `template/client/CLAUDE.md` | `client/CLAUDE.md` |
+| サーバー側の方針 | `template/server/CLAUDE.md` | `server/CLAUDE.md` |
+| 標準のバージョン | `template/.claude/rules/.standards-version` | `.claude/rules/.standards-version` |
+| 顧客向けの 2 ページ | `template/docs/アプリ作り方ガイド.md` | `docs/アプリ作り方ガイド.md` |
+| レビューの観点と書き方 | `REVIEW.md`（このディレクトリ） | 配らない。当社のレビュアーとレビューエージェントが読む |
 
-中身は同梱のテンプレート（`template/`）の同名ファイルと同じものです。**直すときは標準側を直し、
-`template/` へも同じ内容を反映します**（テンプレートを展開した直後のリポジトリが、
-最初から最新の標準を持っている状態にするため）。
+## 顧客リポジトリへどう届くか
 
-## なぜプラグイン側に置くのか
-
-Claude Code のプラグインが配布できるのは スキル・エージェント・hooks・MCP・LSP で、
+Claude Code のプラグインが配布できるのはスキル・エージェント・hooks・MCP・LSP で、
 `CLAUDE.md` と `.claude/rules/` は配布できません。そのため、
 
-1. 正本はプラグインの `standards/` に置く
-2. 顧客リポジトリへは `/shinnn-app:sync-standards` がファイルとしてコピーし、PR にする
+1. 新しいリポジトリには、`/shinnn-app:setup` が `template/` を展開して置く
+2. すでにあるリポジトリには、`/shinnn-app:sync-standards` が `template/` からコピーして PR にする
 
-という形にしています。バージョンの比較は `.standards-version` と `plugin.json` の `version` で行い、
-差があれば `SessionStart` の表示で同期を促します。
+という形にしています。`SessionStart` の表示は、リポジトリの `.claude/rules/.standards-version` と
+プラグインが持つ `template/.claude/rules/.standards-version` を比べ、差があれば同期を促します。
 
 ## 更新の流れ
 
-1. `standards/` を直す
-2. `.standards-version` と `plugin.json` の `version` を上げる（同じ値にする）
+1. `template/` の該当ファイルを直す
+2. `template/.claude/rules/.standards-version` を上げる（プラグインの `version` とは別の値）
 3. marketplace のリリースに含める
 4. 各リポジトリで `claude plugin update` → `/shinnn-app:sync-standards` → PR
 
@@ -45,4 +43,4 @@ Claude Code のプラグインが配布できるのは スキル・エージェ�
 - 日本語。コードの識別子だけ英語
 - 非エンジニアが読む前提。専門用語は初出で 1 行の説明を添える
 - 認証情報・顧客名・社内の URL・個人のローカルパスを書かない（公開リポジトリです）
-- `rules/*.md` には frontmatter の `paths` を必ず書く。書かないと常に読み込まれてコンテキストを圧迫する
+- `template/.claude/rules/*.md` には frontmatter の `paths` を必ず書く。書かないと常に読み込まれてコンテキストを圧迫する

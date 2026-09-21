@@ -76,7 +76,9 @@ if (!isAppRepo(root)) {
 
 const out = [];
 
-const distributed = readVersion(fileURLToPath(new URL('../standards/.standards-version', import.meta.url)));
+const distributed = readVersion(
+  fileURLToPath(new URL('../template/.claude/rules/.standards-version', import.meta.url)),
+);
 const installed = readVersion(fromRoot(root, '.claude', 'rules', '.standards-version'));
 
 out.push(setupSection(fromRoot(root, '.shinnn', 'setup.json'), installed));

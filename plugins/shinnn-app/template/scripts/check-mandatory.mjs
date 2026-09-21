@@ -94,7 +94,7 @@ const REQUIRED_DENY = [
   'Edit(docs/progress.md)',
 ];
 
-/** `.claude/rules/` に必ずある規約。プラグインの standards/rules/ と同じ顔ぶれにする。 */
+/** `.claude/rules/` に必ずある規約。プラグインが配る顔ぶれと同じにする。 */
 const REQUIRED_RULES = [
   'ai-integration.md',
   'api-contract.md',
@@ -213,5 +213,5 @@ for (const problem of problems) {
 
 console.error('  なぜ: 必須項目は「顧客が編集しても標準が保たれる」ことの根拠です。');
 console.error('        宣言だけを見ていると、実体を消しても CI が緑のままになります。');
-console.error('  規約: プラグインの standards/README.md と .claude/rules/');
+console.error('  規約: このリポジトリの .claude/rules/（配布元は shinnn-app プラグイン）');
 process.exit(1);
