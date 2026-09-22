@@ -63,10 +63,13 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 
    作れない場合（組織でリポジトリを作る権限が無い、`gh` が無い）は、GitHub の画面で空のリポジトリ（README なし）を
    作ってもらい、`git remote add origin <URL>` と `git push -u origin main` を実行する
-5. **起動し直してもらう。** 次を伝えて、ここで終える
+5. **起動し直してもらう。** 次の 4 点を**省かずに**伝えて、ここで終える
    - `/exit` で終了し、同じフォルダで `claude` を起動し直す
    - 起動したら、もう一度 `/shinnn-app:setup` を実行する
    - 理由: 規約（`CLAUDE.md` と `.claude/rules/`）は起動時に読み込まれるため
+   - 最後に次の 1 文をそのまま添える:
+     「画面の別の場所に、英語で同じ内容の案内（`restart claude` など）が出ることがあります。Claude Code が自動で作る要約なので、上の手順のとおりに進めてください。」
+     Claude Code がターンの終わりに作る状況の要約は英語になることが多く、プラグインからは日本語にできないため
 
 ### 1. テンプレートの選択
 
@@ -132,6 +135,17 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 | `@claude` メンションへの応答 | 任意 | 同上 | PR 上で質問できない |
 | health report の AI 要約 | 任意 | 同上 | 数値だけが出る |
 
+#### 当社担当のアカウント（`reviewer`）
+
+`CODEOWNERS` に入れて、PR のレビューが当社に届くようにするアカウント。**既定値は持たない。**
+同席している当社担当に、GitHub のアカウント名を入力してもらう。
+
+- setup を実行している人（`gh auth status` のアカウント）を候補に出さない。PR は `gh` にログインしている
+  アカウントで作られ、GitHub は PR の作成者にレビューを依頼しないので、`CODEOWNERS` に入れても当社にレビューが届かない
+- 決まらなければ `--reviewer` を渡さず、`@SHINNN_REVIEWER` のままにする。決まったら setup を再実行して差し替える。
+  それまで PR のレビュー依頼は自動で出ないこと、手順 5 の 6 の招待も行わないことを伝える
+- 再実行のときは、`.shinnn/setup.json` の `reviewer` が `@SHINNN_REVIEWER` 以外なら、それを既定にして「変更しますか」と聞く
+
 #### マージの方針（`mergePolicy`）
 
 PR を誰がマージするかを決める。既定は `human`。
@@ -181,7 +195,9 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --dry-run --profile full --re
 
 スクリプトが触らない残りは、通常の Edit / Write で行う。
 
-1. Issue テンプレート（`feature.yml` / `bug.yml`）とラベル（`status:next` / `status:doing` / `status:blocked` / `type:feature` / `type:bug` / `type:deps`）を `gh` で投入する。`type:deps` は `dependabot-issue.yaml` が Dependabot の PR に対応する Issue を作るときに使う
+1. Issue テンプレート（`feature.yml` / `bug.yml`）とラベル（`status:next` / `status:doing` / `status:blocked` / `type:feature` / `type:bug` / `type:deps`）を `gh` で投入する。`type:deps` は `dependabot-issue.yaml` が Dependabot の PR に対応する Issue を作るときに使う。
+   `type:deps` と `status:next` は、`dependabot-issue.yaml` が先に作っていることがある。既にあるラベルは `gh label create` が
+   `already exists` で失敗するが、そのまま使う（`--force` で色や説明を上書きしない）
 2. `docs/` の雛形（`仕様書.md` / `env.md` / `decisions/`）を、無いものだけ作る
 3. `README.md` の「有効な機能」表を、決めた内容で書き換える（マージの方針の行も含める）
 4. `docs/decisions/` の**空いている次の番号**で `<番号>-setup.md` を作り、**選んだ理由と選ばなかった理由**を残す
@@ -195,6 +211,14 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --dry-run --profile full --re
 7. マージの方針が `self-review` なら、リポジトリで auto-merge を許可するかを聞く。許可する場合は
    `gh api -X PATCH repos/{owner}/{repo} -f allow_auto_merge=true`（リポジトリの管理者権限が要る）。
    許可しなくても `/shinnn-app:pr` は CI の完了を待ってからマージするので、動きは変わらない
+8. Dependabot のアラート（依存の脆弱性の通知）とセキュリティ更新（脆弱性を直す PR の自動作成）を有効にする。
+   `.github/dependabot.yml` はメジャー更新を PR にしないが、セキュリティ更新はその指定に関係なく PR になる。
+   private のリポジトリでは既定で無効のことがあるので、必ず実行する。セキュリティ更新はアラートが有効でないと使えないので、この順に行う。
+   `gh api -X PUT repos/{owner}/{repo}/vulnerability-alerts`
+   `gh api -X PUT repos/{owner}/{repo}/automated-security-fixes`
+   （どちらもリポジトリの管理者権限が要る）。できなければ止めずに結果を報告し、GitHub の画面で
+   Settings → 「Security and quality」の「Advanced Security」（画面によっては「Code security」）を開き、
+   「Dependabot alerts」と「Dependabot security updates」の **Enable** を押すよう案内する
 
 `.shinnn/setup.json` の形（キーはテンプレート同梱のものと同じにする。**勝手に増やさない・減らさない**）:
 
@@ -235,6 +259,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --dry-run --profile full --re
   作ってもらい、`git remote add origin <URL>` と `git push -u origin main` を実行する
 - `gh` の認証が切れている: `gh auth login` を案内する。ラベルと Issue の投入だけを後回しにし、他は適用する
 - ブランチ保護が設定できない: プランで使えないことがある。**エラーにせず**「CI と週次レビューで担保する」と説明して続行する
+- Dependabot のアラートやセキュリティ更新を有効にできない（管理者権限が無い）: 止めずに続け、手順 5 の 8 の画面での手順を案内する
 - すでに `.github/workflows/` に手を入れたファイルがある: 上書きせず、差分を示して人に判断してもらう
 - `gh pr merge` が `workflow` スコープの不足で失敗する: `gh auth refresh -h github.com -s workflow` を案内する。それまでは人がマージする
 - 適用スクリプトが `選択項目 … は optional にありません` で止まる: 項目そのものを増やすのは標準の変更にあたる。
