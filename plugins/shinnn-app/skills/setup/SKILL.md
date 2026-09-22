@@ -47,6 +47,11 @@ description: アプリの初回セットアップを対話で行う。空のフ�
    例外は `claude plugin install --scope project` が書いた `.claude/settings.json`
    （`enabledPlugins` と `extraKnownMarketplaces` だけのもの）で、テンプレートの同じファイルに置き換える
 
+   版は、プラグインの版に標準の版を添えて `プラグイン v<プラグインの版>（標準 <標準の版>）` の形で示される。
+   テンプレートはプラグインに同梱して配るので、テンプレートの版はプラグインの版と同じ。展開した `.shinnn/setup.json` の
+   `templateVersion` にもプラグインの版が入り、どの版のテンプレートから作ったかが残る。
+   テンプレートの `package.json` の `version` はアプリ自身の版で、テンプレートの版ではない
+
    | 引数 | 内容 |
    |:--|:--|
    | `--dest <パス>` | 展開先。既定はプロジェクトのフォルダ |
@@ -236,6 +241,8 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --dry-run --profile full --re
   "handoverIssue": 1
 }
 ```
+
+`templateVersion` には、手順 0 で展開したプラグインの版が入る（展開スクリプトが書く）。どの版のテンプレートから作ったかの記録になる。
 
 **再実行のとき**は、既存の `.shinnn/setup.json` と今回の選択を比べ、**差分のある項目だけ**を変更する。
 変更は `chore/setup-<日付>` ブランチにコミットし、`/shinnn-app:pr` で PR にする（`main` に直接コミットしない）。

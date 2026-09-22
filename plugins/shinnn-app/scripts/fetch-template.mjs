@@ -9,6 +9,12 @@
  * 展開するのはテンプレートそのものだけで、依存や生成物（node_modules・dist など）と、
  * 手元の環境設定（.env）は含めない。開発中の手元ではこれらが同じフォルダにある。
  *
+ * 版は、プラグインの版（`.claude-plugin/plugin.json` の `version`）に標準の版（`.claude/rules/.standards-version`）を
+ * 添えて示す。テンプレートはプラグインに同梱して配るので、テンプレートの版はプラグインの版と同じになる。
+ * テンプレートの `package.json` の `version` は、テンプレートから作るアプリ自身の版なので使わない。
+ * どの版のテンプレートから作ったかが残るように、展開する `.shinnn/setup.json` の `templateVersion` をプラグインの版にする。
+ * 書き換えるのは展開先に書く内容だけで、同梱のテンプレートのファイルはそのまま。
+ *
  * 展開先に既にあるファイルは上書きしない。同じパスのファイルが 1 つでもあれば、何も書かずに終わる。
  * 例外は `.claude/settings.json` で、トップレベルのキーが `enabledPlugins` と `extraKnownMarketplaces` だけなら置き換える。
  * `claude plugin install --scope project` が書いたもので、テンプレート側の同じファイルがその内容を含むため。
@@ -29,11 +35,14 @@ import { readJson } from './lib/hook-io.mjs';
 /** 同梱のテンプレート。プラグインのフォルダの中にあるので、版の指定もダウンロードも要らない */
 const TEMPLATE_DIR = fileURLToPath(new URL('../template', import.meta.url));
 
-/** テンプレートから作ったリポジトリには必ず入っているファイル。取得済みかを見るのに使う */
+/** テンプレートから作ったリポジトリには必ず入っているファイル。取得済みかを見るのに使う。中身は標準の版 */
 const TEMPLATE_MARKER = '.claude/rules/.standards-version';
 
-/** テンプレートの版を書いたファイル */
-const TEMPLATE_MANIFEST = 'package.json';
+/** プラグインの定義。`version` がプラグインの版で、同梱のテンプレートの版でもある */
+const PLUGIN_MANIFEST = fileURLToPath(new URL('../.claude-plugin/plugin.json', import.meta.url));
+
+/** setup の記録。展開するときに `templateVersion` をプラグインの版にする */
+const SETUP_PATH = '.shinnn/setup.json';
 
 /**
  * 展開しないディレクトリ。名前が一致すれば、どの階層のものでも中身ごと除く。
@@ -156,16 +165,41 @@ function readTemplateFiles(dir, prefix = '') {
   return files;
 }
 
-/** 同梱のテンプレートの版 */
-function readTemplateVersion() {
-  const manifestPath = join(TEMPLATE_DIR, TEMPLATE_MANIFEST);
-  const manifest = readJson(manifestPath);
+/** プラグインの版。同梱のテンプレートの版でもある */
+function readPluginVersion() {
+  const manifest = readJson(PLUGIN_MANIFEST);
   const version = typeof manifest?.version === 'string' ? manifest.version : '';
 
   if (version === '') {
-    fail(`${manifestPath} から版を読めませんでした。`, 'プラグインを入れ直す');
+    fail(`${PLUGIN_MANIFEST} から版を読めませんでした。`, 'プラグインを入れ直す');
   }
   return version;
+}
+
+/** 同梱のテンプレートの標準の版。目印のファイルの中身 */
+function readStandardsVersion(files) {
+  const version = files.get(TEMPLATE_MARKER).toString('utf8').trim();
+
+  if (version === '') {
+    fail(`${join(TEMPLATE_DIR, TEMPLATE_MARKER)} から標準の版を読めませんでした。`, 'プラグインを入れ直す');
+  }
+  return version;
+}
+
+/**
+ * 展開する `.shinnn/setup.json` の中身。`templateVersion` だけをプラグインの版にし、ほかのキーと値はテンプレートのまま。
+ * 書式は apply-setup.mjs が書き直すときと同じ（2 字下げ・末尾に改行）にして、適用の差分に書式の違いが混ざらないようにする。
+ */
+function stampSetup(pluginVersion) {
+  const setupPath = join(TEMPLATE_DIR, SETUP_PATH);
+  const setup = readJson(setupPath);
+
+  // キーを増やさないため、テンプレートに templateVersion が無ければ書き足さずに止める
+  if (typeof setup?.templateVersion !== 'string') {
+    fail(`${setupPath} から templateVersion を読めませんでした。`, 'プラグインを入れ直す');
+  }
+  setup.templateVersion = pluginVersion;
+  return Buffer.from(`${JSON.stringify(setup, null, 2)}\n`);
 }
 
 /** `claude plugin install --scope project` が書くキーだけの settings.json か。読めない JSON なら false */
@@ -220,13 +254,16 @@ function main() {
     fail(`同梱のテンプレート ${TEMPLATE_DIR} がありません。`, 'プラグインを入れ直す');
   }
 
-  const version = readTemplateVersion();
+  const pluginVersion = readPluginVersion();
   const files = readTemplateFiles(TEMPLATE_DIR);
 
   // 目印が無いまま展開すると hooks が動かず、取り直しも衝突で止まる
   if (!files.has(TEMPLATE_MARKER)) {
     fail(`同梱のテンプレート ${TEMPLATE_DIR} に ${TEMPLATE_MARKER} がありません。`, 'プラグインを入れ直す');
   }
+
+  const version = `プラグイン v${pluginVersion}（標準 ${readStandardsVersion(files)}）`;
+  files.set(SETUP_PATH, stampSetup(pluginVersion));
 
   const { conflicts, replaced } = classifyExisting(files.keys(), dest);
 
@@ -240,7 +277,7 @@ function main() {
 
   if (options.dryRun === true) {
     console.log('[shinnn-app:setup] 展開する内容（--dry-run。何も書いていません）:');
-    console.log(`  版: テンプレート v${version}`);
+    console.log(`  版: ${version}`);
     console.log(`  取得元: ${TEMPLATE_DIR}`);
     console.log(`  展開先: ${dest}`);
     console.log(`  ファイル数: ${files.size}`);
@@ -250,7 +287,7 @@ function main() {
 
   writeFiles(files, dest);
 
-  console.log(`[shinnn-app:setup] テンプレート v${version} を ${dest} に展開しました（${files.size} ファイル）。`);
+  console.log(`[shinnn-app:setup] ${version}のテンプレートを ${dest} に展開しました（${files.size} ファイル）。`);
   if (replaced.length > 0) {
     console.log(`  置き換えたファイル: ${replaced.join(', ')}`);
   }
