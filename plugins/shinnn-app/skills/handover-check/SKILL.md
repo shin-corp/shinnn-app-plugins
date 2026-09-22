@@ -20,7 +20,7 @@ CI の `policy` job と同じ観点で、手元でも見られるようにした
 | 4 | API 定義の全ルートにテストがある | `node scripts/check-api-coverage.mjs` |
 | 5 | 「引き継ぎメモ」Issue が埋まっていて、最終更新が最後のマージと同じ週 | `gh issue view <handoverIssue>` と `git log -1 --date=iso main` |
 | 6 | open Issue すべてに `status` ラベルと次の一手がある | `gh issue list --state open --json number,labels,title` |
-| 7 | `docs/progress.md` が最後のマージと一致している | `node scripts/progress-snapshot.mjs --check` |
+| 7 | open な PR が残っていない（すべてマージか取り下げ済み）。残すものは、扱い（続けるか・閉じるか）が「引き継ぎメモ」Issue に書いてある | `gh pr list --state open --json number,title,updatedAt` と `gh issue view <handoverIssue>` を突き合わせる |
 | 8 | `docs/env.md` が `process.env` の全キーと DB の起動方法を網羅している | ソース中の `process.env.` を集めて突き合わせる |
 | 9 | `docs/decisions/` に主要な設計判断がある | ファイルの有無と、最後の PR で決めたことの反映 |
 | 10 | すべての TODO に Issue 番号が付いている | `src/` の `TODO` を検索し、`#n` の無いものを列挙 |
@@ -34,7 +34,7 @@ CI の `policy` job と同じ観点で、手元でも見られるようにした
 
 受入条件は #2 のテストで確かめる。受入条件ごとに手で確かめた記録は求めない（テストと二重に管理しないため）。
 
-`gh` が使えない場合、GitHub に依存する項目（1 / 5 / 6 / 15）は「確認できず」として、手で確認する手順を示す。
+`gh` が使えない場合、GitHub に依存する項目（1 / 5 / 6 / 7 / 15）は「確認できず」として、手で確認する手順を示す。
 
 ## 報告
 

@@ -87,8 +87,7 @@
       "Edit(.shinnn/**)",
       "Edit(package-lock.json)",
       "Edit(.github/CODEOWNERS)",
-      "Edit(server/drizzle/**)",
-      "Edit(docs/progress.md)"
+      "Edit(server/drizzle/**)"
     ]
   }
 }

@@ -29,7 +29,6 @@ const MANDATORY_KEYS = [
   'ci-policy',
   'issue-templates',
   'issue-labels',
-  'progress-snapshot',
   'docs-specification',
   'docs-env',
   'security-defaults',
@@ -53,11 +52,9 @@ const REQUIRED_FILES = [
   '.github/ISSUE_TEMPLATE/feature.yml',
   '.github/ISSUE_TEMPLATE/bug.yml',
   '.github/workflows/ci.yaml',
-  '.github/workflows/progress-snapshot.yaml',
   '.github/workflows/dependabot-issue.yaml',
   'docs/仕様書.md',
   'docs/env.md',
-  'docs/progress.md',
   '.shinnn/setup.json',
 ];
 
@@ -91,7 +88,6 @@ const REQUIRED_DENY = [
   'Edit(package-lock.json)',
   'Edit(.github/CODEOWNERS)',
   'Edit(server/drizzle/**)',
-  'Edit(docs/progress.md)',
 ];
 
 /** `.claude/rules/` に必ずある規約。プラグインが配る顔ぶれと同じにする。 */

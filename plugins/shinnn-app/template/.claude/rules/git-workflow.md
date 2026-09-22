@@ -50,7 +50,7 @@ Dependabot（依存更新の bot）が作る PR には、ワークフロー `dep
 - `git commit --no-verify`（pre-commit の lint を飛ばす行為）
 - `main` への直接コミット
 - 改行コードだけが変わった差分を作ること（LF に統一。`.gitattributes` を参照）
-- 生成物の手編集（`package-lock.json` / `server/drizzle/` / `docs/progress.md` / メッセージキーの生成物）
+- 生成物の手編集（`package-lock.json` / `server/drizzle/` / メッセージキーの生成物）
 
 ## なぜ
 

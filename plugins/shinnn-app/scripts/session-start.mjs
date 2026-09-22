@@ -1,7 +1,9 @@
 /**
  * SessionStart hook。セッションの最初に「今どこにいるか」を出す。
  * exit 0 の標準出力は Claude のコンテキストに追加されるため、Issue と PR の状況をそのまま渡す。
- * gh が無い環境（GitHub を使わない顧客）では docs/progress.md にフォールバックする。
+ * 進捗の正本は GitHub の Issue・PR・CI で、リポジトリの中に写しは持たない。
+ * gh が無い環境では、GitHub の画面の URL と、gh の導入・ログインの案内を出す。
+ * 一覧を取得できなかった欄は、0 件（「（なし）」）と見分けられるよう、取得できなかったことと理由の要点を出す。
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -9,17 +11,91 @@ import { fromRoot, hasCommand, isAppRepo, projectDir, readHookInput, run } from 
 
 const MAX_LINES = 10;
 
+/** gh の 1 回の呼び出しを待つ時間（ミリ秒） */
+const GH_TIMEOUT = 20_000;
+
 function section(title, body) {
   const text = body.trim();
   return text ? `## ${title}\n${text}` : `## ${title}\n（なし）`;
 }
 
-function ghLines(args, root) {
-  const result = run('gh', args, { cwd: root, timeout: 20_000 });
-  if (result.failedToStart || result.status !== 0) {
-    return '';
+/**
+ * gh が失敗した理由の要点。標準エラー出力の最初の行を使い、末尾に付く API の URL は長いので除く。
+ *
+ * 例: 「HTTP 401: Bad credentials」
+ */
+function failureReason(result) {
+  if (result.failedToStart) {
+    return `gh が起動できないか、${GH_TIMEOUT / 1000} 秒以内に終わりませんでした`;
   }
-  return result.stdout.split('\n').filter(Boolean).slice(0, MAX_LINES).join('\n');
+  const firstLine = result.stderr
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line !== '');
+  if (firstLine === undefined) {
+    return `gh が終了コード ${result.status} で終わりました`;
+  }
+  return firstLine
+    .replace(/^gh: /, '')
+    .replace(/\s*\(https?:\/\/[^)]*\)$/, '')
+    .slice(0, 200);
+}
+
+/** gh の一覧を 1 つの節にする。取得できなければ「（なし）」ではなく、取得できなかったことと理由を書く */
+function ghSection(title, args, root) {
+  const result = run('gh', args, { cwd: root, timeout: GH_TIMEOUT });
+  if (result.failedToStart || result.status !== 0) {
+    return `## ${title}\n取得できませんでした（${failureReason(result)}）`;
+  }
+  return section(title, result.stdout.split('\n').filter(Boolean).slice(0, MAX_LINES).join('\n'));
+}
+
+/**
+ * git の remote の URL から、GitHub の画面の URL（https://<ホスト>/<owner>/<repo>）を作る。作れなければ null。
+ *
+ * `git@github.com:owner/repo.git` / `ssh://git@github.com/owner/repo.git` / `https://github.com/owner/repo.git`
+ * の形を受け付ける。URL に含まれる認証情報（`https://user:token@...`）とポートは出さない。
+ */
+function webUrl(remote) {
+  const text = remote.trim();
+  const scp = /^[\w.-]+@([\w.-]+):\/?([\w.-]+\/[\w.-]+?)(?:\.git)?\/?$/.exec(text);
+  if (scp) {
+    return `https://${scp[1]}/${scp[2]}`;
+  }
+  let url;
+  try {
+    url = new URL(text);
+  } catch {
+    return null;
+  }
+  if (!['https:', 'http:', 'ssh:', 'git:'].includes(url.protocol)) {
+    return null;
+  }
+  const path = url.pathname
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '')
+    .replace(/\.git$/, '');
+  return /^[\w.-]+\/[\w.-]+$/.test(path) ? `https://${url.hostname}/${path}` : null;
+}
+
+/** gh が無いときの節。一覧の代わりに、GitHub の画面の URL と gh の導入・ログインの案内を出す */
+function withoutGhSection(root) {
+  const remote = run('git', ['remote', 'get-url', 'origin'], { cwd: root });
+  const base = remote.failedToStart || remote.status !== 0 ? null : webUrl(remote.stdout);
+  const where =
+    base === null
+      ? [
+          'GitHub のリポジトリの画面（Issues / Pull requests / Actions）で見てください' +
+            '（git の remote の origin から URL を作れませんでした）。',
+        ]
+      : ['GitHub の画面で見てください。', `- Issue: ${base}/issues`, `- PR: ${base}/pulls`, `- CI: ${base}/actions`];
+  return [
+    '## Issue と PR',
+    'gh（GitHub CLI）が無いため、open な Issue と PR、直近の CI を取得できません。',
+    ...where,
+    'gh を入れて `gh auth login` でログインすると、次のセッションからここに一覧が出ます。',
+    '引き継ぎの注意は、pin した「引き継ぎメモ」Issue にあります。',
+  ].join('\n');
 }
 
 /** ファイルの中身を 1 行として読む。無ければ null。 */
@@ -97,69 +173,65 @@ if (distributed !== null && installed !== distributed) {
 
 if (hasCommand('gh')) {
   out.push(
-    section(
+    ghSection(
       '次に着手する Issue（status:next）',
-      ghLines(
-        [
-          'issue',
-          'list',
-          '--state',
-          'open',
-          '--label',
-          'status:next',
-          '--limit',
-          String(MAX_LINES),
-          '--json',
-          'number,title',
-          '--template',
-          '{{range .}}#{{.number}} {{.title}}\n{{end}}',
-        ],
-        root,
-      ),
+      [
+        'issue',
+        'list',
+        '--state',
+        'open',
+        '--label',
+        'status:next',
+        '--limit',
+        String(MAX_LINES),
+        '--json',
+        'number,title',
+        '--template',
+        '{{range .}}#{{.number}} {{.title}}\n{{end}}',
+      ],
+      root,
     ),
   );
   out.push(
-    section(
+    ghSection(
       'open な PR',
-      ghLines(
-        [
-          'pr',
-          'list',
-          '--state',
-          'open',
-          '--limit',
-          String(MAX_LINES),
-          '--json',
-          'number,title,isDraft',
-          '--template',
-          '{{range .}}#{{.number}} {{.title}}{{if .isDraft}}（draft）{{end}}\n{{end}}',
-        ],
-        root,
-      ),
+      [
+        'pr',
+        'list',
+        '--state',
+        'open',
+        '--limit',
+        String(MAX_LINES),
+        '--json',
+        'number,title,isDraft',
+        '--template',
+        '{{range .}}#{{.number}} {{.title}}{{if .isDraft}}（draft）{{end}}\n{{end}}',
+      ],
+      root,
     ),
   );
   out.push(
-    section(
+    ghSection(
       '直近の CI',
-      ghLines(
-        [
-          'run',
-          'list',
-          '--limit',
-          '3',
-          '--json',
-          'conclusion,displayTitle,workflowName',
-          '--template',
-          '{{range .}}{{.workflowName}}: {{.conclusion}} / {{.displayTitle}}\n{{end}}',
-        ],
-        root,
-      ),
+      [
+        'run',
+        'list',
+        // 品質の判断に使う CI だけを見る。ほかのワークフロー（Dependabot の対応づけなど）の実行は混ぜない
+        '--workflow',
+        'ci.yaml',
+        '--limit',
+        '3',
+        '--json',
+        'conclusion,status,displayTitle,workflowName',
+        '--template',
+        // 実行中は結果（conclusion）がまだ空なので、状態（status）を出す
+        '{{range .}}{{.workflowName}}: {{if .conclusion}}{{.conclusion}}{{else}}{{.status}}{{end}} / {{.displayTitle}}\n{{end}}',
+      ],
+      root,
     ),
   );
 } else {
-  const progress = fromRoot(root, 'docs', 'progress.md');
-  const body = existsSync(progress) ? readFileSync(progress, 'utf8').split('\n').slice(0, 40).join('\n') : '';
-  out.push(section('進捗（gh が無いため docs/progress.md を表示）', body));
+  out.push(withoutGhSection(root));
 }
 
 console.log(['# shinnn-app セッション開始時の状況', ...out].join('\n\n'));

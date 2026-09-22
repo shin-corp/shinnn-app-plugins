@@ -1,10 +1,13 @@
 /**
- * テンプレートの scripts/progress-snapshot.mjs と、それを動かすワークフローの回帰テスト。`node --test scripts/` で実行する。
+ * テンプレートの scripts/progress-snapshot.mjs と、テンプレートのワークフローの回帰テスト。`node --test scripts/` で実行する。
  *
  * テンプレートは顧客に配るものなので、テストはテンプレートに入れずにここに置く。
  * スクリプトは一時フォルダにコピーし、呼ぶ gh を偽物（template-progress-snapshot.fake-gh.mjs）に差し替えて実行する。
- * 偽物の gh は、渡した GitHub の状態から本物と同じ形の出力を返す。できあがった docs/progress.md の中身を確かめる。
- * - 一覧を取得できなかった欄は、0 件（「ありません」）と書かずに、取得できなかったことと理由を書く
+ * 偽物の gh は、渡した GitHub の状態から本物と同じ形の出力を返す。スクリプトが標準出力に出した Markdown を確かめる。
+ * - ファイルには書かない
+ * - 一覧を取得できなかった欄は、0 件（「ありません」）と書かずに、取得できなかったことと理由を書き、ほかの欄は続けて載せる
+ * - 別のリポジトリの作業ツリーの中では gh を呼ばない（親のリポジトリの一覧を拾わない）
+ * - 直近の CI は ci.yaml の実行だけを載せる
  * - 一覧を載せきれないときは総件数を添え、更新の古いもの（滞っているもの）を残す
  * - 題名などに | を含んでも、表の列がずれない
  * ワークフローは YAML の文字列を行で読み、権限・手順の並び・資格情報の扱いを確かめる。
@@ -13,9 +16,18 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -42,27 +54,23 @@ after(() => {
 /**
  * スクリプトを一時フォルダにコピーし、偽物の gh に state を答えさせて実行する。
  *
- * @returns 終了コード・出力と、書かれた docs/progress.md の中身
+ * @param nested - true なら、コピー先が別のリポジトリの作業ツリーの中にあるものとして git に答えさせる
+ * @returns 終了コード・出力と、コピー先のフォルダ
  */
-function runSnapshot(state, args = []) {
+function runSnapshot(state, { nested = false } = {}) {
   const root = mkdtempSync(join(workRoot, 'repo-'));
   mkdirSync(join(root, 'scripts'));
   const script = join(root, 'scripts', 'progress-snapshot.mjs');
   copyFileSync(snapshotScript, script);
-  const statePath = join(root, 'state.json');
+  // コピー先に何も書かれないことを確かめるので、状態のファイルはコピー先の外に置く
+  const statePath = join(workRoot, `${basename(root)}.json`);
   writeFileSync(statePath, JSON.stringify(state));
-  const result = spawnSync(process.execPath, ['--import', fakeGh, script, ...args], {
+  const result = spawnSync(process.execPath, ['--import', fakeGh, script], {
     cwd: root,
     encoding: 'utf8',
-    env: { ...process.env, FAKE_GH_STATE: statePath, FAKE_GIT_TOPLEVEL: root },
+    env: { ...process.env, FAKE_GH_STATE: statePath, FAKE_GIT_TOPLEVEL: nested ? dirname(root) : root },
   });
-  const progressPath = join(root, 'docs', 'progress.md');
-  return {
-    status: result.status,
-    stdout: result.stdout,
-    stderr: result.stderr,
-    progress: existsSync(progressPath) ? readFileSync(progressPath, 'utf8') : '',
-  };
+  return { status: result.status, report: result.stdout, stderr: result.stderr, root };
 }
 
 /** `## ` で始まる見出しの節の本文（次の見出しの手前まで） */
@@ -102,6 +110,7 @@ function baseState() {
     pullRequests: [{ number: 2, title: '一覧画面の追加', isDraft: false, createdAt: day(1), updatedAt: day(2) }],
     runs: [
       {
+        workflow: 'ci.yaml',
         displayTitle: '一覧画面の追加',
         workflowName: 'CI',
         conclusion: 'success',
@@ -113,6 +122,87 @@ function baseState() {
   };
 }
 
+/** 取得できなかった欄に書く文。理由を括弧に入れて 1 行で書く */
+const UNAVAILABLE = /^取得できませんでした（.+）。$/m;
+
+test('Markdown を標準出力に出し、ファイルには書かない', () => {
+  const result = runSnapshot(baseState());
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(tableRows(section(result.report, '進行中と次の一手')).length, 1);
+  assert.deepEqual(readdirSync(result.root), ['scripts']);
+  assert.deepEqual(readdirSync(join(result.root, 'scripts')), ['progress-snapshot.mjs']);
+});
+
+test('Issue の一覧を取得できなかったときも、その欄に取得できなかったことと理由を書き、PR と CI は続けて載せる', () => {
+  const result = runSnapshot({ ...baseState(), errors: { issues: 'HTTP 502: Bad Gateway' } });
+
+  assert.equal(result.status, 0, result.stderr);
+  const issues = section(result.report, '進行中と次の一手');
+  assert.match(issues, UNAVAILABLE);
+  assert.match(issues, /HTTP 502: Bad Gateway/);
+  assert.equal(tableRows(section(result.report, 'レビュー待ち')).length, 1);
+  assert.equal(tableRows(section(result.report, '直近の CI')).length, 1);
+  assert.doesNotMatch(result.report, /埋めてください|手動モード/);
+});
+
+test('gh が無いときは、どの欄にも gh が見つからないため取得できなかったと書く', () => {
+  const result = runSnapshot({ ...baseState(), missing: true });
+
+  assert.equal(result.status, 0, result.stderr);
+  for (const heading of ['進行中と次の一手', 'レビュー待ち', '直近の CI']) {
+    const text = section(result.report, heading);
+    assert.match(text, UNAVAILABLE, heading);
+    assert.match(text, /gh コマンドが見つかりません/, heading);
+  }
+  assert.doesNotMatch(result.report, /埋めてください|手動モード/);
+});
+
+test('別のリポジトリの作業ツリーの中では gh の一覧を載せず、どの欄にも取得できなかったと書く', () => {
+  const result = runSnapshot(baseState(), { nested: true });
+
+  assert.equal(result.status, 0, result.stderr);
+  for (const heading of ['進行中と次の一手', 'レビュー待ち', '直近の CI']) {
+    const text = section(result.report, heading);
+    assert.match(text, UNAVAILABLE, heading);
+    assert.match(text, /別のリポジトリ/, heading);
+    assert.equal(tableRows(text).length, 0, heading);
+  }
+});
+
+test('直近の CI には ci.yaml の実行だけを載せ、ほかのワークフローの実行は載せない', () => {
+  const state = baseState();
+  state.runs.unshift({
+    workflow: 'dependabot-issue.yaml',
+    displayTitle: '依存の更新',
+    workflowName: 'Dependabot の PR に Issue を対応づける',
+    conclusion: 'success',
+    status: 'completed',
+    headBranch: 'dependabot/npm_and_yarn/example-1.0.0',
+    createdAt: day(3),
+  });
+
+  const result = runSnapshot(state);
+
+  assert.equal(result.status, 0, result.stderr);
+  const rows = tableRows(section(result.report, '直近の CI')).map(cells);
+  // ブランチの列で見分ける。ci.yaml の実行（feature/list）だけが載る
+  const branches = rows.map((row) => row[2]);
+  assert.deepEqual(branches, ['feature/list']);
+});
+
+test('実行中の CI は、結果がまだ空なので状態を載せる', () => {
+  const state = baseState();
+  state.runs[0].conclusion = '';
+  state.runs[0].status = 'in_progress';
+
+  const result = runSnapshot(state);
+
+  assert.equal(result.status, 0, result.stderr);
+  const rows = tableRows(section(result.report, '直近の CI')).map(cells);
+  assert.equal(rows[0][1], 'in_progress');
+});
+
 test('PR と CI の一覧を取得できなかったときは、0 件とは書かずに取得できなかったことと理由を書く', () => {
   const result = runSnapshot({
     ...baseState(),
@@ -123,23 +213,23 @@ test('PR と CI の一覧を取得できなかったときは、0 件とは書�
   });
 
   assert.equal(result.status, 0, result.stderr);
-  const pullRequests = section(result.progress, 'レビュー待ち');
+  const pullRequests = section(result.report, 'レビュー待ち');
   assert.doesNotMatch(pullRequests, /ありません/);
   assert.match(pullRequests, /取得できませんでした（.*Resource not accessible by integration.*）/);
-  const runs = section(result.progress, '直近の CI');
+  const runs = section(result.report, '直近の CI');
   assert.doesNotMatch(runs, /ありません/);
   assert.match(runs, /取得できませんでした（.*HTTP 403: Resource not accessible by integration.*）/);
   // 取得できた Issue の欄はそのまま載る
-  assert.equal(tableRows(section(result.progress, '進行中と次の一手')).length, 1);
+  assert.equal(tableRows(section(result.report, '進行中と次の一手')).length, 1);
 });
 
 test('PR と CI が 0 件のときは「ありません」と書き、取得できなかったとは書かない', () => {
   const result = runSnapshot({ ...baseState(), pullRequests: [], runs: [] });
 
   assert.equal(result.status, 0, result.stderr);
-  assert.match(section(result.progress, 'レビュー待ち'), /open な PR はありません。/);
-  assert.match(section(result.progress, '直近の CI'), /実行結果がありません。/);
-  assert.doesNotMatch(result.progress, /取得できませんでした/);
+  assert.match(section(result.report, 'レビュー待ち'), /open な PR はありません。/);
+  assert.match(section(result.report, '直近の CI'), /実行結果がありません。/);
+  assert.doesNotMatch(result.report, /取得できませんでした/);
 });
 
 test('Issue と PR を載せきれないときは総件数を添え、更新の古いものから載せる', () => {
@@ -161,7 +251,7 @@ test('Issue と PR を載せきれないときは総件数を添え、更新の�
     ['進行中と次の一手', 60, 50, issues.slice(0, 10)],
     ['レビュー待ち', 25, 20, pullRequests.slice(0, 5)],
   ]) {
-    const text = section(result.progress, heading);
+    const text = section(result.report, heading);
     assert.match(text, new RegExp(`${total} 件中 ${limit} 件を表示`), `${heading}: 件数の注記がありません`);
     const rows = tableRows(text).map(cells);
     assert.equal(rows.length, limit, heading);
@@ -193,9 +283,9 @@ test('Issue と PR が上限ちょうどのときは、件数の注記を出さ�
   const result = runSnapshot({ ...baseState(), issues, pullRequests });
 
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(tableRows(section(result.progress, '進行中と次の一手')).length, 50);
-  assert.equal(tableRows(section(result.progress, 'レビュー待ち')).length, 20);
-  assert.doesNotMatch(result.progress, /件中/);
+  assert.equal(tableRows(section(result.report, '進行中と次の一手')).length, 50);
+  assert.equal(tableRows(section(result.report, 'レビュー待ち')).length, 20);
+  assert.doesNotMatch(result.report, /件中/);
 });
 
 test('題名・ラベル・ブランチ名に | や改行を含んでも、表の列がずれない', () => {
@@ -210,11 +300,11 @@ test('題名・ラベル・ブランチ名に | や改行を含んでも、表�
   const result = runSnapshot(state);
 
   assert.equal(result.status, 0, result.stderr);
-  const issueRow = tableRows(section(result.progress, '進行中と次の一手'));
+  const issueRow = tableRows(section(result.report, '進行中と次の一手'));
   assert.deepEqual(issueRow.map(cells), [['#1', 'A \\| B', 'status:a\\|b', day(1).slice(0, 10)]]);
-  const pullRequestRow = tableRows(section(result.progress, 'レビュー待ち'));
+  const pullRequestRow = tableRows(section(result.report, 'レビュー待ち'));
   assert.deepEqual(pullRequestRow.map(cells), [['#2', 'C\\|D', 'いいえ', day(2).slice(0, 10)]]);
-  const runRow = tableRows(section(result.progress, '直近の CI'));
+  const runRow = tableRows(section(result.report, '直近の CI'));
   assert.deepEqual(runRow.map(cells), [['E \\| F 2 行目', 'fail\\|ure', 'feature/x\\|y', day(2).slice(0, 10)]]);
 });
 
@@ -271,7 +361,7 @@ function assertGhStepsHaveToken(stepList) {
   }
 }
 
-test('月次の健全性レポート: スナップショットが PR と CI の実行結果を読む権限を持ち、ほかの権限は持たない', () => {
+test('月次の健全性レポート: スクリプトが PR と CI の実行結果を読む権限を持ち、ほかの権限は持たない', () => {
   assert.deepEqual(mapping(workflow('health-report.yaml.disabled'), 'permissions'), {
     contents: 'read',
     issues: 'write',
@@ -304,16 +394,32 @@ test('月次の健全性レポート: Issue を作る前に report ラベルを�
   assert.match(stepList[issueIndex], /--label 'report'/);
 });
 
-test('進捗スナップショット: スクリプトが読む Issue・PR・CI の権限と、コミットの権限を持つ', () => {
-  const text = workflow('progress-snapshot.yaml');
+test('月次の健全性レポート: スクリプトの標準出力をそのまま Issue の本文に使い、リポジトリのファイルを読まない', () => {
+  const text = workflow('health-report.yaml.disabled');
+  const stepList = steps(text);
+  const snapshot = stepList.find((step) => step.includes('progress-snapshot.mjs')) ?? '';
+  const output = /node scripts\/progress-snapshot\.mjs > (\S+)$/m.exec(snapshot);
 
-  assert.deepEqual(mapping(text, 'permissions'), {
-    contents: 'write',
-    issues: 'read',
-    'pull-requests': 'read',
-    actions: 'read',
-  });
-  assertGhStepsHaveToken(steps(text));
+  assert.ok(output, `スクリプトの標準出力をファイルに受けていません:\n${snapshot}`);
+  const post = stepList.find((step) => step.includes('gh issue create')) ?? '';
+  assert.ok(post.includes(`cat ${output[1]}`), `スクリプトの出力を Issue の本文に使っていません:\n${post}`);
+  assert.doesNotMatch(text, /docs\//);
+});
+
+/** テンプレートに同梱するワークフローのファイル名（無効にしてあるものも含む） */
+function workflowNames() {
+  return readdirSync(join(templateDir, '.github', 'workflows')).filter((name) => /\.ya?ml(\.disabled)?$/.test(name));
+}
+
+test('どのワークフローも、リポジトリの内容を書き換える権限を持たず、push しない（ブランチ保護と両立させる）', () => {
+  const names = workflowNames();
+
+  assert.ok(names.includes('ci.yaml'), names.join(', '));
+  for (const name of names) {
+    const text = workflow(name).replace(/#.*$/gm, '');
+    assert.doesNotMatch(text, /contents:\s*write|write-all/, name);
+    assert.doesNotMatch(text, /\bgit push\b/, name);
+  }
 });
 
 test('ワークフローが YAML として読める（テンプレートの依存を入れた手元だけで確かめる）', async (t) => {
@@ -323,7 +429,7 @@ test('ワークフローが YAML として読める（テンプレートの依�
     return;
   }
   const { parse } = await import(pathToFileURL(yamlEntry).href);
-  for (const name of ['health-report.yaml.disabled', 'progress-snapshot.yaml']) {
+  for (const name of workflowNames()) {
     const text = workflow(name);
     const parsed = parse(text);
     assert.equal(typeof parsed.name, 'string', name);

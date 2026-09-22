@@ -4,7 +4,7 @@ Claude Code がこのリポジトリで作業するときの全体方針です�
 
 ## 1. 進め方
 
-1. **open な Issue と PR を見る**（`gh issue list` / `gh pr list`）。作業項目の正本は GitHub Issues です。クローンだけで状況を知りたいときは [docs/progress.md](docs/progress.md)（自動生成）を読みます。
+1. **open な Issue と PR を見る**（次に着手する Issue と open な PR はセッション開始時に表示されます。出ないときは `gh issue list` / `gh pr list` か GitHub の画面で見ます）。作業項目の正本は GitHub Issues、引き継ぎの注意は pin した「引き継ぎメモ」Issue です。
 2. 対象の Issue を決め、`feature/<Issue 番号>-<slug>` ブランチを切ります。1 Issue = 1 ブランチ = 1 PR。
 3. `shared`（API 定義）→ `server` → `client` → テストの順に実装します。
 4. `/shinnn-app:check` が通ったら `/shinnn-app:pr` で PR を作ります。本文に `Closes #<番号>` を書きます。
@@ -50,7 +50,7 @@ Claude Code がこのリポジトリで作業するときの全体方針です�
 | `/shinnn-app:check`                  | 型検査・lint・テスト・受入条件カバレッジ・API 定義カバレッジ      |
 | `/shinnn-app:pr`                     | コミット → push → ドラフト PR → レビュー                          |
 | `/shinnn-app:why <話題 or ファイル>` | 規約の理由を平易な日本語と before / after で説明する              |
-| `/shinnn-app:retro`                  | 学びを Issue に残し、`docs/progress.md` を作り直す                |
+| `/shinnn-app:retro`                  | 学びを Issue に残し、引き継ぎに関わることを「引き継ぎメモ」に足す |
 
 ## 5. 共通方針
 

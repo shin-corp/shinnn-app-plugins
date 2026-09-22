@@ -13,8 +13,10 @@
  * FAKE_GH_STATE の形:
  *   issues:       [{ number, title, createdAt, updatedAt, labels: [ラベル名] }]
  *   pullRequests: [{ number, title, isDraft, createdAt, updatedAt }]
- *   runs:         [{ displayTitle, workflowName, conclusion, status, headBranch, createdAt }]（新しい順）
+ *   runs:         [{ workflow, displayTitle, workflowName, conclusion, status, headBranch, createdAt }]（新しい順）
+ *                 workflow はワークフローのファイル名。gh run list --workflow はファイル名かワークフローの名前で絞る
  *   errors:       { issues?, pullRequests?, runs? }（指定した一覧の取得を、その文言を標準エラーに出して失敗させる）
+ *   missing:      true なら gh が見つからない（どの呼び出しも起動に失敗する）
  */
 import * as childProcess from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -98,10 +100,13 @@ function graphqlCommand(state, args) {
 
 /** gh の引数に答える。標準出力に出す文字列を返すか、失敗の例外を投げる */
 function fakeGh(args) {
+  const state = JSON.parse(readFileSync(process.env.FAKE_GH_STATE, 'utf8'));
+  if (state.missing) {
+    throw Object.assign(new Error('spawnSync gh ENOENT'), { code: 'ENOENT' });
+  }
   if (args[0] === '--version') {
     return 'gh version 0.0.0 (fake)\n';
   }
-  const state = JSON.parse(readFileSync(process.env.FAKE_GH_STATE, 'utf8'));
   const command = args.slice(0, 2).join(' ');
   const kind = { 'issue list': 'issues', 'pr list': 'pullRequests', 'run list': 'runs' }[command];
   if (kind !== undefined && state.errors?.[kind]) {
@@ -112,7 +117,10 @@ function fakeGh(args) {
   }
   if (command === 'run list') {
     const names = option(args, '--json', '').split(',');
-    const runs = (state.runs ?? []).slice(0, Number(option(args, '--limit', '20')));
+    const workflow = option(args, '--workflow', null);
+    const runs = (state.runs ?? [])
+      .filter((run) => workflow === null || run.workflow === workflow || run.workflowName === workflow)
+      .slice(0, Number(option(args, '--limit', '20')));
     return JSON.stringify(runs.map((run) => pick(run, names)));
   }
   if (command === 'api graphql') {

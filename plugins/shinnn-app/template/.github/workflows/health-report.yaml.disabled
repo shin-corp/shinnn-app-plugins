@@ -4,7 +4,7 @@
 # ファイル名の末尾に .disabled が付いている間は、GitHub は読み込みません（無効）。
 #
 # 費用: 無料（Actions の無料枠内）。
-# 効果: 毎月 1 日に、open な Issue と PR（更新の古い順）・直近の CI の結果・受入条件のカバレッジを
+# 効果: 毎月 1 日に、open な Issue と PR（更新の古い順）・直近の CI（ci.yaml）の結果・受入条件のカバレッジを
 #       Issue に投稿します。
 # 入れない場合: 当社の月次フォローで同じ内容を手で確認します。
 name: 月次の健全性レポート
@@ -41,10 +41,11 @@ jobs:
         with:
           node-version: '24'
 
-      - name: 進捗スナップショットを作り直す
+      # スクリプトは一覧を標準出力に出すだけで、リポジトリのファイルには書かない。
+      - name: open な Issue・PR と直近の CI の一覧を作る
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/progress-snapshot.mjs
+        run: node scripts/progress-snapshot.mjs > report-progress.md
 
       - name: 受入条件のカバレッジを集計する
         run: node scripts/check-ac-coverage.mjs --report > report-ac.md || true
@@ -81,9 +82,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           {
-            echo '## 進捗スナップショット'
-            echo
-            cat docs/progress.md
+            cat report-progress.md
             echo
             echo '## 受入条件のカバレッジ'
             echo
