@@ -1,11 +1,11 @@
-# 【無効】月次の健全性レポート
+# 月次の健全性レポート
 #
-# このファイルは雛形です。拡張子 .disabled が付いている間、GitHub は読み込みません。
-# 有効にするには /shinnn-app:setup を実行してください。
+# /shinnn-app:setup が有効・無効を切り替えるワークフローです。
+# ファイル名の末尾に .disabled が付いている間は、GitHub は読み込みません（無効）。
 #
-# 費用: 集計だけなら無料（Actions の無料枠内）。AI による要約を付ける場合のみ顧客負担。
-# 効果: 毎月 1 日に、CI の通過率・受入条件のカバレッジ・滞留している Issue・
-#       標準バージョンを Issue に投稿します。
+# 費用: 無料（Actions の無料枠内）。
+# 効果: 毎月 1 日に、open な Issue と PR（更新の古い順）・直近の CI の結果・受入条件のカバレッジを
+#       Issue に投稿します。
 # 入れない場合: 当社の月次フォローで同じ内容を手で確認します。
 name: 月次の健全性レポート
 
@@ -14,23 +14,32 @@ on:
     - cron: '0 0 1 * *'
   workflow_dispatch:
 
+# スクリプトとこのファイルが呼ぶ gh のコマンドに要る権限だけを持つ。ここに書かない権限は無しになり、
+# private リポジトリでは、その一覧を取得できなくなる。
+#   contents: read       checkout
+#   issues: write        Issue の一覧（scripts/progress-snapshot.mjs）、ラベルの確認と作成、Issue の作成
+#   pull-requests: read  open な PR の一覧（scripts/progress-snapshot.mjs）
+#   actions: read        直近の CI の実行結果（scripts/progress-snapshot.mjs の gh run list）
 permissions:
   contents: read
   issues: write
+  pull-requests: read
+  actions: read
 
 jobs:
   report:
     name: レポートの作成
     runs-on: ubuntu-latest
     steps:
+      # このジョブは push しない。gh は手順ごとに渡す GH_TOKEN で認証するので、git の設定にトークンを残さない。
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
+      # 使うスクリプトは Node の標準モジュールだけなので、依存は入れない。
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
-          cache: npm
-
-      - run: npm ci
 
       - name: 進捗スナップショットを作り直す
         env:
@@ -39,6 +48,33 @@ jobs:
 
       - name: 受入条件のカバレッジを集計する
         run: node scripts/check-ac-coverage.mjs --report > report-ac.md || true
+
+      # 付けるラベルが無いと Issue の作成が失敗する。ラベルがまだ入っていない・消されたときに備えて、無ければここで作る。
+      # 既にあるラベルは色も説明も変えない（gh label create は --force を付けないと既存のラベルで失敗し、上書きしない）。
+      - name: Issue に付けるラベルが無ければ作る
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          has_label() {
+            gh label list --limit 1000 --json name --jq '.[].name' | grep -Fxiq "$1"
+          }
+          ensure_label() {
+            if has_label "$1"; then
+              echo "ラベル $1 は既にあります。"
+              return 0
+            fi
+            if gh label create "$1" --color "$2" --description "$3"; then
+              return 0
+            fi
+            # 同時に動いた別の実行（手動の実行と定期の実行など）が先に作ると、create は失敗する。作られていれば続ける
+            if has_label "$1"; then
+              echo "ラベル $1 は別の実行が作りました。"
+              return 0
+            fi
+            echo "ラベル $1 を作れませんでした。" >&2
+            return 1
+          }
+          ensure_label 'report' 'c5def5' '月次の健全性レポート'
 
       - name: Issue に投稿する
         env:

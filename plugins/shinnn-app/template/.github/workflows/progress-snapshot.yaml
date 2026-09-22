@@ -7,10 +7,17 @@ on:
   pull_request:
     types: [closed]
 
+# スクリプトが呼ぶ gh のコマンドと、コミットに要る権限だけを持つ。ここに書かない権限は無しになり、
+# private リポジトリでは、その一覧を取得できなくなる。
+#   contents: write      docs/progress.md のコミットと push
+#   issues: read         open な Issue の一覧
+#   pull-requests: read  open な PR の一覧
+#   actions: read        直近の CI の実行結果（gh run list）
 permissions:
   contents: write
   issues: read
   pull-requests: read
+  actions: read
 
 jobs:
   snapshot:
