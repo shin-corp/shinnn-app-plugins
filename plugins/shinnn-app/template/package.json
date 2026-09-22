@@ -26,6 +26,11 @@
     "lint-staged": "^17.5.1",
     "prettier": "^3.9.8"
   },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.0"
+    }
+  },
   "allowScripts": {
     "@parcel/watcher": true,
     "esbuild": true,

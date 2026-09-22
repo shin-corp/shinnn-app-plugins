@@ -63,6 +63,34 @@ Vitest はワークスペース全体で 4 系です。`client` は `@angular/bu
 新しいライブラリを足すときは「他のパッケージが同じものを別の版で使っていないか」を先に
 見てください。peer 依存で要求される版が食い違う場合は、`npm install` の時点で分かります。
 
+## 依存の中の古い版を overrides で差し替えているもの
+
+依存の依存として入ってくる古い版のうち、**実際には読み込まれないのに脆弱性の警告が出るもの**は、
+ルートの `package.json` の `overrides` で新しい版に差し替えています。対応の要らない警告が
+出続けると、本当に対応が要る警告が埋もれるためです。
+
+### `@esbuild-kit/core-utils` の下の `esbuild`
+
+- **差し替え**: `~0.18.20` を `^0.25.0` にします
+- **経路**: `server` → `drizzle-kit` → `@esbuild-kit/esm-loader` → `@esbuild-kit/core-utils` → `esbuild`
+- **理由**: `@esbuild-kit` は tsx に統合されて更新が止まったパッケージです。`drizzle-kit` は
+  自分の中に含む tsx で TypeScript を読み込むため、この `esbuild` は読み込まれません。それでも
+  esbuild 0.24.2 以下の脆弱性（GHSA-67mh-4wv8-2f99）として、`npm audit` と Dependabot が警告を出します。
+  `drizzle-kit` の 0.31 系のうちはこの依存が残るため、`drizzle-kit` の版上げでは消せません
+- **外す条件**: `drizzle-kit` が `@esbuild-kit` を依存から外したとき（1.0 の正式版で外れる予定です）。
+  外すときは `overrides` からこの項目を消し、`npm ls --all` が通ることを確かめます
+
+### lock ファイルの作り直し方
+
+`overrides` を足したり版を変えたりしたときは、`npm update <差し替えるパッケージ>`
+（上の例では `npm update esbuild`）で `package-lock.json` を作り直します。`npm install` だけでは
+lock ファイルが変わらず、`npm ls --all` が `invalid` を出して失敗します。lock ファイルを手で
+直しても同じです。
+
+`npm update` は、同じ名前のパッケージをほかの場所でも範囲内で上げることがあります。作り直した後は、
+lock ファイルの差分が差し替えた対象の下（上の例では `node_modules/@esbuild-kit/core-utils/node_modules/`）
+だけに収まっていることと、`npm ls --all` と `npm audit` が通ることを確かめてください。
+
 ## 結果
 
 - 手元で必要なのは Node.js だけです。`npm install` / `npm run dev` / `npm test` で動きます
@@ -73,3 +101,4 @@ Vitest はワークスペース全体で 4 系です。`client` は `@angular/bu
 
 - `import-x/no-extraneous-dependencies` が実際に幻の依存を捕まえた件数を、半年後に振り返ります
 - パッケージマネージャを Node.js と一緒に配る仕組み（Corepack の後継）が安定したら、再検討します
+- `drizzle-kit` が `@esbuild-kit` を依存から外したら（1.0 の正式版の予定）、`esbuild` の `overrides` を外します
