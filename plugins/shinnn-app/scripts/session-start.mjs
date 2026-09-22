@@ -96,9 +96,66 @@ if (distributed !== null && installed !== distributed) {
 }
 
 if (hasCommand('gh')) {
-  out.push(section('次に着手する Issue（status:next）', ghLines(['issue', 'list', '--state', 'open', '--label', 'status:next', '--limit', String(MAX_LINES), '--json', 'number,title', '--template', '{{range .}}#{{.number}} {{.title}}\n{{end}}'], root)));
-  out.push(section('open な PR', ghLines(['pr', 'list', '--state', 'open', '--limit', String(MAX_LINES), '--json', 'number,title,isDraft', '--template', '{{range .}}#{{.number}} {{.title}}{{if .isDraft}}（draft）{{end}}\n{{end}}'], root)));
-  out.push(section('直近の CI', ghLines(['run', 'list', '--limit', '3', '--json', 'conclusion,displayTitle,workflowName', '--template', '{{range .}}{{.workflowName}}: {{.conclusion}} / {{.displayTitle}}\n{{end}}'], root)));
+  out.push(
+    section(
+      '次に着手する Issue（status:next）',
+      ghLines(
+        [
+          'issue',
+          'list',
+          '--state',
+          'open',
+          '--label',
+          'status:next',
+          '--limit',
+          String(MAX_LINES),
+          '--json',
+          'number,title',
+          '--template',
+          '{{range .}}#{{.number}} {{.title}}\n{{end}}',
+        ],
+        root,
+      ),
+    ),
+  );
+  out.push(
+    section(
+      'open な PR',
+      ghLines(
+        [
+          'pr',
+          'list',
+          '--state',
+          'open',
+          '--limit',
+          String(MAX_LINES),
+          '--json',
+          'number,title,isDraft',
+          '--template',
+          '{{range .}}#{{.number}} {{.title}}{{if .isDraft}}（draft）{{end}}\n{{end}}',
+        ],
+        root,
+      ),
+    ),
+  );
+  out.push(
+    section(
+      '直近の CI',
+      ghLines(
+        [
+          'run',
+          'list',
+          '--limit',
+          '3',
+          '--json',
+          'conclusion,displayTitle,workflowName',
+          '--template',
+          '{{range .}}{{.workflowName}}: {{.conclusion}} / {{.displayTitle}}\n{{end}}',
+        ],
+        root,
+      ),
+    ),
+  );
 } else {
   const progress = fromRoot(root, 'docs', 'progress.md');
   const body = existsSync(progress) ? readFileSync(progress, 'utf8').split('\n').slice(0, 40).join('\n') : '';
