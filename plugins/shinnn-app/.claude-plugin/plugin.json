@@ -1,6 +1,6 @@
 {
   "name": "shinnn-app",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "shinnn-app-starter テンプレートで作るアプリの開発標準。初回の setup と日常の 5 コマンド（feature / check / pr / why / retro）、内部スキル、レビューエージェント、取り決めを案内する hooks を提供する",
   "author": {
     "name": "shinnn"
