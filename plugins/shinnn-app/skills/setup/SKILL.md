@@ -96,12 +96,14 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 スクリプトが出す表を示し、**足りないものは導入手順を案内する**（管理者として実行したターミナルが必要なものはその旨を伝える）。
 
 - Node は 24 系（24.15 以上）が前提。npm は Node.js 24 に同梱される 11 系をそのまま使う
-- `gh` が無い場合、Issue と PR を使う機能は動かない。`docs/progress.md` を手で更新する運用に切り替えるかを聞く
+- `gh` が無い場合、Issue と PR を使う機能（セッション開始時の一覧、Issue と PR の作成、マージ）は動かない。導入を案内し、
+  入るまでは Issue と PR を GitHub の画面で扱ってもらう。GitHub 自体を使えない顧客は対象外（手順 0 から GitHub のリポジトリを前提にしている）
 - PostgreSQL は検出順に従って選ぶ。Docker は `docker` コマンドが動けばよく、Docker Desktop でも WSL の Docker Engine でも構わない
   （WSL の中だけにある場合、Windows 側からは見えないので「使えません」になる。WSL でコンテナを起動すれば `localhost:5432` の検出で拾える）
 - Docker が使えない場合は組み込み版（`embedded-postgres`）の導入まで代行する。手で PostgreSQL を入れてもらう案内はしない（管理者権限が要らない組み込み版で足りる）
 - GitHub 側は、当社担当アカウントの招待状況を確認する。招待は手順 5 の 9 で行う。
-  ブランチ保護は setup では設定しない（進捗スナップショットのワークフローが `main` に直接コミットするので、CI の通過を必須にすると止まる）
+  ブランチ保護（`main` に入れる変更に CI の通過を必須にする GitHub の設定）は、使えるプランなら手順 5 の 12 で設定する。
+  テンプレートは `main` に直接書き込む仕組みを持たないので、CI の通過を必須にしても止まるものは無い
 - トークンのスコープは表の gh の行で見る。`workflow` が無いと、ワークフローを変える PR を `gh` からマージできない。
   マージの方針を `self-review` にするなら `gh auth refresh -h github.com -s workflow` を案内する
 
@@ -118,7 +120,6 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 | husky の pre-commit | 壊れたコードが履歴に入らないようにする |
 | CI の check / test / policy | 品質の判断を人の気分に依存させない |
 | Issue テンプレートとラベル | 進捗の正本が Issues なので、形が揃っていないと読めない |
-| 進捗スナップショットの Action | クローンだけで状況が分かるようにする |
 | `docs/仕様書.md` と `docs/env.md` | 引き継ぎで最初に読む 2 つ |
 | セキュリティ既定（helmet / CORS / ボディ上限 / レート制限） | 後から入れると全経路の見直しになる |
 | Dependabot と `npm audit`、依存のライセンス検査 | 依存の脆弱性と、費用が発生するライセンスを放置しない |
@@ -164,7 +165,8 @@ PR を誰がマージするかを決める。既定は `human`。
 `self-review` を選ぶ前に、次を相手に説明して同意を取る:
 
 - **Claude が人の確認なしにマージまで行う設定**であること。`.claude/settings.json` は `gh pr` を許可しているので、`gh pr merge` の実行時に確認は出ない。止めたければ `human` に戻す（setup の再実行）
-- Claude がマージするのは **CI が緑の PR だけ**（`/shinnn-app:pr` が確かめる）。ブランチ保護は setup では設定しない（手順 2）
+- Claude がマージするのは **CI が緑の PR だけ**（`/shinnn-app:pr` が確かめる）。使えるプランなら手順 5 の 12 でブランチ保護も設定し、
+  CI が緑でない PR は GitHub の側でもマージできなくする。承認（Approve）は必須にしないので、Claude が作った PR を Claude がマージできる
 - `gh` のトークンに `workflow` スコープがあるか（ワークフローを変える PR のマージに要る。手順 2 で確認する）
 - リポジトリの auto-merge を許可するか（手順 5 の 10）
 
@@ -199,7 +201,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
    ```
 
    `gh` が無い・ログインできない場合は、ラベルと Issue を GitHub の画面で作ってもらい、Issue の番号を聞いてから
-   同じ名前でブランチを切る。下の 12 の PR も画面で作ってもらい、本文に `Closes #<番号>` を入れてもらう
+   同じ名前でブランチを切る。下の 13 の PR も画面で作ってもらい、本文に `Closes #<番号>` を入れてもらう
 4. 保護されたファイル（`.shinnn/setup.json` / `.github/workflows/` / `CODEOWNERS`）を、適用スクリプトで**まとめて 1 回**
    書き換える。まず `--dry-run` を付けて内容を見せ、確認を取ってから実行する
 
@@ -222,7 +224,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
    選ばなかったものを消さないのは、あとから選び直したときに戻せるようにするため。
    スクリプトが触らない残りのファイル（5〜7）は、通常の Edit / Write で書く
 5. `docs/` の雛形（`仕様書.md` / `env.md` / `decisions/`）を、無いものだけ作る
-6. `README.md` の「有効な機能」表を、決めた内容で書き換える（マージの方針の行も含める）
+6. `README.md` の「有効な機能」表を、決めた内容で書き換える（マージの方針とブランチ保護の行も含める。ブランチ保護は 12 の結果を書く）
 7. `docs/decisions/` の**空いている次の番号**で `<番号>-setup.md` を作り、**選んだ理由と選ばなかった理由**を残す
    （テンプレートに `0001-template-stack.md`・`0002-package-manager.md`・`0003-node-version.md` が同梱されているので、初回は通常 `0004-setup.md`）
 8. 「引き継ぎメモ」Issue を作成して pin する（`gh issue create` → `gh issue pin`）。`.shinnn/setup.json` に
@@ -242,7 +244,21 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
     （どちらもリポジトリの管理者権限が要る）。できなければ止めずに結果を報告し、GitHub の画面で
     Settings → 「Security and quality」の「Advanced Security」（画面によっては「Code security」）を開き、
     「Dependabot alerts」と「Dependabot security updates」の **Enable** を押すよう案内する
-12. 変更をコミットし、`/shinnn-app:pr` で PR にする。本文の 1 行目は `Closes #<2 で作った Issue の番号>`。
+12. ブランチ保護を、使えるプランなら設定する。まず `--dry-run` で設定する内容を見せて確認を取り、`--dry-run` を外して実行する
+
+    ```
+    node ${CLAUDE_PLUGIN_ROOT}/scripts/protect-branch.mjs --dry-run
+    ```
+
+    対象は `main`。`.github/workflows/ci.yaml` の 3 つのジョブの通過を必須にし（必須のチェックの名前は各ジョブの `name:` で、テンプレートのままなら「型検査と lint」「テスト」「規約チェック」）、管理者にも同じ条件を課す。
+    承認（Approve）は必須にしない（`self-review` では Claude が作った PR を Claude がマージするので、必須にするとマージできない）。
+    マージの前にブランチを `main` の最新に追いつかせることと、履歴を一直線にすることも必須にしない
+    （`/shinnn-app:pr` はマージコミットを作ってマージする）。
+    既にブランチ保護があれば（従来の方式でも、ルールセットで効いているルールでも）上書きせず、今の必須のチェックを示して終わる。
+    private で無料のプランのように使えない場合やリポジトリの管理者権限が無い場合は「使えない（理由）」、`gh` が無い・
+    ログインしていない場合は「設定していない（理由）」と示し、どちらもエラーにせず終わる。
+    最後の行に出る 1 行の要約（`ブランチ保護: …` で始まる）を、そのまま 6 の「有効な機能」表と 7 の記録に書き足す
+13. 変更をコミットし、`/shinnn-app:pr` で PR にする。本文の 1 行目は `Closes #<2 で作った Issue の番号>`。
     費用が発生する項目を増やした場合は、本文に費用の目安を書く。ready にするか、マージまで行うかは
     `/shinnn-app:pr` がマージの方針（`human` / `self-review`）に従って決める
 
@@ -256,7 +272,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
   "reviewer": "@<当社担当のアカウント>",
   "mergePolicy": "human",
   "database": { "mode": "docker" },
-  "mandatory": ["claude-md", "claude-rules", "claude-settings-deny", "import-restriction-lint", "husky-pre-commit", "ci-check", "ci-test", "ci-policy", "issue-templates", "issue-labels", "progress-snapshot", "docs-specification", "docs-env", "security-defaults", "dependabot", "npm-audit", "commit-convention", "handover-definition", "codeowners"],
+  "mandatory": ["claude-md", "claude-rules", "claude-settings-deny", "import-restriction-lint", "husky-pre-commit", "ci-check", "ci-test", "ci-policy", "issue-templates", "issue-labels", "docs-specification", "docs-env", "security-defaults", "dependabot", "npm-audit", "commit-convention", "handover-definition", "codeowners"],
   "optional": { "client-only-profile": false, "health-report": true, "copilot-review": false, "claude-pr-review": false, "claude-mention": false },
   "handoverIssue": 2
 }
@@ -288,6 +304,12 @@ setup の PR がまだマージされていなければ、先にマージして�
 - `gh` の認証が切れている: `gh auth login` を案内する。ログインできなければ、手順 5 の 3 の `gh` が無い場合と同じく
   Issue と PR を GitHub の画面で作ってもらい、ラベルの投入は後回しにする
 - Dependabot のアラートやセキュリティ更新を有効にできない（管理者権限が無い）: 止めずに続け、手順 5 の 11 の画面での手順を案内する
+- ブランチ保護のスクリプトが「使えない（理由）」と示して終わる（private で無料のプラン、管理者権限が無い）: 止めずに続け、
+  理由を「有効な機能」表と `docs/decisions/` の記録に残す。プランを変えるか、管理者が setup を再実行すれば設定できる
+- ブランチ保護のスクリプトが、既にあるブランチ保護を示して終わる: 上書きしない。必須のチェックに CI の 3 つのジョブが無ければ、
+  差分を示して人に判断してもらう
+- ブランチ保護のスクリプトが、`main` に直接コミットするワークフローが残っているとして設定しない: 止めずに続け、理由を記録に残して当社に相談する
+- ブランチ保護のスクリプトが終了コード 1 で終わる（想定外の失敗）: 出力をそのまま示し、ブランチ保護は「未設定」として記録して続ける
 - すでに `.github/workflows/` に手を入れたファイルがある: 上書きせず、差分を示して人に判断してもらう
 - `gh pr merge` が `workflow` スコープの不足で失敗する: `gh auth refresh -h github.com -s workflow` を案内する。それまでは人がマージする
 - 適用スクリプトが `選択項目 … は optional にありません` で止まる: 項目そのものを増やすのは標準の変更にあたる。

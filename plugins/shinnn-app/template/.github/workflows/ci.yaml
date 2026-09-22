@@ -4,6 +4,11 @@ name: CI
 
 on:
   pull_request:
+    # 既定の 3 種類に edited（PR の題名・本文・向き先の変更）を足す。規約チェックは PR 本文の Closes #n を確かめるが、
+    # 既定の種類では本文を直しても走らず、手で再実行しても直す前の本文で判定されるので、赤のまま直せない。
+    # 本文だけを直したときも 3 つの job をすべて走らせる。条件で飛ばした job は成功と報告され、同じコミットで
+    # 失敗していた必須のチェックも満たしてしまうため。題名の変更でも走るが、古い実行は concurrency が取り消す。
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
 
@@ -17,6 +22,10 @@ concurrency:
 env:
   NODE_VERSION: '24'
 
+# job の name: は、ブランチ保護（main に入れる PR に GitHub が課す条件）の必須のチェックの名前になる。
+# 変えると、保護を設定したリポジトリでは古い名前のチェックが報告されないまま待ち続け、PR をマージできなくなる。
+# 変えたら GitHub の Settings → Branches で必須のチェックを新しい名前に直す。/shinnn-app:setup が使う
+# protect-branch.mjs を実行し直すと、今の必須のチェックと job の名前との違いを示す。
 jobs:
   check:
     name: 型検査と lint
