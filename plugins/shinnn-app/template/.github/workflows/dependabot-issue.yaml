@@ -29,6 +29,33 @@ jobs:
       GH_REPO: ${{ github.repository }}
       PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
     steps:
+      # ラベルは /shinnn-app:setup も作るが、setup より前に開いた PR でも Issue を作れるよう、無ければここで作る。
+      # 既にあるラベルは色も説明も変えない（gh label create は --force を付けないと既存のラベルで失敗し、上書きしない）。
+      - name: Issue に付けるラベルが無ければ作る
+        if: github.event_name == 'workflow_dispatch' || github.event.action != 'closed'
+        run: |
+          has_label() {
+            gh label list --limit 1000 --json name --jq '.[].name' | grep -Fxiq "$1"
+          }
+          ensure_label() {
+            if has_label "$1"; then
+              echo "ラベル $1 は既にあります。"
+              return 0
+            fi
+            if gh label create "$1" --color "$2" --description "$3"; then
+              return 0
+            fi
+            # 同時に開いた別の PR の実行が先に作ると、create は失敗する。作られていれば続ける
+            if has_label "$1"; then
+              echo "ラベル $1 は別の実行が作りました。"
+              return 0
+            fi
+            echo "ラベル $1 を作れませんでした。" >&2
+            return 1
+          }
+          ensure_label 'type:deps' '0366d6' '依存ライブラリの更新'
+          ensure_label 'status:next' '0e8a16' '次に着手する'
+
       - name: PR に対応する Issue を作り、本文に Closes を足す
         if: github.event_name == 'workflow_dispatch' || github.event.action != 'closed'
         run: |

@@ -1,5 +1,9 @@
 # 依存ライブラリの更新を週次で PR にする設定です。
-# セキュリティの修正を見落とさないために有効にしています。
+# minor と patch の更新は、npm と GitHub Actions のそれぞれで 1 本の PR にまとめます。
+# メジャー更新（大きな版上げ）は壊れる変更を含むことが多いので、自動では PR にしません。
+# 1 本ずつ直す手間をアプリの側にかけないよう、当社がテンプレートで先に対応して配ります。
+# セキュリティ更新（脆弱性を直す PR）はこの指定の影響を受けません（/shinnn-app:setup で有効にします）。
+# 脆弱性は CI の npm audit でも止まります。
 version: 2
 updates:
   - package-ecosystem: npm
@@ -13,14 +17,15 @@ updates:
     commit-message:
       prefix: '[deps]'
     groups:
-      # パッチ更新はまとめて 1 本の PR にする（レビューの手間を減らすため）
-      patch:
-        update-types:
-          - patch
+      # minor と patch はまとめて 1 本の PR にする（レビューとマージの手間を減らすため）
+      minor-and-patch:
+        patterns: ['*']
+        update-types: [minor, patch]
     ignore:
-      # Node.js の型定義は実行環境の版に合わせる（docs/decisions の Node の判断を参照）。
+      # メジャー更新は自動で PR にしない（冒頭の説明を参照）。
+      # @types/node もここに含まれる。Node.js の型定義は実行環境の版に合わせる（docs/decisions の Node の判断を参照）。
       # 実行環境より新しいメジャー版を入れると、存在しない API が型検査を通ってしまう。
-      - dependency-name: '@types/node'
+      - dependency-name: '*'
         update-types: ['version-update:semver-major']
 
   - package-ecosystem: github-actions
@@ -32,3 +37,12 @@ updates:
       timezone: Asia/Tokyo
     commit-message:
       prefix: '[ci]'
+    groups:
+      # npm と同じく、minor と patch は 1 本の PR にまとめる
+      minor-and-patch:
+        patterns: ['*']
+        update-types: [minor, patch]
+    ignore:
+      # メジャー更新は自動で PR にしない（冒頭の説明を参照）
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
