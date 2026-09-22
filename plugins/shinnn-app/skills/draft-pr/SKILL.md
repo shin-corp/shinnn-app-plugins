@@ -41,7 +41,7 @@ gh pr create --draft --base main --title "<タイトル>" --body-file <本文の
 
 ## 4. レビュアーを設定する
 
-`.shinnn/setup.json` の `optional.copilotReview` が `true` のときだけ、Copilot をレビュアーに追加する。
+`.shinnn/setup.json` の `optional.copilot-review` が `true` のときだけ、Copilot をレビュアーに追加する。
 
 ```
 gh pr edit <PR 番号> --add-reviewer <Copilot のレビュアー名>
