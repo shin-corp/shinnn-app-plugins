@@ -19,8 +19,20 @@ const script = fileURLToPath(new URL('./fetch-template.mjs', import.meta.url));
 /** 同梱のテンプレート */
 const templateDir = fileURLToPath(new URL('../template', import.meta.url));
 
-/** テンプレートから作ったリポジトリには必ず入っているファイル */
+/** テンプレートから作ったリポジトリには必ず入っているファイル。中身は標準の版 */
 const MARKER = '.claude/rules/.standards-version';
+
+/** setup の記録 */
+const SETUP = '.shinnn/setup.json';
+
+/** プラグインの定義 */
+const pluginManifest = fileURLToPath(new URL('../.claude-plugin/plugin.json', import.meta.url));
+
+/** プラグインの版。展開するテンプレートの版として出し、setup.json の templateVersion に入る */
+const pluginVersion = JSON.parse(readFileSync(pluginManifest, 'utf8')).version;
+
+/** 同梱のテンプレートの標準の版 */
+const standardsVersion = readFileSync(join(templateDir, MARKER), 'utf8').trim();
 
 /** 展開されるべきファイル（テンプレートのルート起点の POSIX パス）を、git の挙げるファイルから作る */
 function templatePaths() {
@@ -199,4 +211,40 @@ test('--dry-run: 展開する内容だけを出し、何も書かない', () => 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, new RegExp(`ファイル数: ${templatePaths().length}`));
   assert.equal(existsSync(dest), false);
+});
+
+test('版: --dry-run でも展開でも、プラグインの版に標準の版を添えて出す', () => {
+  const version = `プラグイン v${pluginVersion}（標準 ${standardsVersion}）`;
+
+  const dryRun = runFetch(['--dest', join(workRoot, 'version-dry-run-app'), '--dry-run']);
+  assert.equal(dryRun.status, 0, dryRun.stderr);
+  assert.ok(dryRun.stdout.includes(`版: ${version}`), dryRun.stdout);
+
+  const dest = makeDest();
+  const result = runFetch(['--dest', dest]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(result.stdout.includes(`${version}のテンプレートを ${dest} に展開しました`), result.stdout);
+});
+
+test('setup.json: templateVersion だけをプラグインの版にし、ほかのキーと値と書式はテンプレートのまま', () => {
+  const dest = makeDest();
+  const template = readFileSync(join(templateDir, SETUP), 'utf8');
+  const result = runFetch(['--dest', dest]);
+
+  assert.equal(result.status, 0, result.stderr);
+
+  const written = readFileSync(join(dest, SETUP), 'utf8');
+  const setup = JSON.parse(written);
+  assert.equal(setup.templateVersion, pluginVersion);
+  assert.equal(setup.standardsVersion, standardsVersion, 'テンプレートの standardsVersion が標準の版と違います');
+
+  // キーの顔ぶれと並び（$comment の位置）が同じで、値は templateVersion のほかは同じ
+  assert.deepEqual(Object.keys(setup), Object.keys(JSON.parse(template)));
+  assert.deepEqual(setup, { ...JSON.parse(template), templateVersion: pluginVersion });
+
+  // 字下げと改行も同じで、違うのは templateVersion の行だけ
+  assert.equal(written, template.replace(/"templateVersion": "[^"]*"/, `"templateVersion": "${pluginVersion}"`));
+
+  // 同梱のテンプレートのファイルは書き換えない
+  assert.equal(readFileSync(join(templateDir, SETUP), 'utf8'), template);
 });
