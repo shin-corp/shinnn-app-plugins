@@ -236,7 +236,11 @@ test('setup.json: templateVersion だけをプラグインの版にし、ほか�
   const written = readFileSync(join(dest, SETUP), 'utf8');
   const setup = JSON.parse(written);
   assert.equal(setup.templateVersion, pluginVersion);
-  assert.equal(setup.standardsVersion, standardsVersion, 'テンプレートの standardsVersion が標準の版と違います');
+  assert.equal(
+    Object.hasOwn(setup, 'standardsVersion'),
+    false,
+    `setup.json に standardsVersion があります。標準の版は ${MARKER} だけに持ちます`,
+  );
 
   // キーの顔ぶれと並び（$comment の位置）が同じで、値は templateVersion のほかは同じ
   assert.deepEqual(Object.keys(setup), Object.keys(JSON.parse(template)));

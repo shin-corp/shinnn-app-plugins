@@ -64,7 +64,9 @@ cp ${CLAUDE_PLUGIN_ROOT}/template/docs/アプリ作り方ガイド.md docs/
 - `${CLAUDE_PLUGIN_ROOT}/template/CLAUDE.md` / `.../template/client/CLAUDE.md` / `.../template/server/CLAUDE.md`
   を、それぞれ `CLAUDE.md` / `client/CLAUDE.md` / `server/CLAUDE.md` へ当てる。**案件固有の記述を消さないように**
   マージする（雛形が変わった箇所だけを当て、埋めてある内容は残す）
-- `.shinnn/setup.json` の `standardsVersion` も新しいバージョンにする
+- 標準のバージョンは `.claude/rules/.standards-version` の 1 か所だけにあり、上のコピーで新しいバージョンになる。
+  ほかのファイルにバージョンを書き写さない。`.shinnn/setup.json` は setup だけが書き換えるので触らない
+  （`templateVersion` は展開したテンプレートの版で、標準のバージョンではない）
 
 ## 5. PR にする
 

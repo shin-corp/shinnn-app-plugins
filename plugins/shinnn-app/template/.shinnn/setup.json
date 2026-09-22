@@ -1,7 +1,6 @@
 {
-  "$comment": "セットアップの記録。/shinnn-app:setup が書き換えます。手で編集しないでください（CI の規約チェックが標準と照合します）。",
+  "$comment": "セットアップの記録。/shinnn-app:setup が書き換えます。手で編集しないでください（CI の規約チェックが、mandatory に必須項目がそろっているかを確かめます）。標準の版は .claude/rules/.standards-version にあります。",
   "templateVersion": "0.0.0",
-  "standardsVersion": "0.7.1",
   "setupCompletedAt": null,
   "profile": "full",
   "reviewer": "@SHINNN_REVIEWER",

@@ -25,7 +25,7 @@ CI の `policy` job と同じ観点で、手元でも見られるようにした
 | 9 | `docs/decisions/` に主要な設計判断がある | ファイルの有無と、最後の PR で決めたことの反映 |
 | 10 | すべての TODO に Issue 番号が付いている | `src/` の `TODO` を検索し、`#n` の無いものを列挙 |
 | 11 | `src/` に `console.log` と `any` が無い | `npm run lint` が緑であること |
-| 12 | 標準バージョンが最新 | `.claude/rules/.standards-version` とプラグインの `version` |
+| 12 | 標準バージョンが最新 | `.claude/rules/.standards-version` が `${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/.standards-version`（配布されている標準のバージョン）と同じ。プラグインの `version` とは別の値なので比べない |
 | 13 | README に 起動 / テスト / デプロイ が 3 コマンドで書かれている | README を読む |
 | 14 | 1 MB 超のファイルと実データが git に入っていない | `git ls-files` のサイズ確認 |
 | 15 | 当社担当のアカウントが maintain 権限を持っている | `gh api repos/{owner}/{repo}/collaborators` |

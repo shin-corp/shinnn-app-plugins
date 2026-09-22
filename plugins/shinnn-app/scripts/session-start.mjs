@@ -38,7 +38,7 @@ function readVersion(path) {
  * セットアップの節。setupCompletedAt が空なら、まだ /shinnn-app:setup を終えていないものとして案内する。
  *
  * @param setupPath - .shinnn/setup.json の絶対パス
- * @param installed - リポジトリに入っている標準のバージョン
+ * @param installed - リポジトリに入っている標準のバージョン（.claude/rules/.standards-version の中身。無ければ null）
  */
 function setupSection(setupPath, installed) {
   let setup;
@@ -59,7 +59,7 @@ function setupSection(setupPath, installed) {
 
   const profile = setup.profile ?? '不明';
   const mergePolicy = setup.mergePolicy ?? 'human';
-  const standards = installed ?? setup.standardsVersion ?? '不明';
+  const standards = installed ?? '不明';
   return section(
     'セットアップ',
     `プロファイル: ${profile} / マージ方針: ${mergePolicy} / 標準バージョン: ${standards}`,

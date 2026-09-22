@@ -251,7 +251,6 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
 ```json
 {
   "templateVersion": "0.1.0",
-  "standardsVersion": "0.1.0",
   "setupCompletedAt": "2026-01-01T00:00:00.000Z",
   "profile": "full",
   "reviewer": "@<当社担当のアカウント>",
@@ -264,6 +263,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
 ```
 
 `templateVersion` には、手順 0 で展開したプラグインの版が入る（展開スクリプトが書く）。どの版のテンプレートから作ったかの記録になる。
+標準の版は `.shinnn/setup.json` に持たない。`.claude/rules/.standards-version` の 1 か所だけにあり、`/shinnn-app:sync-standards` が更新する。
 
 **再実行のとき**は、既存の `.shinnn/setup.json` と今回の選択を比べ、**差分のある項目だけ**を変更する。
 進め方は初回と同じで、手順 5 の 2 の Issue の題を変える内容に合わせる。
