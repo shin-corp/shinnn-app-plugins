@@ -20,10 +20,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "zod": "^4.5.4"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "eslint": "^10.10.0",
+    "eslint": "^10.11.0",
     "eslint-plugin-import-x": "^4.17.1",
     "typescript": "5.9.3",
     "typescript-eslint": "^8.69.0",
