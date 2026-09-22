@@ -2,7 +2,9 @@
  * Stop hook。応答を終える直前に、今回触ったファイルの lint と関連テストだけを走らせる。
  * フルの check（build + typecheck + 全テスト）は /shinnn-app:check と CI に任せ、ここは数十秒で終える範囲に留める。
  *
- * 失敗しても応答は止めず、JSON の additionalContext で次の turn に伝える。
+ * 失敗したら JSON の additionalContext で Claude に伝える。受け取った Claude は応答を終えず、その場で直しに行く。
+ * 続けた応答の終わり（入力の stop_hook_active が true）では検査しない。このため伝えるのは利用者の依頼 1 回につき 1 回で、
+ * 次の依頼の終わりにまた検査する。
  * 一時的に黙らせたいときは、環境変数 SHINNN_SKIP_STOP_CHECK に値を入れる（何も出さずに終える）。
  */
 import { existsSync } from 'node:fs';
@@ -22,9 +24,12 @@ const WORKSPACES = ['client', 'server', 'shared'];
  * `-z` の出力は `XY <パス>` を '\0' 区切りで並べたもの。ただしリネームとコピー（`R` / `C`）だけは
  * 旧パスがもう 1 レコード続き、そこには `XY ` が付かない。読み飛ばさないと旧パスの先頭 3 文字が
  * 削られた別のパスに化ける。削除されたパスは実体が無いので、渡す前に除く。
+ *
+ * git は既定で未追跡のフォルダを `?? server/src/api/<機能>/` の 1 行にまとめ、中のファイルが対象から漏れる。
+ * `--untracked-files=all` で 1 件ずつ出させる。
  */
 function changedFiles(root) {
-  const status = run('git', ['status', '--porcelain=v1', '-z'], { cwd: root });
+  const status = run('git', ['status', '--porcelain=v1', '-z', '--untracked-files=all'], { cwd: root });
   if (status.status !== 0) {
     return [];
   }
@@ -75,6 +80,12 @@ if (process.env.SHINNN_SKIP_STOP_CHECK) {
   process.exit(0);
 }
 
+// 指摘を受けて Claude が続けた応答の終わり（stop_hook_active が true）では検査しない。
+// ここでもまた伝えると、すぐには直せない指摘（テストを先に書いて落としている最中など）で応答と指摘を繰り返す
+if (input.stop_hook_active === true) {
+  process.exit(0);
+}
+
 // テンプレートから作ったアプリのリポジトリでだけ動く
 const root = projectDir(input);
 if (!isAppRepo(root)) {
@@ -121,7 +132,7 @@ if (problems.length === 0) {
   process.exit(0);
 }
 
-// 応答を止めない（exit 2 を使わない）ので、この出力でまた Stop が呼ばれる無限ループは起きない
+// 受け取った Claude はその場で応答を続けて直しに行く。続けた応答の終わりの Stop は、上の stop_hook_active の判定で黙る
 const summary = '変更したファイルの lint または関連テストが失敗しています';
 
 console.log(
