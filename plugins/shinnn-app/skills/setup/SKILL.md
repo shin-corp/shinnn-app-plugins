@@ -92,16 +92,17 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 
 ### 2. 環境の検出
 
-`node scripts/setup-env.mjs` を実行して、OS / Node / npm / Git / gh / Docker と PostgreSQL の候補を調べる。
-結果を表で示し、**足りないものは導入手順を案内する**（管理者として実行したターミナルが必要なものはその旨を伝える）。
+`node scripts/setup-env.mjs` を実行して、OS / Node / npm / Git / gh（ログインの状態とスコープ）/ Docker と PostgreSQL の候補を調べる。
+スクリプトが出す表を示し、**足りないものは導入手順を案内する**（管理者として実行したターミナルが必要なものはその旨を伝える）。
 
 - Node は 24 系（24.15 以上）が前提。npm は Node.js 24 に同梱される 11 系をそのまま使う
 - `gh` が無い場合、Issue と PR を使う機能は動かない。`docs/progress.md` を手で更新する運用に切り替えるかを聞く
 - PostgreSQL は検出順に従って選ぶ。Docker は `docker` コマンドが動けばよく、Docker Desktop でも WSL の Docker Engine でも構わない
   （WSL の中だけにある場合、Windows 側からは見えないので「使えません」になる。WSL でコンテナを起動すれば `localhost:5432` の検出で拾える）
 - Docker が使えない場合は組み込み版（`embedded-postgres`）の導入まで代行する。手で PostgreSQL を入れてもらう案内はしない（管理者権限が要らない組み込み版で足りる）
-- GitHub 側は、当社担当アカウントの招待状況とブランチ保護が使えるかを確認する。招待とブランチ保護の設定は手順 5 で行う
-- `gh auth status` でトークンのスコープを見る。`workflow` が無いと、ワークフローを変える PR を `gh` からマージできない。
+- GitHub 側は、当社担当アカウントの招待状況を確認する。招待は手順 5 の 9 で行う。
+  ブランチ保護は setup では設定しない（進捗スナップショットのワークフローが `main` に直接コミットするので、CI の通過を必須にすると止まる）
+- トークンのスコープは表の gh の行で見る。`workflow` が無いと、ワークフローを変える PR を `gh` からマージできない。
   マージの方針を `self-review` にするなら `gh auth refresh -h github.com -s workflow` を案内する
 
 `client-only` を選んだ場合、PostgreSQL の確認は飛ばす。
@@ -130,15 +131,14 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 
 **1 つずつ**聞く。各項目について 推奨 / 費用 / 入れない場合に何が起きるか を示し、既定値は Enter で採用できるようにする。
 
-| 項目 | 推奨 | 費用 | 入れないと |
-|:--|:--|:--|:--|
-| Playwright の E2E と nightly 実行 | 画面が 3 つを超えるなら入れる | 無料 | 画面の壊れに気づくのがレビュー時になる |
-| 月次 health report（決定論の集計部分） | 入れる | 無料 | 滞留した Issue と CI の傾向が見えない |
-| GitHub Projects のボード | 任意 | 無料 | Issues の一覧だけで管理する |
-| Copilot のコードレビュー | Copilot Business を使えるなら入れる | Copilot の利用料に含まれる | PR のレビューが当社の週次だけになる |
-| PR の自動 AI レビュー（claude-code-action） | 変更が多いなら入れる | **利用者負担**。Pro / Max のサブスク枠、または API キーの従量課金 | 同上 |
-| `@claude` メンションへの応答 | 任意 | 同上 | PR 上で質問できない |
-| health report の AI 要約 | 任意 | 同上 | 数値だけが出る |
+| 項目 | キー | 推奨 | 費用 | 入れないと |
+|:--|:--|:--|:--|:--|
+| 月次の健全性レポート（health report） | `health-report` | 入れる | 無料 | 滞留している Issue と直近の CI の結果が月に一度まとまらない |
+| Copilot のコードレビュー | `copilot-review` | Copilot Business を使えるなら入れる | Copilot の利用料に含まれる | PR のレビューが当社の週次だけになる |
+| PR の自動 AI レビュー（claude-code-action） | `claude-pr-review` | 変更が多いなら入れる | **利用者負担**。Pro / Max のサブスク枠、または API キーの従量課金 | 同上 |
+| `@claude` メンションへの応答 | `claude-mention` | 任意 | 同上 | PR 上で質問できない |
+
+選択項目はこの 4 つと、手順 1 のプロファイルに合わせて決まる `client-only-profile` だけ。表に無い機能を選択項目として勧めない。
 
 #### 当社担当のアカウント（`reviewer`）
 
@@ -147,8 +147,9 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 
 - setup を実行している人（`gh auth status` のアカウント）を候補に出さない。PR は `gh` にログインしている
   アカウントで作られ、GitHub は PR の作成者にレビューを依頼しないので、`CODEOWNERS` に入れても当社にレビューが届かない
+- 入力の例を示すなら `@<アカウント名>` の形にする。実在しうるアカウント名を作って例に出さない（別人を指すおそれがある）
 - 決まらなければ `--reviewer` を渡さず、`@SHINNN_REVIEWER` のままにする。決まったら setup を再実行して差し替える。
-  それまで PR のレビュー依頼は自動で出ないこと、手順 5 の 6 の招待も行わないことを伝える
+  それまで PR のレビュー依頼は自動で出ないこと、手順 5 の 9 の招待も行わないことを伝える
 - 再実行のときは、`.shinnn/setup.json` の `reviewer` が `@SHINNN_REVIEWER` 以外なら、それを既定にして「変更しますか」と聞く
 
 #### マージの方針（`mergePolicy`）
@@ -163,9 +164,9 @@ PR を誰がマージするかを決める。既定は `human`。
 `self-review` を選ぶ前に、次を相手に説明して同意を取る:
 
 - **Claude が人の確認なしにマージまで行う設定**であること。`.claude/settings.json` は `gh pr` を許可しているので、`gh pr merge` の実行時に確認は出ない。止めたければ `human` に戻す（setup の再実行）
-- `main` のブランチ保護で CI を必須にする（使えるプランなら）。Claude がマージするのは **CI が緑の PR だけ**
+- Claude がマージするのは **CI が緑の PR だけ**（`/shinnn-app:pr` が確かめる）。ブランチ保護は setup では設定しない（手順 2）
 - `gh` のトークンに `workflow` スコープがあるか（ワークフローを変える PR のマージに要る。手順 2 で確認する）
-- リポジトリの auto-merge を許可するか（手順 5 の 7）
+- リポジトリの auto-merge を許可するか（手順 5 の 10）
 
 `@claude` メンションへの応答と PR の AI レビューは、**発言者をリポジトリの関係者（OWNER / MEMBER /
 COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている**。公開リポジトリで第三者のコメント 1 件から
@@ -177,53 +178,73 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
 
 ### 5. 適用
 
-保護されたファイル（`.shinnn/setup.json` / `.github/workflows/` / `CODEOWNERS`）は、**まとめて 1 回**
-適用スクリプトで書き換える。まず `--dry-run` を付けて内容を見せ、確認を取ってから実行する。
+**初回も再実行も、`main` に直接コミット・push しない。** 適用の前に Issue とブランチを用意し、変更は PR にする。
+ブランチ名（`feature/<Issue 番号>-<slug>`）と PR 本文の `Closes #<Issue 番号>` は `.claude/rules/git-workflow.md` の
+規約どおりにする（CI の規約チェックが本文の `Closes` を確かめる）。
 
-```
-node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --dry-run --profile full --reviewer @<当社担当のアカウント> --database docker --merge-policy human --enable health-report --disable claude-pr-review,claude-mention
-```
-
-| 引数 | 内容 |
-|:--|:--|
-| `--profile` | `full` / `client-only`（`optional.client-only-profile` も一緒に合わせる） |
-| `--reviewer` | `CODEOWNERS` の `@SHINNN_REVIEWER` を置き換える当社担当のアカウント |
-| `--database` | `database-url` / `local-postgres` / `docker` / `embedded-postgres` / `pglite` / `managed` |
-| `--merge-policy` | `human`（既定。人が ready にしてマージする）/ `self-review`（`/shinnn-app:pr` がセルフレビューと CI の通過後にマージする） |
-| `--enable` / `--disable` | 選択項目。`.shinnn/setup.json` の `optional` にあるキーだけを受け付ける |
-| `--handover-issue` | 「引き継ぎメモ」Issue の番号（下の 5 で Issue を作ってから渡す） |
-| `--complete` | `setupCompletedAt` に現在時刻を入れる |
-
-**ワークフローは追加も削除もしない。** 雛形は `.github/workflows/*.yaml.disabled` として同梱してあり、
-スクリプトが `.disabled` を外す（有効化）／付け直す（無効化）だけを行う。
-選ばなかったものを消さないのは、あとから選び直したときに戻せるようにするため。
-
-スクリプトが触らない残りは、通常の Edit / Write で行う。
-
-1. Issue テンプレート（`feature.yml` / `bug.yml`）とラベル（`status:next` / `status:doing` / `status:blocked` / `type:feature` / `type:bug` / `type:deps`）を `gh` で投入する。`type:deps` は `dependabot-issue.yaml` が Dependabot の PR に対応する Issue を作るときに使う。
+1. ラベル（`status:next` / `status:doing` / `status:blocked` / `type:feature` / `type:bug` / `type:deps` / `report`）を
+   `gh label create` で投入する。Issue テンプレート（`feature.yml` / `bug.yml`）はテンプレートに入っている。
+   `type:deps` は `dependabot-issue.yaml` が Dependabot の PR に対応する Issue を作るときに、`report` は月次の健全性レポートが
+   Issue を作るときに使う（健全性レポートを有効にしない場合も作っておく）。
    `type:deps` と `status:next` は、`dependabot-issue.yaml` が先に作っていることがある。既にあるラベルは `gh label create` が
    `already exists` で失敗するが、そのまま使う（`--force` で色や説明を上書きしない）
-2. `docs/` の雛形（`仕様書.md` / `env.md` / `decisions/`）を、無いものだけ作る
-3. `README.md` の「有効な機能」表を、決めた内容で書き換える（マージの方針の行も含める）
-4. `docs/decisions/` の**空いている次の番号**で `<番号>-setup.md` を作り、**選んだ理由と選ばなかった理由**を残す
-   （テンプレートに `0001-template-stack.md`・`0002-package-manager.md`・`0003-node-version.md` が同梱されているので、通常は `0004-setup.md`）
-5. 「引き継ぎメモ」Issue を作成して pin する（`gh issue create` → `gh issue pin`）。
-   番号が決まったら `--handover-issue <番号> --complete` でもう一度スクリプトを実行する
-6. 当社担当が collaborator（リポジトリの共同作業者）に招待されていなければ招待する。
+2. 適用の Issue を `gh issue create` で作る。題は初回なら `[設定] 初回セットアップの適用`、再実行なら変える内容に合わせる
+   （例: `[設定] PR の AI レビューの有効化`）。本文には決めた内容を箇条書きで書き、ラベルは `status:doing` を付ける
+3. `main` の最新から、2 の Issue の番号でブランチを切る。手順 2（環境の検出）で出た変更（組み込み版の PostgreSQL の導入など）は、
+   コミットせずにこのブランチへ持ち越す
+
+   ```
+   git fetch origin main
+   git switch -c feature/<Issue 番号>-setup origin/main
+   ```
+
+   `gh` が無い・ログインできない場合は、ラベルと Issue を GitHub の画面で作ってもらい、Issue の番号を聞いてから
+   同じ名前でブランチを切る。下の 12 の PR も画面で作ってもらい、本文に `Closes #<番号>` を入れてもらう
+4. 保護されたファイル（`.shinnn/setup.json` / `.github/workflows/` / `CODEOWNERS`）を、適用スクリプトで**まとめて 1 回**
+   書き換える。まず `--dry-run` を付けて内容を見せ、確認を取ってから実行する
+
+   ```
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --dry-run --profile full --reviewer @<当社担当のアカウント> --database docker --merge-policy human --enable health-report --disable claude-pr-review,claude-mention
+   ```
+
+   | 引数 | 内容 |
+   |:--|:--|
+   | `--profile` | `full` / `client-only`（`optional.client-only-profile` も一緒に合わせる） |
+   | `--reviewer` | `CODEOWNERS` の `@SHINNN_REVIEWER` を置き換える当社担当のアカウント |
+   | `--database` | `database-url` / `local-postgres` / `docker` / `embedded-postgres` / `pglite` / `managed` |
+   | `--merge-policy` | `human`（既定。人が ready にしてマージする）/ `self-review`（`/shinnn-app:pr` がセルフレビューと CI の通過後にマージする） |
+   | `--enable` / `--disable` | 選択項目。`.shinnn/setup.json` の `optional` にあるキーだけを受け付ける |
+   | `--handover-issue` | 「引き継ぎメモ」Issue の番号（下の 8 で Issue を作ってから渡す） |
+   | `--complete` | `setupCompletedAt` に現在時刻を入れる |
+
+   **ワークフローは追加も削除もしない。** 雛形は `.github/workflows/*.yaml.disabled` として同梱してあり、
+   スクリプトが `.disabled` を外す（有効化）／付け直す（無効化）だけを行う。
+   選ばなかったものを消さないのは、あとから選び直したときに戻せるようにするため。
+   スクリプトが触らない残りのファイル（5〜7）は、通常の Edit / Write で書く
+5. `docs/` の雛形（`仕様書.md` / `env.md` / `decisions/`）を、無いものだけ作る
+6. `README.md` の「有効な機能」表を、決めた内容で書き換える（マージの方針の行も含める）
+7. `docs/decisions/` の**空いている次の番号**で `<番号>-setup.md` を作り、**選んだ理由と選ばなかった理由**を残す
+   （テンプレートに `0001-template-stack.md`・`0002-package-manager.md`・`0003-node-version.md` が同梱されているので、初回は通常 `0004-setup.md`）
+8. 「引き継ぎメモ」Issue を作成して pin する（`gh issue create` → `gh issue pin`）。`.shinnn/setup.json` に
+   `handoverIssue` があれば作らない。番号が決まったら `--handover-issue <番号> --complete` でもう一度スクリプトを実行する
+9. 当社担当が collaborator（リポジトリの共同作業者）に招待されていなければ招待する。
    `gh api -X PUT repos/{owner}/{repo}/collaborators/<当社担当のアカウント（@ なし）> -f permission=maintain`
    （リポジトリの管理者権限が要る。権限の指定は組織のリポジトリでだけ有効で、個人アカウントのリポジトリでは無視される）。
    招待されていないと `CODEOWNERS` に書いてもレビュー依頼が届かない
-7. マージの方針が `self-review` なら、リポジトリで auto-merge を許可するかを聞く。許可する場合は
-   `gh api -X PATCH repos/{owner}/{repo} -f allow_auto_merge=true`（リポジトリの管理者権限が要る）。
-   許可しなくても `/shinnn-app:pr` は CI の完了を待ってからマージするので、動きは変わらない
-8. Dependabot のアラート（依存の脆弱性の通知）とセキュリティ更新（脆弱性を直す PR の自動作成）を有効にする。
-   `.github/dependabot.yml` はメジャー更新を PR にしないが、セキュリティ更新はその指定に関係なく PR になる。
-   private のリポジトリでは既定で無効のことがあるので、必ず実行する。セキュリティ更新はアラートが有効でないと使えないので、この順に行う。
-   `gh api -X PUT repos/{owner}/{repo}/vulnerability-alerts`
-   `gh api -X PUT repos/{owner}/{repo}/automated-security-fixes`
-   （どちらもリポジトリの管理者権限が要る）。できなければ止めずに結果を報告し、GitHub の画面で
-   Settings → 「Security and quality」の「Advanced Security」（画面によっては「Code security」）を開き、
-   「Dependabot alerts」と「Dependabot security updates」の **Enable** を押すよう案内する
+10. マージの方針が `self-review` なら、リポジトリで auto-merge を許可するかを聞く。許可する場合は
+    `gh api -X PATCH repos/{owner}/{repo} -f allow_auto_merge=true`（リポジトリの管理者権限が要る）。
+    許可しなくても `/shinnn-app:pr` は CI の完了を待ってからマージするので、動きは変わらない
+11. Dependabot のアラート（依存の脆弱性の通知）とセキュリティ更新（脆弱性を直す PR の自動作成）を有効にする。
+    `.github/dependabot.yml` はメジャー更新を PR にしないが、セキュリティ更新はその指定に関係なく PR になる。
+    private のリポジトリでは既定で無効のことがあるので、必ず実行する。セキュリティ更新はアラートが有効でないと使えないので、この順に行う。
+    `gh api -X PUT repos/{owner}/{repo}/vulnerability-alerts`
+    `gh api -X PUT repos/{owner}/{repo}/automated-security-fixes`
+    （どちらもリポジトリの管理者権限が要る）。できなければ止めずに結果を報告し、GitHub の画面で
+    Settings → 「Security and quality」の「Advanced Security」（画面によっては「Code security」）を開き、
+    「Dependabot alerts」と「Dependabot security updates」の **Enable** を押すよう案内する
+12. 変更をコミットし、`/shinnn-app:pr` で PR にする。本文の 1 行目は `Closes #<2 で作った Issue の番号>`。
+    費用が発生する項目を増やした場合は、本文に費用の目安を書く。ready にするか、マージまで行うかは
+    `/shinnn-app:pr` がマージの方針（`human` / `self-review`）に従って決める
 
 `.shinnn/setup.json` の形（キーはテンプレート同梱のものと同じにする。**勝手に増やさない・減らさない**）:
 
@@ -237,19 +258,19 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --dry-run --profile full --re
   "mergePolicy": "human",
   "database": { "mode": "docker" },
   "mandatory": ["claude-md", "claude-rules", "claude-settings-deny", "import-restriction-lint", "husky-pre-commit", "ci-check", "ci-test", "ci-policy", "issue-templates", "issue-labels", "progress-snapshot", "docs-specification", "docs-env", "security-defaults", "dependabot", "npm-audit", "commit-convention", "handover-definition", "codeowners"],
-  "optional": { "client-only-profile": false, "playwright-e2e": false, "e2e-nightly": false, "health-report": true, "copilot-review": false, "github-projects-board": false, "claude-pr-review": false, "claude-mention": false, "health-report-ai-summary": false },
-  "handoverIssue": 1
+  "optional": { "client-only-profile": false, "health-report": true, "copilot-review": false, "claude-pr-review": false, "claude-mention": false },
+  "handoverIssue": 2
 }
 ```
 
 `templateVersion` には、手順 0 で展開したプラグインの版が入る（展開スクリプトが書く）。どの版のテンプレートから作ったかの記録になる。
 
 **再実行のとき**は、既存の `.shinnn/setup.json` と今回の選択を比べ、**差分のある項目だけ**を変更する。
-変更は `chore/setup-<日付>` ブランチにコミットし、`/shinnn-app:pr` で PR にする（`main` に直接コミットしない）。
-費用が発生する項目を増やした場合は、PR 本文に費用の目安を書く。
+進め方は初回と同じで、手順 5 の 2 の Issue の題を変える内容に合わせる。
 
 ### 6. 次の一手
 
+setup の PR がまだマージされていなければ、先にマージしてもらう（マージの方針が `human` なら、人が ready にしてマージする）。
 最後に、次に打つコマンドを 1 つだけ示す。
 
 ```
@@ -264,9 +285,9 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --dry-run --profile full --re
 - `git commit` が名前とメールアドレスの未設定で止まる: `git config --global user.name` と `user.email` の設定を案内する
 - `gh repo create` が失敗する（組織でリポジトリを作る権限が無い、`gh` が無い）: GitHub の画面で空のリポジトリ（README なし）を
   作ってもらい、`git remote add origin <URL>` と `git push -u origin main` を実行する
-- `gh` の認証が切れている: `gh auth login` を案内する。ラベルと Issue の投入だけを後回しにし、他は適用する
-- ブランチ保護が設定できない: プランで使えないことがある。**エラーにせず**「CI と週次レビューで担保する」と説明して続行する
-- Dependabot のアラートやセキュリティ更新を有効にできない（管理者権限が無い）: 止めずに続け、手順 5 の 8 の画面での手順を案内する
+- `gh` の認証が切れている: `gh auth login` を案内する。ログインできなければ、手順 5 の 3 の `gh` が無い場合と同じく
+  Issue と PR を GitHub の画面で作ってもらい、ラベルの投入は後回しにする
+- Dependabot のアラートやセキュリティ更新を有効にできない（管理者権限が無い）: 止めずに続け、手順 5 の 11 の画面での手順を案内する
 - すでに `.github/workflows/` に手を入れたファイルがある: 上書きせず、差分を示して人に判断してもらう
 - `gh pr merge` が `workflow` スコープの不足で失敗する: `gh auth refresh -h github.com -s workflow` を案内する。それまでは人がマージする
 - 適用スクリプトが `選択項目 … は optional にありません` で止まる: 項目そのものを増やすのは標準の変更にあたる。

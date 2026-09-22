@@ -30,7 +30,6 @@ import { join } from 'node:path';
 
 /** 選択項目と、それが有効にする GitHub Actions のワークフロー。無いものは設定の記録だけで完結する。 */
 const WORKFLOW_OF_OPTION = {
-  'e2e-nightly': 'e2e-nightly.yaml',
   'health-report': 'health-report.yaml',
   'claude-pr-review': 'claude-review.yaml',
   'claude-mention': 'claude.yaml',

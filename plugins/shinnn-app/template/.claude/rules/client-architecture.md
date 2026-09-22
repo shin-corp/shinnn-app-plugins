@@ -30,7 +30,7 @@ client/src/app/features/<機能>/   画面（signal で状態を持つ）
 | API の入出力型                           | `shared/src/api/`（client には置かない）                                  |
 | 2 画面以上で実際に使う表示部品・純粋関数 | `client/src/app/shared/`                                                  |
 | 表・一覧                                 | 同梱の `client/src/app/shared/data-table/`（自前で作り直さない）          |
-| テスト                                   | 対象の隣に `<対象>.test.ts`（E2E を有効にした場合だけ `client/tests/`）   |
+| テスト                                   | 対象の隣に `<対象>.test.ts`                                               |
 
 - **新しい画面は `features/items/` をコピーして作る。** この構造から外れない
   （サンプルの `items` を消した後は、既存の機能を手本にする）

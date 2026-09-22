@@ -1,7 +1,7 @@
 {
   "$comment": "セットアップの記録。/shinnn-app:setup が書き換えます。手で編集しないでください（CI の規約チェックが標準と照合します）。",
   "templateVersion": "0.0.0",
-  "standardsVersion": "0.7.0",
+  "standardsVersion": "0.7.1",
   "setupCompletedAt": null,
   "profile": "full",
   "reviewer": "@SHINNN_REVIEWER",
@@ -34,14 +34,10 @@
   ],
   "optional": {
     "client-only-profile": false,
-    "playwright-e2e": false,
-    "e2e-nightly": false,
     "health-report": false,
     "copilot-review": false,
-    "github-projects-board": false,
     "claude-pr-review": false,
-    "claude-mention": false,
-    "health-report-ai-summary": false
+    "claude-mention": false
   },
   "$optionalComment": "true にするだけでは有効になりません。/shinnn-app:setup を実行すると、対応する .github/workflows/*.yaml.disabled の .disabled が外れ、必要な設定が生成されます。費用が発生する項目は PR 本文に目安が書かれます。"
 }
