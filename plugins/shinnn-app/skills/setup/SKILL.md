@@ -118,6 +118,7 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 | root の `CLAUDE.md` / `.claude/rules/` / `settings.json` の deny | 構成と規約が同じでないと、当社が引き継げない |
 | import 制約 lint | 層をまたぐ参照を人の注意ではなく機械で止める |
 | husky の pre-commit | 壊れたコードが履歴に入らないようにする |
+| husky の pre-push | `main` に直接 push しないようにする（ブランチ保護を使えないプランでも効く） |
 | CI の check / test / policy | 品質の判断を人の気分に依存させない |
 | Issue テンプレートとラベル | 進捗の正本が Issues なので、形が揃っていないと読めない |
 | `docs/仕様書.md` と `docs/env.md` | 引き継ぎで最初に読む 2 つ |

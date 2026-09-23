@@ -47,8 +47,8 @@ Dependabot（依存更新の bot）が作る PR には、ワークフロー `dep
 ## やらないこと
 
 - `git push --force` / `git reset --hard` / `git rebase` / `git clean`（すべて deny されている）
-- `git commit --no-verify`（pre-commit の lint を飛ばす行為）
-- `main` への直接コミット
+- `git commit --no-verify` / `git push --no-verify` / `HUSKY=0`（husky のフックを飛ばす行為。deny されている）
+- `main` への直接コミットと push（push は `.husky/pre-push` が止める）
 - 改行コードだけが変わった差分を作ること（LF に統一。`.gitattributes` を参照）
 - 生成物の手編集（`package-lock.json` / `server/drizzle/` / メッセージキーの生成物）
 
@@ -64,3 +64,7 @@ API 定義と実装が同じコミットに混ざっていると、差分のど�
 
 force push と `--no-verify` を禁じるのは、いったん壊れると非エンジニアには復旧できないためです。
 履歴を書き換えずに前へ進む（打ち消しコミットを積む）方が、常に安全です。
+
+作業ブランチへの push は確認なしで実行します。push の中身を見て良し悪しを判断することは、コードを読まない人には
+できないからです。代わりに、困ることを仕組みで止めます。`main` への push は `.husky/pre-push` が断ります
+（GitHub のブランチ保護を使えないプランでも効く）。秘密情報は `.env` の読み取りの禁止と `.gitignore` と CI で止めます。

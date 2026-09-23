@@ -40,6 +40,8 @@ description: 変更をコミット・プッシュしてドラフト PR を作り
 git push -u origin <ブランチ名>
 ```
 
+`main` への push は `.husky/pre-push` が断る。断られたら、作業ブランチを切ってそちらに push する。
+
 ## 3. ドラフト PR を作る
 
 ```

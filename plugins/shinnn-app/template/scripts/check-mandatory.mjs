@@ -45,6 +45,7 @@ const REQUIRED_FILES = [
   '.claude/settings.json',
   '.claude/rules/.standards-version',
   '.husky/pre-commit',
+  '.husky/pre-push',
   '.lintstagedrc.json',
   '.github/CODEOWNERS',
   '.github/dependabot.yml',
@@ -62,6 +63,9 @@ const REQUIRED_FILES = [
 const REQUIRED_DENY = [
   'Bash(rm -rf *)',
   'Bash(git push --force*)',
+  'Bash(git push * --force*)',
+  'Bash(git push *--no-verify*)',
+  'Bash(HUSKY=0 *)',
   'Bash(git reset --hard*)',
   'Bash(git commit --no-verify*)',
   'Bash(sudo *)',
