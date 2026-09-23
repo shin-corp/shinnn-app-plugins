@@ -27,7 +27,8 @@
 
 1. `server/` ディレクトリを削除する
 2. ルートの `package.json` の `workspaces` から `server` を外す
-3. ルートの `package.json` から `messages` スクリプトを外す
+3. ルートの `package.json` から `messages` スクリプトを外し、`dev` スクリプトから server を外す
+   （`npm run build -w shared && concurrently -n shared,client "npm run dev -w shared" "npm run dev -w client"`）
 4. `docker-compose.yml` を削除する
 5. `client/src/app/api-client.ts` の `call()` の中身を、模擬データを返す実装に差し替える
    - **関数の形（引数と戻り値の型）は変えない。** API 定義から導いた型のままにする

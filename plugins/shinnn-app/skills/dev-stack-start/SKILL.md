@@ -25,12 +25,13 @@ description: 開発用のサーバー群（PostgreSQL・API サーバー・画�
    - `embedded-postgres` / `pglite`: 起動の手順は `docs/env.md` の「ローカルの PostgreSQL」節に
      `node scripts/setup-env.mjs --write` が記録している。そこに書かれた方法で起動する
 2. **マイグレーションの適用**: `npm run db:migrate -w server`
-3. **API サーバー**: `npm run dev -w server`（`node --watch` + tsx。`src/` と `shared/dist` の変更で自動再起動する）
-4. **画面**: `npm run dev -w client`
+3. **API 定義**: `npm run build -w shared` のあと、`npm run dev -w shared`（`tsc --watch`。`shared/src` の変更で `shared/dist` を作り直す）
+4. **API サーバー**: `npm run dev -w server`（`node --watch` + tsx。`src/` と `shared/dist` の変更で自動再起動する）
+5. **画面**: `npm run dev -w client`（`shared/dist` の変更でも作り直す）
 
-長く動き続けるプロセス（3 と 4）は**バックグラウンドで起動する**。前面で実行すると応答が返らなくなる。
+長く動き続けるプロセス（3〜5）は**バックグラウンドで起動する**。前面で実行すると応答が返らなくなる。
 
-**再起動に注意。** API サーバーは import しているファイルが変わると再起動し、処理中の要求はその場で切れる（画面側のプロキシは空の 502 を返す）。`shared` のビルド（ルートの `npm run check` / `npm run build` も含む）やブランチの切り替えがこれに当たる。時間のかかる要求（外部 API の呼び出しなど）を確かめている間は、これらを実行しない。
+**再起動に注意。** API サーバーは import しているファイルが変わると再起動し、処理中の要求はその場で切れる（画面側のプロキシは空の 502 を返す）。`shared/src` の保存（3 の監視が作り直す）、`shared` のビルド（ルートの `npm run check` / `npm run build` も含む）、ブランチの切り替えがこれに当たる。時間のかかる要求（外部 API の呼び出しなど）を確かめている間は、これらを実行しない。
 
 ## 起動の確認
 

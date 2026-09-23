@@ -36,6 +36,9 @@ Claude Code が `client/` 配下で作業する際の指針。
 
 `dev` の前に `server/` が localhost:3000 で起動している必要がある（`proxy.conf.json`）。
 `@app/shared` を先に建てる必要がある（`npm run build -w shared`。ルートの `npm run build` なら順に建つ）。
+ルートの `npm run dev` は `shared` も監視してビルドし直す。`@app/shared` は開発サーバーの事前バンドル（依存を最初に 1 回だけ
+まとめてキャッシュする仕組み）から外してある（`angular.json` の `prebundle.exclude`）。外さないと、`shared` を建て直しても
+画面は古い API 定義のまま動く。
 
 ## ディレクトリ構成
 

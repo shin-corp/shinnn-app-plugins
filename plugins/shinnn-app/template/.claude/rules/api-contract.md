@@ -61,7 +61,8 @@ export const itemsApi = { listItems, getItem, createItem, updateItem, deleteItem
 API 定義を変えるときは、**`shared` → `server` → `client` を同じ PR で**直します。
 
 1. `shared/src/api/<機能>.ts` を変更する
-2. `npm run build -w shared`（server / client の型検査に dist が要る）
+2. `shared` をビルドする（server / client は `shared/dist` を読む）。`npm run dev` の最中は保存するたびに自動で
+   ビルドし直され、server は再起動、画面も作り直される。`npm run dev` を使っていないときは `npm run build -w shared`
 3. `server` の handler を型エラーが消えるまで直す
 4. `client` の呼び出しを型エラーが消えるまで直す
 5. 両方のテストを直す（CI の policy job が「`shared/src/api` を変えたら server と client の
