@@ -83,7 +83,7 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 | `full` | shared + server（Express + PostgreSQL）+ client（Angular） | 画面とデータの保存の両方が要る |
 | `client-only` | shared + client のみ。サーバーと DB を持たない | 画面だけ、または既存の API を使う |
 
-**`client-only` は現状、当社担当が手で適用する。** 自動適用はまだ実装しておらず、`server/` の削除・
+**`client-only` は現状、シン株式会社の担当者が手で適用する。** 自動適用はまだ実装しておらず、`server/` の削除・
 ルートの `package.json` の `workspaces` の編集・`api-client.ts` の模擬実装への差し替えなど 9 手順が要る
 （内容は `.shinnn/profiles/client-only.md`）。選ばれたら、**その場では終わらないこと**と所要・段取りを伝え、
 初回セッションは `full` のまま進める。既定は `full`。
@@ -101,7 +101,7 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 - PostgreSQL は検出順に従って選ぶ。Docker は `docker` コマンドが動けばよく、Docker Desktop でも WSL の Docker Engine でも構わない
   （WSL の中だけにある場合、Windows 側からは見えないので「使えません」になる。WSL でコンテナを起動すれば `localhost:5432` の検出で拾える）
 - Docker が使えない場合は組み込み版（`embedded-postgres`）の導入まで代行する。手で PostgreSQL を入れてもらう案内はしない（管理者権限が要らない組み込み版で足りる）
-- GitHub 側は、当社担当アカウントの招待状況を確認する。招待は手順 5 の 9 で行う。
+- GitHub 側は、シン株式会社の担当者のアカウントの招待状況を確認する。招待は手順 5 の 9 で行う。
   ブランチ保護（`main` に入れる変更に CI の通過を必須にする GitHub の設定）は、使えるプランなら手順 5 の 12 で設定する。
   テンプレートは `main` に直接書き込む仕組みを持たないので、CI の通過を必須にしても止まるものは無い
 - トークンのスコープは表の gh の行で見る。`workflow` が無いと、ワークフローを変える PR を `gh` からマージできない。
@@ -115,7 +115,7 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 
 | 項目 | なぜ必須か |
 |:--|:--|
-| root の `CLAUDE.md` / `.claude/rules/` / `settings.json` の deny | 構成と規約が同じでないと、当社が引き継げない |
+| root の `CLAUDE.md` / `.claude/rules/` / `settings.json` の deny | 構成と規約が同じでないと、シン株式会社が引き継げない |
 | import 制約 lint | 層をまたぐ参照を人の注意ではなく機械で止める |
 | husky の pre-commit | 壊れたコードが履歴に入らないようにする |
 | CI の check / test / policy | 品質の判断を人の気分に依存させない |
@@ -124,7 +124,7 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 | セキュリティ既定（helmet / CORS / ボディ上限 / レート制限） | 後から入れると全経路の見直しになる |
 | Dependabot と `npm audit`、依存のライセンス検査 | 依存の脆弱性と、費用が発生するライセンスを放置しない |
 | コミット規約と引き継ぎの完了定義 | 履歴と完了の基準を揃える |
-| CODEOWNERS（当社担当） | レビューが必ず当社に届くようにする |
+| CODEOWNERS（シン株式会社の担当者） | レビューが必ずシン株式会社に届くようにする |
 
 費用はいずれも無料（GitHub Actions の無料枠内）。
 
@@ -135,19 +135,19 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 | 項目 | キー | 推奨 | 費用 | 入れないと |
 |:--|:--|:--|:--|:--|
 | 月次の健全性レポート（health report） | `health-report` | 入れる | 無料 | 滞留している Issue と直近の CI の結果が月に一度まとまらない |
-| Copilot のコードレビュー | `copilot-review` | Copilot Business を使えるなら入れる | Copilot の利用料に含まれる | PR のレビューが当社の週次だけになる |
+| Copilot のコードレビュー | `copilot-review` | Copilot Business を使えるなら入れる | Copilot の利用料に含まれる | PR のレビューがシン株式会社の週次だけになる |
 | PR の自動 AI レビュー（claude-code-action） | `claude-pr-review` | 変更が多いなら入れる | **利用者負担**。Pro / Max のサブスク枠、または API キーの従量課金 | 同上 |
 | `@claude` メンションへの応答 | `claude-mention` | 任意 | 同上 | PR 上で質問できない |
 
 選択項目はこの 4 つと、手順 1 のプロファイルに合わせて決まる `client-only-profile` だけ。表に無い機能を選択項目として勧めない。
 
-#### 当社担当のアカウント（`reviewer`）
+#### シン株式会社の担当者のアカウント（`reviewer`）
 
-`CODEOWNERS` に入れて、PR のレビューが当社に届くようにするアカウント。**既定値は持たない。**
-同席している当社担当に、GitHub のアカウント名を入力してもらう。
+`CODEOWNERS` に入れて、PR のレビューがシン株式会社に届くようにするアカウント。**既定値は持たない。**
+同席しているシン株式会社の担当者に、GitHub のアカウント名を入力してもらう。
 
 - setup を実行している人（`gh auth status` のアカウント）を候補に出さない。PR は `gh` にログインしている
-  アカウントで作られ、GitHub は PR の作成者にレビューを依頼しないので、`CODEOWNERS` に入れても当社にレビューが届かない
+  アカウントで作られ、GitHub は PR の作成者にレビューを依頼しないので、`CODEOWNERS` に入れてもシン株式会社にレビューが届かない
 - 入力の例を示すなら `@<アカウント名>` の形にする。実在しうるアカウント名を作って例に出さない（別人を指すおそれがある）
 - 決まらなければ `--reviewer` を渡さず、`@SHINNN_REVIEWER` のままにする。決まったら setup を再実行して差し替える。
   それまで PR のレビュー依頼は自動で出ないこと、手順 5 の 9 の招待も行わないことを伝える
@@ -159,8 +159,8 @@ PR を誰がマージするかを決める。既定は `human`。
 
 | 値 | 動き | 選ぶ場合 |
 |:--|:--|:--|
-| `human`（既定） | Claude はドラフトのまま渡し、人が ready にしてマージする | 当社のレビューを必ず通したい |
-| `self-review` | `/shinnn-app:pr` がセルフレビュー（Critical / Warning が 0）と CI の通過を確かめ、ready にしてマージまで行う | 顧客が「当社のレビューを待たずに進める」と明示した |
+| `human`（既定） | Claude はドラフトのまま渡し、人が ready にしてマージする | シン株式会社のレビューを必ず通したい |
+| `self-review` | `/shinnn-app:pr` がセルフレビュー（Critical / Warning が 0）と CI の通過を確かめ、ready にしてマージまで行う | 顧客が「シン株式会社のレビューを待たずに進める」と明示した |
 
 `self-review` を選ぶ前に、次を相手に説明して同意を取る:
 
@@ -174,7 +174,7 @@ PR を誰がマージするかを決める。既定は `human`。
 COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている**。公開リポジトリで第三者のコメント 1 件から
 顧客の枠が消費されるのを防ぐためなので、有効化のときにこの 2 つを外さない。
 
-**当社のキーは提供しない。** 費用が発生する項目を選んだ場合は、認証情報の置き場所（リポジトリの secret）と、
+**シン株式会社のキーは提供しない。** 費用が発生する項目を選んだ場合は、認証情報の置き場所（リポジトリの secret）と、
 消費するのが誰の枠かをその場で説明し、**値そのものは利用者に入力してもらう**（Claude は読み書きしない）。
 費用の目安は「およそいくら」までにとどめ、断定した金額を示さない。
 
@@ -206,13 +206,13 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
    書き換える。まず `--dry-run` を付けて内容を見せ、確認を取ってから実行する
 
    ```
-   node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --dry-run --profile full --reviewer @<当社担当のアカウント> --database docker --merge-policy human --enable health-report --disable claude-pr-review,claude-mention
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --dry-run --profile full --reviewer @<シン株式会社の担当者のアカウント> --database docker --merge-policy human --enable health-report --disable claude-pr-review,claude-mention
    ```
 
    | 引数 | 内容 |
    |:--|:--|
    | `--profile` | `full` / `client-only`（`optional.client-only-profile` も一緒に合わせる） |
-   | `--reviewer` | `CODEOWNERS` の `@SHINNN_REVIEWER` を置き換える当社担当のアカウント |
+   | `--reviewer` | `CODEOWNERS` の `@SHINNN_REVIEWER` を置き換えるシン株式会社の担当者のアカウント |
    | `--database` | `database-url` / `local-postgres` / `docker` / `embedded-postgres` / `pglite` / `managed` |
    | `--merge-policy` | `human`（既定。人が ready にしてマージする）/ `self-review`（`/shinnn-app:pr` がセルフレビューと CI の通過後にマージする） |
    | `--enable` / `--disable` | 選択項目。`.shinnn/setup.json` の `optional` にあるキーだけを受け付ける |
@@ -229,8 +229,8 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
    （テンプレートに `0001-template-stack.md`・`0002-package-manager.md`・`0003-node-version.md` が同梱されているので、初回は通常 `0004-setup.md`）
 8. 「引き継ぎメモ」Issue を作成して pin する（`gh issue create` → `gh issue pin`）。`.shinnn/setup.json` に
    `handoverIssue` があれば作らない。番号が決まったら `--handover-issue <番号> --complete` でもう一度スクリプトを実行する
-9. 当社担当が collaborator（リポジトリの共同作業者）に招待されていなければ招待する。
-   `gh api -X PUT repos/{owner}/{repo}/collaborators/<当社担当のアカウント（@ なし）> -f permission=maintain`
+9. シン株式会社の担当者が collaborator（リポジトリの共同作業者）に招待されていなければ招待する。
+   `gh api -X PUT repos/{owner}/{repo}/collaborators/<シン株式会社の担当者のアカウント（@ なし）> -f permission=maintain`
    （リポジトリの管理者権限が要る。権限の指定は組織のリポジトリでだけ有効で、個人アカウントのリポジトリでは無視される）。
    招待されていないと `CODEOWNERS` に書いてもレビュー依頼が届かない
 10. マージの方針が `self-review` なら、リポジトリで auto-merge を許可するかを聞く。許可する場合は
@@ -269,7 +269,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
   "templateVersion": "0.1.0",
   "setupCompletedAt": "2026-01-01T00:00:00.000Z",
   "profile": "full",
-  "reviewer": "@<当社担当のアカウント>",
+  "reviewer": "@<シン株式会社の担当者のアカウント>",
   "mergePolicy": "human",
   "database": { "mode": "docker" },
   "mandatory": ["claude-md", "claude-rules", "claude-settings-deny", "import-restriction-lint", "husky-pre-commit", "ci-check", "ci-test", "ci-policy", "issue-templates", "issue-labels", "docs-specification", "docs-env", "security-defaults", "dependabot", "npm-audit", "commit-convention", "handover-definition", "codeowners"],
@@ -308,7 +308,7 @@ setup の PR がまだマージされていなければ、先にマージして�
   理由を「有効な機能」表と `docs/decisions/` の記録に残す。プランを変えるか、管理者が setup を再実行すれば設定できる
 - ブランチ保護のスクリプトが、既にあるブランチ保護を示して終わる: 上書きしない。必須のチェックに CI の 3 つのジョブが無ければ、
   差分を示して人に判断してもらう
-- ブランチ保護のスクリプトが、`main` に直接コミットするワークフローが残っているとして設定しない: 止めずに続け、理由を記録に残して当社に相談する
+- ブランチ保護のスクリプトが、`main` に直接コミットするワークフローが残っているとして設定しない: 止めずに続け、理由を記録に残してシン株式会社に相談する
 - ブランチ保護のスクリプトが終了コード 1 で終わる（想定外の失敗）: 出力をそのまま示し、ブランチ保護は「未設定」として記録して続ける
 - すでに `.github/workflows/` に手を入れたファイルがある: 上書きせず、差分を示して人に判断してもらう
 - `gh pr merge` が `workflow` スコープの不足で失敗する: `gh auth refresh -h github.com -s workflow` を案内する。それまでは人がマージする
