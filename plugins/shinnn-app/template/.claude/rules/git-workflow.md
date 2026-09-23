@@ -15,6 +15,13 @@ Issue から PR までの手順です。**paths を持たないので常に読�
 
 ブランチ名の接頭辞は `feature/` と `fix/` の 2 つだけです。ベースブランチは `main`。
 
+同じリポジトリで別のセッションが並行して作業しているなど、別の作業フォルダが要るときは Claude Code の worktree
+（作業ツリー。同じリポジトリを別のフォルダに取り出したもの）を使います。`claude --worktree <名前>` で起動するか、
+デスクトップアプリでセッションを worktree で始めます。`.claude/worktrees/<名前>` に作られ、セッションもそこで動くので、
+許可の設定がそのまま効きます。`git worktree add` で隣のフォルダに作り、元のセッションから `cd` して作業しないでください
+（リポジトリの外を触るので、操作のたびに確認が出ます）。作った worktree では最初に `npm install` を実行します
+（依存と git のフックが入っていないため）。
+
 PR をマージするのは、既定では人です（`.shinnn/setup.json` の `mergePolicy` が `human`）。`/shinnn-app:setup` で `self-review` を選んだリポジトリでは、`/shinnn-app:pr` がセルフレビューの収束と CI の通過を確かめてから ready にしてマージします。どちらの場合も `main` へ直接コミットしません。
 
 Dependabot（依存更新の bot）が作る PR には、ワークフロー `dependabot-issue.yaml` が対応する Issue（`[依存] …`、ラベル `type:deps`）を自動で作って本文に `Closes #n` を足し、PR が閉じると Issue も閉じます。CI の `Closes #n` の確認は bot の PR では免除しています（本文を書き換える前に走るため）。人と Claude の PR は必ず Issue を先に作ります。

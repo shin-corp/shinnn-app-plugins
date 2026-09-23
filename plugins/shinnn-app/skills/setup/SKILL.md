@@ -24,7 +24,9 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 最初に `.claude/rules/.standards-version` があるかを見る。
 
 - **無い**（テンプレートがまだ無いフォルダ）: 手順 0 だけを行い、起動し直すよう伝えて終える
-- **ある**: 手順 1〜6 を順に行う
+- **ある**: 手順 1〜6 を順に行う。ただし再実行で、リポジトリの `.claude/rules/.standards-version` が
+  `${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/.standards-version` と違うときは、先に `/shinnn-app:sync-standards` で
+  標準を取り込むよう伝えて終える（規約・権限の設定・git のフックの更新は setup ではなく sync-standards が扱う）
 
 各手順の結果を短くまとめてから次に進み、**利用者が決める項目は必ず質問する**。
 

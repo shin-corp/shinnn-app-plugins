@@ -14,6 +14,8 @@ playwright-report/
 
 # 個人の設定と個人用のメモ。認証情報やローカルのパスを含みうるので共有しない。
 .claude/settings.local.json
+# Claude Code が作る worktree（作業ツリー）。中身が元のリポジトリの未追跡ファイルとして見えないようにする。
+.claude/worktrees/
 CLAUDE.local.md
 
 .DS_Store

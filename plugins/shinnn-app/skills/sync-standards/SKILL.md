@@ -1,6 +1,6 @@
 ---
 name: sync-standards
-description: プラグインが配布する標準（CLAUDE.md 雛形・rules・アプリ作り方ガイド）の更新を、リポジトリへ取り込んで PR にする。標準バージョンに差があるときに実行する。「標準を更新」「rules を最新に」「バージョンが古いと言われた」で起動
+description: プラグインが配布する標準（CLAUDE.md 雛形・rules・アプリ作り方ガイド・権限の設定・git のフック）の更新を、リポジトリへ取り込んで PR にする。標準バージョンに差があるときに実行する。「標準を更新」「rules を最新に」「バージョンが古いと言われた」で起動
 ---
 
 # 標準の更新を取り込む
@@ -56,7 +56,13 @@ description: プラグインが配布する標準（CLAUDE.md 雛形・rules・�
 cp ${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/*.md .claude/rules/
 cp ${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/.standards-version .claude/rules/
 cp ${CLAUDE_PLUGIN_ROOT}/template/docs/アプリ作り方ガイド.md docs/
+cp ${CLAUDE_PLUGIN_ROOT}/template/.claude/settings.json .claude/
+cp ${CLAUDE_PLUGIN_ROOT}/template/.husky/pre-commit ${CLAUDE_PLUGIN_ROOT}/template/.husky/pre-push .husky/
 ```
+
+- `.claude/settings.json`（権限）は丸ごと置き換える。リポジトリ側で足していた許可や禁止があれば、コピーの前に
+  `git diff --no-index` で差を見て一覧にし、PR 本文に書く（残すかはシン株式会社のレビューで決める）
+- `.gitignore` に `.claude/worktrees/` の行が無ければ、末尾に 1 行足す。ほかの行は触らない（案件ごとに書き足すファイルのため）
 
 - コピーは Bash 経由で行う（`.claude/rules/` への Edit / Write は `.claude/settings.json` の deny が止める）
 - サーバー側を持たないリポジトリには、**元から無かった規約を増やさない**。
@@ -77,6 +83,8 @@ cp ${CLAUDE_PLUGIN_ROOT}/template/docs/アプリ作り方ガイド.md docs/
 PR 本文の 1 行目は `Closes #<手順 3 の Issue の番号>`。続けて、手順 2 でまとめた 3 分類と、
 **既存コードが違反している箇所の一覧**を書く。規約の変更に伴うコード修正は、この PR に混ぜない（別の Issue にする）。
 ready にするか、マージまで行うかは `/shinnn-app:pr` がマージの方針（`human` / `self-review`）に従って決める。
+
+`.claude/settings.json` はセッションの開始時に読み込まれる。マージした後に Claude Code を起動し直すよう、利用者に伝える。
 
 ## 6. 適用しない選択
 
