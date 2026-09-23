@@ -13,7 +13,7 @@
  * 引数:
  *   --repo-dir <パス>     対象のリポジトリ（既定は CLAUDE_PROJECT_DIR、無ければカレント）
  *   --profile <名前>      full / client-only
- *   --reviewer <@名前>    CODEOWNERS に入れる当社担当のアカウント
+ *   --reviewer <@名前>    CODEOWNERS に入れるシン株式会社の担当者のアカウント
  *   --database <方式>     database-url / local-postgres / docker / embedded-postgres / pglite / managed
  *   --merge-policy <方針> human（人がマージする）/ self-review（/shinnn-app:pr がセルフレビューと CI 通過後にマージする）
  *   --enable <キー,…>     選択項目を有効にする（.shinnn/setup.json の optional のキー）
@@ -186,7 +186,7 @@ for (const [keys, enabled] of [
     if (!Object.hasOwn(setup.optional, key)) {
       fail(
         `選択項目 ${key} は .shinnn/setup.json の optional にありません。`,
-        `使えるのは ${Object.keys(setup.optional).join(' / ')}。項目そのものを増やすのは標準の変更なので当社に相談する`,
+        `使えるのは ${Object.keys(setup.optional).join(' / ')}。項目そのものを増やすのは標準の変更なのでシン株式会社に相談する`,
       );
     }
     if (setup.optional[key] !== enabled) {
@@ -224,7 +224,7 @@ function applyWorkflows() {
 }
 
 /**
- * CODEOWNERS のプレースホルダを当社担当のアカウントに置き換える。
+ * CODEOWNERS のプレースホルダをシン株式会社の担当者のアカウントに置き換える。
  *
  * 置き換えるのは担当を割り当てる規則の行だけ。`#` で始まる行はプレースホルダそのものを説明する
  * コメントなので、置き換えると説明として読めなくなる。

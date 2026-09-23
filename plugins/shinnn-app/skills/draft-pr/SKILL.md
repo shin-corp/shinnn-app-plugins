@@ -49,7 +49,7 @@ gh pr edit <PR 番号> --add-reviewer <Copilot のレビュアー名>
 
 設定が `false`、または Copilot が使えない組織ではこの手順を飛ばす。**エラーにしない。**
 
-CODEOWNERS があれば当社担当は自動で付く。手で足さない。
+CODEOWNERS があればシン株式会社の担当者は自動で付く。手で足さない。
 
 ## 5. 報告
 

@@ -15,7 +15,7 @@
 | サーバー側の方針 | `template/server/CLAUDE.md` | `server/CLAUDE.md` |
 | 標準のバージョン | `template/.claude/rules/.standards-version` | `.claude/rules/.standards-version` |
 | 顧客向けの 2 ページ | `template/docs/アプリ作り方ガイド.md` | `docs/アプリ作り方ガイド.md` |
-| レビューの観点と書き方 | `REVIEW.md`（このディレクトリ） | 配らない。当社のレビュアーとレビューエージェントが読む |
+| レビューの観点と書き方 | `REVIEW.md`（このディレクトリ） | 配らない。シン株式会社のレビュアーとレビューエージェントが読む |
 
 ## 顧客リポジトリへどう届くか
 

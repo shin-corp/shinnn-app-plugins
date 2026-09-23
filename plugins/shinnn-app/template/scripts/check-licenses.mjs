@@ -17,7 +17,7 @@ import { join, relative, sep } from 'node:path';
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
 const nodeModulesDirectory = join(repositoryRoot, 'node_modules');
 
-/** 費用が発生しない OSS ライセンス。ここに無いものは当社が判断する。 */
+/** 費用が発生しない OSS ライセンス。ここに無いものはシン株式会社が判断する。 */
 const ALLOWED_LICENSES = new Set([
   'MIT',
   'MIT-0',
@@ -179,8 +179,8 @@ for (const violation of violations) {
 }
 
 console.error('');
-console.error('  なぜ: 費用が発生する可能性があるライセンスです。入れる前に当社に相談してください。');
+console.error('  なぜ: 費用が発生する可能性があるライセンスです。入れる前にシン株式会社に相談してください。');
 console.error('        無料の OSS ライセンスのライブラリなら、相談せずに入れて構いません。');
-console.error('  どう直す: 同じことができる OSS のライブラリに置き換えるか、当社に相談してください。');
+console.error('  どう直す: 同じことができる OSS のライブラリに置き換えるか、シン株式会社に相談してください。');
 console.error(`  許可リスト: ${[...ALLOWED_LICENSES].join(' / ')}`);
 process.exit(1);

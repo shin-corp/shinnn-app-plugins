@@ -158,7 +158,7 @@ for (const relativePath of REQUIRED_FILES) {
   if (!(await exists(relativePath))) {
     problems.push({
       what: `必須のファイルがありません: ${relativePath}`,
-      how: 'テンプレートから復元する（/shinnn-app:sync-standards か、当社に相談）',
+      how: 'テンプレートから復元する（/shinnn-app:sync-standards か、シン株式会社に相談）',
     });
   }
 }
