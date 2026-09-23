@@ -9,7 +9,7 @@
  * - 別のリポジトリの作業ツリーの中では gh を呼ばない（親のリポジトリの一覧を拾わない）
  * - 直近の CI は ci.yaml の実行だけを載せる
  * - 一覧を載せきれないときは総件数を添え、更新の古いもの（滞っているもの）を残す
- * - 題名などに | を含んでも、表の列がずれない
+ * - 題名などに | や \ を含んでも、表の列がずれない
  * ワークフローは YAML の文字列を行で読み、権限・手順の並び・資格情報の扱いを確かめる。
  * プラグインの CI は依存を入れずに動くので yaml パッケージは使わない。テンプレートで npm ci をした手元では、
  * YAML として読めることと、行で読んだ権限が YAML として読んだものと同じことも確かめる。
@@ -93,12 +93,15 @@ function tableRows(text) {
     .slice(2);
 }
 
-/** 表の行のセル。\ の付いていない | で区切る（GitHub の Markdown と同じ読み方） */
+/**
+ * 表の行のセル。GitHub の Markdown と同じく、\ とその次の 1 文字をひとまとまりに読み、残った | で区切る。
+ * \\| は「\ が 1 文字」と「区切りの |」になる。
+ */
 function cells(row) {
   return row
-    .split(/(?<!\\)\|/)
-    .slice(1, -1)
-    .map((cell) => cell.trim());
+    .match(/(?:\\.|[^\\|])*\|/g)
+    .slice(1)
+    .map((cell) => cell.slice(0, -1).trim());
 }
 
 /** 2026-01-01 から n 日後の日時 */
@@ -309,6 +312,26 @@ test('題名・ラベル・ブランチ名に | や改行を含んでも、表�
   assert.deepEqual(pullRequestRow.map(cells), [['#2', 'C\\|D', 'いいえ', day(2).slice(0, 10)]]);
   const runRow = tableRows(section(result.report, '直近の CI'));
   assert.deepEqual(runRow.map(cells), [['E \\| F 2 行目', 'fail\\|ure', 'feature/x\\|y', day(2).slice(0, 10)]]);
+});
+
+test('題名・ラベル・ブランチ名に \\ を含んでも、表の列がずれない', () => {
+  const state = baseState();
+  state.issues[0].title = 'A \\| B';
+  state.issues[0].labels = ['status:a\\'];
+  state.pullRequests[0].title = 'C\\\\|D\\';
+  state.runs[0].displayTitle = 'E\\|F';
+  state.runs[0].headBranch = 'feature/x\\|y';
+  state.runs[0].conclusion = 'fail\\|ure';
+
+  const result = runSnapshot(state);
+
+  assert.equal(result.status, 0, result.stderr);
+  const issueRow = tableRows(section(result.report, '進行中と次の一手'));
+  assert.deepEqual(issueRow.map(cells), [['#1', 'A \\\\\\| B', 'status:a\\\\', day(1).slice(0, 10)]]);
+  const pullRequestRow = tableRows(section(result.report, 'レビュー待ち'));
+  assert.deepEqual(pullRequestRow.map(cells), [['#2', 'C\\\\\\\\\\|D\\\\', 'いいえ', day(2).slice(0, 10)]]);
+  const runRow = tableRows(section(result.report, '直近の CI'));
+  assert.deepEqual(runRow.map(cells), [['E\\\\\\|F', 'fail\\\\\\|ure', 'feature/x\\\\\\|y', day(2).slice(0, 10)]]);
 });
 
 /** ワークフローのファイル */
