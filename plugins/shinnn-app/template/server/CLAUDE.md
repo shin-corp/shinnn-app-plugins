@@ -69,7 +69,8 @@ api/<機能>/{index.ts, <機能>.controller.ts}  →  service/  →  db/
 1. **API 定義**: `shared/src/api/<機能>.ts` に zod スキーマと `defineRoute(...)` を書き、`<機能>Api` にまとめる
 2. **ルーター**: `src/api/<機能>/index.ts` で `route(router, <機能>Api.xxx, controller.xxx)` を登録する。`router.get(...)` を直接書かない
 3. **controller**: `src/api/<機能>/<機能>.controller.ts` は薄く。検証済みの入力を service へ渡し、戻り値を返すだけ
-4. **service**: `src/service/<機能>.service.ts` に業務処理。失敗は `CommonException` で投げる
+4. **service**: `src/service/<機能>.service.ts` に業務処理。失敗は `CommonException` で投げる。
+   利用者ごとのデータは controller から `currentUser(req).id` を受け取り、すべての条件を持ち主で絞る
 5. **テーブル**: 必要なら `src/db/schema/<テーブル>.ts` を足し、`db:generate` でマイグレーションを生成（SQL は手で書かない）
 6. **テストと docs**: `tests/<機能>.test.ts` を追加し、`docs/仕様書.md` の受入条件と `docs/env.md` を更新する
 
@@ -96,6 +97,8 @@ error middleware は 4 引数で `app.ts` に 1 か所だけ置く。エラー�
 - `helmet` でセキュリティ関連のヘッダを付ける。`X-Powered-By` は出さない
 - CORS は `CORS_ORIGIN` を明示する（`*` は使わない）。Cookie を使わないので `credentials` は許可しない
 - `express.json({ limit })` で本文の大きさに上限を置き、`/api` 配下に rate limit を掛ける
+- **認証（ログインしているか）と認可（そのデータを扱ってよいか）は別。** 利用者ごとのデータは持ち主の列を置き、
+  service のすべての問い合わせを持ち主で絞る。他人のデータは 404 を返す（`.claude/rules/server-coding-conventions.md`）
 - 認証は `isAuthenticated()`（Bearer トークン）。署名アルゴリズム（`alg`）・受け取り手（`aud`）・有効期限（`exp`）を明示して検証する（`exp` は `requiredClaims` で必須にする。無いトークンを通さないため）
 - **CSRF 対策の middleware は入れていない**。認証情報を Cookie で持たず、毎回 `Authorization` ヘッダで送るため、他サイトからの自動送信では認証が通らない。Cookie セッションを導入するなら、その時にトークン型の対策を足す
 - 静的ファイルは配信しない（画面は別に配信する）

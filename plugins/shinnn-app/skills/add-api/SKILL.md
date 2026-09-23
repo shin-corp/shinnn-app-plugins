@@ -49,6 +49,8 @@ router を新設したら、`server/src/app.ts` の `app.use(...)` に足す（�
 - エラーは `throw new CommonException(statusCode, MessageKeys.XXX, details)`
 - ログは `Log` のみ（`console` は lint が落とす）
 - 複数の書き込みが 1 つの意味を持つなら `db.transaction` で包む
+- **利用者ごとのデータは、controller から `currentUser(req).id` を受け取り、取得・一覧・件数・更新・削除のすべての条件を持ち主で絞る。**
+  他人のデータは 404 にする。持ち主の id を API の入力から受け取らない
 
 ## 4. DB スキーマ（`server/src/db/schema/`）
 
@@ -61,6 +63,7 @@ router を新設したら、`server/src/app.ts` の `app.use(...)` に足す（�
 
 - 実サーバーを立てて（`app.listen(0)`）、`fetch` で本番と同じ HTTP 経路を叩く
 - 受入条件があるなら、テスト名に `AC-n` を含める（CI が照合する）
+- 利用者ごとのデータなら、別の利用者のトークン（`createAuthHeaders({ subject })`）で 404 になることと、一覧に入らないことを確かめる
 - DB は既定で PGlite。実 PostgreSQL でしか確認できないものは、接続先を渡す環境変数を足し、`docs/env.md` に名前を書く
 
 ## 6. docs

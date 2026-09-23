@@ -27,6 +27,9 @@ PostgreSQL 16 と Drizzle ORM です。層の位置づけは [server-architectur
 - 主キーは `uuid`。作成日時 `created_at` と更新日時 `updated_at` を全テーブルに置く
 - **一意性・参照整合・値域は DB の制約（UNIQUE / FK / CHECK）で表す。**
   TypeScript の if 文だけで守らない。並行して実行されると通り抜ける
+- **利用者ごとのデータのテーブルには持ち主の列（`owner_id`）を `NOT NULL` で置く。** 認証の方式によって
+  利用者の識別子が uuid とは限らないので `varchar` で持つ。持ち主ごとの一意性は `(owner_id, name)` のような
+  複合の UNIQUE で表す（この索引が持ち主での絞り込みにも効く）
 - 削除は原則として物理削除。論理削除が要る場合は仕様書に理由を書いてから足す
 
 ## マイグレーション

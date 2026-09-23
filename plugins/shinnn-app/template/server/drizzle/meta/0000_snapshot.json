@@ -1,5 +1,5 @@
 {
-  "id": "0a78f6f7-5b9d-43bd-9b44-f239503098ac",
+  "id": "3d60363e-59a1-40e1-9c92-15f741eedb42",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -14,6 +14,12 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
         },
         "name": {
           "name": "name",
@@ -51,9 +57,15 @@
         }
       },
       "indexes": {
-        "items_name_key": {
-          "name": "items_name_key",
+        "items_owner_id_name_key": {
+          "name": "items_owner_id_name_key",
           "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
             {
               "expression": "name",
               "isExpression": false,

@@ -14,7 +14,7 @@
 
 import { SignJWT } from 'jose';
 
-/** 引数の既定値。 */
+/** 引数の既定値。subject は seed/index.ts が入れる item の持ち主と同じ値。 */
 const defaults = {
   subject: '00000000-0000-4000-8000-000000000001',
   name: '開発用の利用者',

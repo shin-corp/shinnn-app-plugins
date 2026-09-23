@@ -6,6 +6,7 @@
  *  - describe は 正常系 / 異常系 / エッジケース で分ける
  *  - テスト名の先頭に docs/仕様書.md の受入条件の番号（AC-n）を書く
  *  - テストごとにサーバーと DB を作り直すので、実行順に結果が左右されない
+ *  - 利用者ごとのデータは、別の利用者のトークンで「見えない・変えられない」ことを必ず確かめる（AC-11）
  */
 
 import { itemsApi, type Item, type ItemList } from '@app/shared/api';
@@ -15,6 +16,8 @@ import { startServer, type TestServer } from './helpers/server.js';
 
 let server: TestServer;
 let authHeaders: Record<string, string>;
+/** 別の利用者の認証ヘッダ。他人の item に届かないことの確認に使う。 */
+let otherUserHeaders: Record<string, string>;
 
 /** 存在しない item の id。形式は正しいので、404 と 400 を区別して確かめられる。 */
 const missingItemId = '11111111-1111-4111-8111-111111111111';
@@ -22,6 +25,7 @@ const missingItemId = '11111111-1111-4111-8111-111111111111';
 beforeEach(async () => {
   server = await startServer();
   authHeaders = await createAuthHeaders();
+  otherUserHeaders = await createAuthHeaders({ subject: '00000000-0000-4000-8000-000000000002' });
 });
 
 afterEach(async () => {
@@ -32,12 +36,13 @@ afterEach(async () => {
  * item を 1 件作る。
  *
  * @param body - 作成する内容
+ * @param headers - 作成する利用者の認証ヘッダ。省略すると既定の利用者
  * @returns 作成した item
  */
-async function createItem(body: Record<string, unknown>): Promise<Item> {
+async function createItem(body: Record<string, unknown>, headers = authHeaders): Promise<Item> {
   const res = await fetch(server.url(itemsApi.createItem), {
     method: 'POST',
-    headers: { ...authHeaders, 'Content-Type': 'application/json' },
+    headers: { ...headers, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   expect(res.status).toBe(201);
@@ -246,9 +251,59 @@ describe('異常系', () => {
     expect([got.status, updated.status, deleted.status]).toEqual([404, 404, 404]);
     await expect(got.json()).resolves.toMatchObject({ messageKey: 'APP_ITEM_NOT_FOUND' });
   });
+
+  it('AC-11 他の利用者の item の取得・更新・削除は 404 を返し、item は変わらない', async () => {
+    const others = await createItem({ name: '他人の item', status: 'active' }, otherUserHeaders);
+
+    const got = await fetch(server.url(itemsApi.getItem, { id: others.id }), { headers: authHeaders });
+    const updated = await fetch(server.url(itemsApi.updateItem, { id: others.id }), {
+      method: 'PUT',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'archived' }),
+    });
+    const deleted = await fetch(server.url(itemsApi.deleteItem, { id: others.id }), {
+      method: 'DELETE',
+      headers: authHeaders,
+    });
+
+    // 403 でなく 404 にするのは、その id の item が存在すること自体を他人に知らせないため。
+    expect([got.status, updated.status, deleted.status]).toEqual([404, 404, 404]);
+    await expect(got.json()).resolves.toMatchObject({ messageKey: 'APP_ITEM_NOT_FOUND' });
+
+    const own = await fetch(server.url(itemsApi.getItem, { id: others.id }), { headers: otherUserHeaders });
+    await expect(own.json()).resolves.toEqual(others);
+  });
 });
 
 describe('エッジケース', () => {
+  it('AC-11 一覧と総件数には自分の item だけが入る', async () => {
+    await createItem({ name: '自分の item' });
+    await createItem({ name: '他人の item' }, otherUserHeaders);
+
+    const res = await fetch(server.url(itemsApi.listItems), { headers: authHeaders });
+    const body = (await res.json()) as ItemList;
+
+    expect(res.status).toBe(200);
+    expect(body.items.map((item) => item.name)).toEqual(['自分の item']);
+    expect(body.total).toBe(1);
+  });
+
+  it('AC-8 他の利用者の item と同じ name なら作成も更新もできる', async () => {
+    await createItem({ name: '同じ名前' }, otherUserHeaders);
+
+    const created = await createItem({ name: '同じ名前' });
+    const target = await createItem({ name: '変える前の名前' });
+    await createItem({ name: '更新先の名前' }, otherUserHeaders);
+    const res = await fetch(server.url(itemsApi.updateItem, { id: target.id }), {
+      method: 'PUT',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: '更新先の名前' }),
+    });
+
+    expect(created.name).toBe('同じ名前');
+    expect(res.status).toBe(200);
+  });
+
   it('AC-1 limit と offset で範囲を絞れる', async () => {
     await createItem({ name: 'a' });
     await createItem({ name: 'b' });

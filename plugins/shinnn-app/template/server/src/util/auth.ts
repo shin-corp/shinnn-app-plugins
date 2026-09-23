@@ -89,3 +89,21 @@ export function isAuthenticated(): express.RequestHandler {
       });
   };
 }
+
+/**
+ * 認証を通った利用者を取り出す。
+ *
+ * 利用者ごとのデータを扱う controller は、これで取り出した `id` を service に渡して持ち主で絞る。
+ * `isAuthenticated()` を付け忘れたルートで呼ぶと利用者が入っていないので、401 で止める
+ * （持ち主の無い条件で問い合わせて、全員のデータを返してしまうのを防ぐ）。
+ *
+ * @param req - 要求
+ * @returns 認証を通った利用者
+ * @throws 利用者が入っていないとき 401 の CommonException
+ */
+export function currentUser(req: express.Request): AuthenticatedUser {
+  if (req.user === undefined) {
+    throw new CommonException(HttpStatus.UNAUTHORIZED, MessageKeys.APP_UNAUTHORIZED);
+  }
+  return req.user;
+}

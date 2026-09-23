@@ -11,7 +11,10 @@ import type express from 'express';
 import { validateRouteInput } from './validate.js';
 import { HttpStatus } from './http-status.js';
 
-/** ハンドラに渡す要求・応答。ヘッダの読み書きなど、入出力以外が必要なときだけ使う。 */
+/**
+ * ハンドラに渡す要求・応答。認証を通った利用者の取り出し（`currentUser(req)`）や
+ * ヘッダの読み書きなど、入出力以外が必要なときだけ使う。
+ */
 export interface RouteContext {
   readonly req: express.Request;
   readonly res: express.Response;
