@@ -5,6 +5,7 @@
  *   このファイルだけから読まれ、`.shinnn/setup.json` の値は使われないことを確かめる
  * - gh が無いときは、リポジトリの中のファイルを進捗として出さずに、GitHub の画面の URL と gh の導入・ログインの案内を出す
  * - gh の一覧の取得に失敗した欄は、0 件（「（なし）」）と書かずに、取得できなかったことと理由を書く
+ * - 依存か git のフックが無い作業フォルダ（作ったばかりの worktree など）では npm install を促し、両方あれば促さない
  *
  * gh は、hook が呼ぶ node:child_process を偽物に差し替えて答えさせる。差し替えの下準備は一時フォルダに書き、
  * `--import` で読み込む。PATH に偽の gh を置かないのは、Windows の spawnSync が拡張子 .exe / .com のファイルしか
@@ -232,4 +233,40 @@ test('直近の CI は ci.yaml の実行だけを取り、実行中（結果が�
   const ci = section(result.stdout, '直近の CI');
   assert.match(ci, /^run list --workflow ci\.yaml /m);
   assert.match(ci, /\{\{if \.conclusion\}\}\{\{\.conclusion\}\}\{\{else\}\}\{\{\.status\}\}\{\{end\}\}/);
+});
+
+/** 依存と git のフックを入れた状態にする（npm install の後と同じ場所にファイルを置く） */
+function installDependencies(root) {
+  writeFile(root, 'node_modules/.package-lock.json', '{}\n');
+  writeFile(root, '.husky/pre-push', '# 本物のフック\n');
+  writeFile(root, '.husky/_/h', '# husky が作る呼び出し役\n');
+}
+
+test('依存: node_modules と .husky/_ の両方があれば、npm install を促さない', () => {
+  const root = createRepo({});
+  installDependencies(root);
+  const result = runHook(root);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(!result.stdout.includes('## 依存が入っていません'), result.stdout);
+});
+
+test('依存: node_modules が無ければ、npm install を促す', () => {
+  const root = createRepo({});
+  installDependencies(root);
+  rmSync(join(root, 'node_modules'), { recursive: true });
+  const result = runHook(root);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(section(result.stdout, '依存が入っていません'), /`npm install` を実行してください/);
+});
+
+test('依存: node_modules があっても .husky/_ が無ければ（git のフックが動かない）、npm install を促す', () => {
+  const root = createRepo({});
+  installDependencies(root);
+  rmSync(join(root, '.husky', '_'), { recursive: true });
+  const result = runHook(root);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(section(result.stdout, '依存が入っていません'), /main` への push の拒否/);
 });

@@ -4,6 +4,7 @@
  * 進捗の正本は GitHub の Issue・PR・CI で、リポジトリの中に写しは持たない。
  * gh が無い環境では、GitHub の画面の URL と、gh の導入・ログインの案内を出す。
  * 一覧を取得できなかった欄は、0 件（「（なし）」）と見分けられるよう、取得できなかったことと理由の要点を出す。
+ * 依存か git のフックが入っていない作業フォルダ（作ったばかりの worktree など）では、先に npm install を促す。
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -142,6 +143,26 @@ function setupSection(setupPath, installed) {
   );
 }
 
+/**
+ * 依存と git のフックの節。どちらかが無ければ npm install を促す。両方あれば null（節を出さない）。
+ *
+ * husky は git にフックの置き場所を `.husky/_` という相対パスで登録する。`.husky/_` は npm install のときに作られ、
+ * git の管理外なので、作ったばかりの worktree には無い。その間は main への push の拒否とコミット前の lint が動かない。
+ */
+function dependencySection(root) {
+  const hasModules = existsSync(fromRoot(root, 'node_modules'));
+  const hasHooks = !existsSync(fromRoot(root, '.husky')) || existsSync(fromRoot(root, '.husky', '_', 'h'));
+  if (hasModules && hasHooks) {
+    return null;
+  }
+  return [
+    '## 依存が入っていません',
+    'この作業フォルダには、依存（node_modules）か git のフック（.husky/_）がありません（作ったばかりの worktree など）。',
+    '作業を始める前に `npm install` を実行してください。入れるまでは、`main` への push の拒否とコミット前の lint が動かず、',
+    '`npm run dev` や `npm test` も動きません。',
+  ].join('\n');
+}
+
 const input = await readHookInput();
 
 // テンプレートから作ったアプリのリポジトリでだけ動く
@@ -159,13 +180,18 @@ const installed = readVersion(fromRoot(root, '.claude', 'rules', '.standards-ver
 
 out.push(setupSection(fromRoot(root, '.shinnn', 'setup.json'), installed));
 
+const dependencies = dependencySection(root);
+if (dependencies !== null) {
+  out.push(dependencies);
+}
+
 if (distributed !== null && installed !== distributed) {
   out.push(
     section(
       '標準の更新があります',
       [
         `リポジトリの標準: ${installed ?? '不明'} / 配布されている標準: ${distributed}`,
-        '`/shinnn-app:sync-standards` を実行すると、規約の差分を取り込んで PR にします。',
+        '`/shinnn-app:sync-standards` を実行すると、規約・権限の設定・git のフックの差分を取り込んで PR にします。',
       ].join('\n'),
     ),
   );
