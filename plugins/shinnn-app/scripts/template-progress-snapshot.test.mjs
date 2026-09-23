@@ -23,6 +23,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -44,7 +45,9 @@ const fakeGh = pathToFileURL(fileURLToPath(new URL('./template-progress-snapshot
 let workRoot;
 
 before(() => {
-  workRoot = mkdtempSync(join(tmpdir(), 'progress-snapshot-'));
+  // macOS の一時フォルダ（/var/folders/...）は /private/var へのシンボリックリンク。Node はスクリプトの場所を実体の
+  // パスで持つので、偽物の git が答えるルートも実体のパスにそろえる（そろえないと、別のリポジトリの中と見なされる）
+  workRoot = realpathSync(mkdtempSync(join(tmpdir(), 'progress-snapshot-')));
 });
 
 after(() => {
