@@ -76,4 +76,4 @@ router を新設したら、`server/src/app.ts` の `app.use(...)` に足す（�
 ## 順番と PR
 
 **shared → server → client を同じ PR に入れる。** 片方だけ変えると、参照している側が壊れたまま main に入る。
-コミットは層ごとに分ける（`commit-message` 参照）。
+コミットは層ごとに分ける（`.claude/rules/git-workflow.md` の「コミットの分け方」）。

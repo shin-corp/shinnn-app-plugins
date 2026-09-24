@@ -39,7 +39,7 @@ description: 変更をコミット・プッシュしてドラフト PR を作り
 
 ## 2. コミットしてプッシュする
 
-コミットは `commit-message` の規約に従い、層ごとに分ける。
+コミットの前に `.claude/rules/git-workflow.md` の「コミットメッセージ」「コミットの分け方」を読み直し、それに従って層ごとに分ける。
 
 ```
 git push -u origin <ブランチ名>

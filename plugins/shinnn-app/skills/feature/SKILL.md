@@ -93,7 +93,7 @@ gh issue edit <Issue 番号> --remove-label status:next --add-label status:doing
 
 ## 5. コミットする
 
-`commit-message` の規約に従い、**層ごとに分ける**（shared → server → client → テスト）。
+`.claude/rules/git-workflow.md` の「コミットメッセージ」「コミットの分け方」を読み直してから、**層ごとに分ける**（shared → server → client → テスト）。
 実装とテストは別コミットにする。
 
 ## 6. 仕上げ

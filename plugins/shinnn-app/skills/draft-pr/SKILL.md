@@ -27,7 +27,7 @@ git commit -F <メッセージのパス>
 git push -u origin <ブランチ名>
 ```
 
-メッセージは `commit-message` の規約に従う。層ごとに分ける。
+メッセージと分け方は `.claude/rules/git-workflow.md` の「コミットメッセージ」「コミットの分け方」に従う。
 
 ## 3. ドラフト PR を作る
 

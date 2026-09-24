@@ -37,7 +37,7 @@
 | `/shinnn-app:check` | 型検査・lint・テストと、受入条件および API 定義のカバレッジ（`pr` が PR 1 本につき 1 回呼ぶ） |
 | `/shinnn-app:retro` | Issue への振り返りコメントと引き継ぎメモの追記（`pr` が呼ぶ） |
 
-内部スキル: `add-api` / `add-screen` / `db-migrate` / `code-review` / `commit-message` /
+内部スキル: `add-api` / `add-screen` / `db-migrate` / `code-review` /
 `draft-pr` / `build-check` / `lint-check` / `pre-commit-check` / `test-run` / `mutation-check` /
 `dev-stack-start` / `handover-check` / `update-rules` / `session-retro`
 
