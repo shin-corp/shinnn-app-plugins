@@ -88,7 +88,7 @@ gh issue edit <Issue 番号> --remove-label status:next --add-label status:doing
 ```
 
 `pr` が手順 1 で `check` を通し、最後に `retro` で振り返りまで残す。どれも利用者に打たせず、ここで続けて行う。
-計画の Issue なら、続けて 7 に進む。
+計画の Issue なら、続けて 7 に進む。計画の無い 1 本なら、`/shinnn-app:session-retro` を 1 回行ってから、7 の形で報告して終える。
 
 ## 7. 次の Issue へ進む（計画があるとき）
 
@@ -104,6 +104,9 @@ PR を出したあとの動きは `.shinnn/setup.json` の `mergePolicy` で決�
 - 進められる `status:next` の Issue が無い（計画が終わった、または残りが PR のマージ待ち）
 - 実装の途中で仕様の穴が見つかり、人に返した
 - `pr` のレビューが収束しない、または CI が直らない
+
+1 つ目の理由（進められる Issue が無い）で止まるときは、報告の前に `/shinnn-app:session-retro` を 1 回行い、
+このセッションで出した PR の振り返りを、次から効く形に置き直す（PR ごとには行わない）。
 
 止まるときは、次の 3 つを**利用者の言葉で**報告する。
 
