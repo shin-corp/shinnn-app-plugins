@@ -84,6 +84,7 @@ claude plugin install shinnn-app@shinnn --scope local
 
 **道具は自動で新しくなります。** アプリのフォルダで Claude Code を開くと、シン株式会社が出した新しい版を裏で取り込み、
 次に開いたときから使われます。すぐに使いたいときは、Claude Code に `/reload-plugins` と入力します。
+作業を頼んだときに古い版だと分かれば、Claude がその場で新しくして、`/reload-plugins` の入力をお願いします。
 
 自動で新しくならないとき（古いアプリで、まだ決まりごとを取り込んでいないときなど）は、アプリのフォルダで次を実行し、
 Claude Code を開き直します。すでにあるアプリに参加した方は、`--scope project` のところを `--scope local` にします。
