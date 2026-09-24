@@ -63,5 +63,6 @@ const list = await call(itemsApi.listItems, { query: { limit: 20, offset: 0 } })
 
 ```
 npm run check -w client
-/shinnn-app:check
 ```
+
+画面のパッケージの型検査と lint だけを通す。まとめての `/shinnn-app:check` は、`/shinnn-app:pr` が PR を出す前に 1 回通すので、ここでは走らせない。

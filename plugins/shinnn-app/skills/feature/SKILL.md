@@ -72,7 +72,8 @@ gh issue edit <Issue 番号> --remove-label status:next --add-label status:doing
 
 **参照される側を先に書く。** shared を変えずに server や client だけ直したくなったら、それは API 定義の考え漏れなので shared に戻る。
 
-各段階が終わるたびに、その層の `check` を通してから次へ進む（全部書いてからまとめて直さない）。
+各段階の確認は、応答を終えるたびに hook が触ったファイルの lint と関連テストを走らせるので、その結果を直してから次へ進む
+（全部書いてからまとめて直さない）。段階ごとに `/shinnn-app:check` をまとめて走らせない（`pr` が出す前に 1 回通す）。
 画面の作り方の詳細は `add-screen`、API の追加手順は `add-api` を読む。
 
 ## 5. コミットする
@@ -83,10 +84,10 @@ gh issue edit <Issue 番号> --remove-label status:next --add-label status:doing
 ## 6. 仕上げ
 
 ```
-/shinnn-app:check
 /shinnn-app:pr
 ```
 
+`pr` が手順 1 で `check` を通し、最後に `retro` で振り返りまで残す。どれも利用者に打たせず、ここで続けて行う。
 計画の Issue なら、続けて 7 に進む。
 
 ## 7. 次の Issue へ進む（計画があるとき）
