@@ -4,7 +4,8 @@
       "source": {
         "source": "github",
         "repo": "shin-corp/shinnn-app-plugins"
-      }
+      },
+      "autoUpdate": true
     }
   },
   "enabledPlugins": {

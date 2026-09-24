@@ -18,7 +18,10 @@ description: プラグインが配布する標準（CLAUDE.md 雛形・rules・�
 同じなら「更新はありません」と報告して終わる。**同じなのにファイルが違う場合**は、
 リポジトリ側が手で書き換えられている。その差分を示し、どちらを採るか人に確認する。
 
-プラグイン自体が古い可能性もあるので、先に `claude plugin update` を案内する。
+プラグインは、`.claude/settings.json` の配布元の設定（`autoUpdate`）で起動後に自動で更新され、次に開いたときから新しい版になる。
+新しい版が出ているはずなのに差が無いときは、開き直すか `/reload-plugins` を案内する。
+`.claude/settings.json` に `autoUpdate` が無い古いリポジトリでは、先に `claude plugin update shinnn-app@shinnn --scope project` を案内する
+（このスキルで `settings.json` を取り込めば、次からは自動になる）。
 
 ## 2. 変更点をまとめる
 
