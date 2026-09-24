@@ -64,7 +64,7 @@ router を新設したら、`server/src/app.ts` の `app.use(...)` に足す（�
 - 実サーバーを立てて（`app.listen(0)`）、`fetch` で本番と同じ HTTP 経路を叩く
 - 受入条件があるなら、テスト名に `AC-n` を含める（CI が照合する）
 - 利用者ごとのデータなら、別の利用者のトークン（`createAuthHeaders({ subject })`）で 404 になることと、一覧に入らないことを確かめる
-- DB は既定で PGlite。実 PostgreSQL でしか確認できないものは、接続先を渡す環境変数を足し、`docs/env.md` に名前を書く
+- テストの DB は既定で PGlite。実 PostgreSQL でしか確認できないものは、接続先を渡す環境変数を足し、`docs/env.md` に名前を書く
 
 ## 6. docs
 
