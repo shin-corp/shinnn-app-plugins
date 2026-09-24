@@ -6,7 +6,7 @@
  *  - describe は 正常系 / 異常系 / エッジケース で分ける
  *  - テスト名の先頭に docs/仕様書.md の受入条件の番号（AC-n）を書く
  *  - サーバーと DB はファイルごとに 1 回作り、テストごとにデータを空にするので、実行順に結果が左右されない
- *  - 利用者ごとのデータは、別の利用者のトークンで「見えない・変えられない」ことを必ず確かめる（AC-11）
+ *  - 利用者ごとのデータは、別の利用者のトークンで「見えない・変えられない」ことを必ず確かめる（AC-7）
  */
 
 import { itemsApi, type Item, type ItemList } from '@app/shared/api';
@@ -73,7 +73,7 @@ describe('正常系', () => {
     expect(body.total).toBe(2);
   });
 
-  it('AC-2 id を指定して 1 件取得できる', async () => {
+  it('AC-3 id を指定して 1 件取得できる', async () => {
     const created = await createItem({ name: '作業手順書', description: '現場での手順' });
 
     const res = await fetch(server.url(itemsApi.getItem, { id: created.id }), { headers: authHeaders });
@@ -82,7 +82,7 @@ describe('正常系', () => {
     await expect(res.json()).resolves.toEqual(created);
   });
 
-  it('AC-3 作成すると 201 で作成した item を返す', async () => {
+  it('AC-2 作成すると 201 で作成した item を返す', async () => {
     const res = await fetch(server.url(itemsApi.createItem), {
       method: 'POST',
       headers: { ...authHeaders, 'Content-Type': 'application/json' },
@@ -95,13 +95,13 @@ describe('正常系', () => {
     expect(body.id).toMatch(/^[0-9a-f-]{36}$/);
   });
 
-  it('AC-3 status を省略すると draft になる', async () => {
+  it('AC-2 status を省略すると draft になる', async () => {
     const created = await createItem({ name: '下書き' });
 
     expect(created.status).toBe('draft');
   });
 
-  it('AC-4 渡した項目だけを書き換える', async () => {
+  it('AC-3 渡した項目だけを書き換える', async () => {
     const created = await createItem({ name: '旧価格表', description: '2025 年度', status: 'active' });
 
     const res = await fetch(server.url(itemsApi.updateItem, { id: created.id }), {
@@ -115,7 +115,7 @@ describe('正常系', () => {
     expect(body).toMatchObject({ name: '旧価格表', description: '2025 年度', status: 'archived' });
   });
 
-  it('AC-4 説明を空文字にすると説明が消える', async () => {
+  it('AC-3 説明を空文字にすると説明が消える', async () => {
     const created = await createItem({ name: '説明を消す item', description: '消される説明' });
 
     const res = await fetch(server.url(itemsApi.updateItem, { id: created.id }), {
@@ -129,7 +129,7 @@ describe('正常系', () => {
     expect(body.description).toBe('');
   });
 
-  it('AC-5 削除すると 204 で本文を返さず、その後は取得できない', async () => {
+  it('AC-3 削除すると 204 で本文を返さず、その後は取得できない', async () => {
     const created = await createItem({ name: '削除する item' });
 
     const deleted = await fetch(server.url(itemsApi.deleteItem, { id: created.id }), {
@@ -145,14 +145,14 @@ describe('正常系', () => {
 });
 
 describe('異常系', () => {
-  it('AC-6 トークンが無いと 401 を返す', async () => {
+  it('AC-4 トークンが無いと 401 を返す', async () => {
     const res = await fetch(server.url(itemsApi.listItems));
 
     expect(res.status).toBe(401);
     await expect(res.json()).resolves.toMatchObject({ messageKey: 'APP_UNAUTHORIZED' });
   });
 
-  it('AC-6 受け取り手（aud）が違うトークンは 401 を返す', async () => {
+  it('AC-4 受け取り手（aud）が違うトークンは 401 を返す', async () => {
     const headers = await createAuthHeaders({ audience: 'other-app' });
 
     const res = await fetch(server.url(itemsApi.listItems), { headers });
@@ -160,7 +160,7 @@ describe('異常系', () => {
     expect(res.status).toBe(401);
   });
 
-  it('AC-6 期限切れのトークンは 401 を返す', async () => {
+  it('AC-4 期限切れのトークンは 401 を返す', async () => {
     const headers = await createAuthHeaders({ expiresIn: '-1h' });
 
     const res = await fetch(server.url(itemsApi.listItems), { headers });
@@ -168,7 +168,7 @@ describe('異常系', () => {
     expect(res.status).toBe(401);
   });
 
-  it('AC-6 有効期限（exp）の無いトークンは 401 を返す', async () => {
+  it('AC-4 有効期限（exp）の無いトークンは 401 を返す', async () => {
     const headers = await createAuthHeaders({ expiresIn: null });
 
     const res = await fetch(server.url(itemsApi.listItems), { headers });
@@ -177,7 +177,7 @@ describe('異常系', () => {
     await expect(res.json()).resolves.toMatchObject({ messageKey: 'APP_UNAUTHORIZED' });
   });
 
-  it('AC-7 name が空だと 400 と検証の内訳を返す', async () => {
+  it('AC-5 name が空だと 400 と検証の内訳を返す', async () => {
     const res = await fetch(server.url(itemsApi.createItem), {
       method: 'POST',
       headers: { ...authHeaders, 'Content-Type': 'application/json' },
@@ -190,20 +190,20 @@ describe('異常系', () => {
     expect(body.details).toHaveLength(1);
   });
 
-  it('AC-7 id が uuid の形でないと 400 を返す', async () => {
+  it('AC-5 id が uuid の形でないと 400 を返す', async () => {
     const res = await fetch(server.url(itemsApi.getItem, { id: 'not-a-uuid' }), { headers: authHeaders });
 
     expect(res.status).toBe(400);
     await expect(res.json()).resolves.toMatchObject({ messageKey: 'APP_VALIDATION_FAILED' });
   });
 
-  it('AC-7 limit が上限を超えると 400 を返す', async () => {
+  it('AC-5 limit が上限を超えると 400 を返す', async () => {
     const res = await fetch(`${server.url(itemsApi.listItems)}?limit=101`, { headers: authHeaders });
 
     expect(res.status).toBe(400);
   });
 
-  it('AC-7 本文が JSON として読めないと 400 を返す', async () => {
+  it('AC-5 本文が JSON として読めないと 400 を返す', async () => {
     const res = await fetch(server.url(itemsApi.createItem), {
       method: 'POST',
       headers: { ...authHeaders, 'Content-Type': 'application/json' },
@@ -214,7 +214,7 @@ describe('異常系', () => {
     await expect(res.json()).resolves.toMatchObject({ messageKey: 'APP_INVALID_JSON' });
   });
 
-  it('AC-8 同じ name で作成すると 409 を返す', async () => {
+  it('AC-6 同じ name で作成すると 409 を返す', async () => {
     await createItem({ name: '重複する名前' });
 
     const res = await fetch(server.url(itemsApi.createItem), {
@@ -227,7 +227,7 @@ describe('異常系', () => {
     await expect(res.json()).resolves.toMatchObject({ messageKey: 'APP_ITEM_NAME_DUPLICATE' });
   });
 
-  it('AC-8 他の item と同じ name へ更新すると 409 を返す', async () => {
+  it('AC-6 他の item と同じ name へ更新すると 409 を返す', async () => {
     await createItem({ name: '先にある名前' });
     const target = await createItem({ name: '後から作った名前' });
 
@@ -240,7 +240,7 @@ describe('異常系', () => {
     expect(res.status).toBe(409);
   });
 
-  it('AC-9 存在しない id の取得・更新・削除は 404 を返す', async () => {
+  it('AC-3 存在しない id の取得・更新・削除は 404 を返す', async () => {
     const got = await fetch(server.url(itemsApi.getItem, { id: missingItemId }), { headers: authHeaders });
     const updated = await fetch(server.url(itemsApi.updateItem, { id: missingItemId }), {
       method: 'PUT',
@@ -256,7 +256,7 @@ describe('異常系', () => {
     await expect(got.json()).resolves.toMatchObject({ messageKey: 'APP_ITEM_NOT_FOUND' });
   });
 
-  it('AC-11 他の利用者の item の取得・更新・削除は 404 を返し、item は変わらない', async () => {
+  it('AC-7 他の利用者の item の取得・更新・削除は 404 を返し、item は変わらない', async () => {
     const others = await createItem({ name: '他人の item', status: 'active' }, otherUserHeaders);
 
     const got = await fetch(server.url(itemsApi.getItem, { id: others.id }), { headers: authHeaders });
@@ -280,7 +280,7 @@ describe('異常系', () => {
 });
 
 describe('エッジケース', () => {
-  it('AC-11 一覧と総件数には自分の item だけが入る', async () => {
+  it('AC-7 一覧と総件数には自分の item だけが入る', async () => {
     await createItem({ name: '自分の item' });
     await createItem({ name: '他人の item' }, otherUserHeaders);
 
@@ -292,7 +292,7 @@ describe('エッジケース', () => {
     expect(body.total).toBe(1);
   });
 
-  it('AC-8 他の利用者の item と同じ name なら作成も更新もできる', async () => {
+  it('AC-6 他の利用者の item と同じ name なら作成も更新もできる', async () => {
     await createItem({ name: '同じ名前' }, otherUserHeaders);
 
     const created = await createItem({ name: '同じ名前' });
@@ -322,7 +322,7 @@ describe('エッジケース', () => {
     expect(body.total).toBe(3);
   });
 
-  it('AC-4 書き換える項目が無い更新は値を変えない', async () => {
+  it('AC-3 書き換える項目が無い更新は値を変えない', async () => {
     const created = await createItem({ name: '変えない item' });
 
     const res = await fetch(server.url(itemsApi.updateItem, { id: created.id }), {
@@ -335,7 +335,7 @@ describe('エッジケース', () => {
     await expect(res.json()).resolves.toEqual(created);
   });
 
-  it('AC-3 name は 100 文字まで受け付け、101 文字は 400 を返す', async () => {
+  it('AC-2 name は 100 文字まで受け付け、101 文字は 400 を返す', async () => {
     const created = await createItem({ name: 'あ'.repeat(100) });
     expect(created.name).toHaveLength(100);
 
@@ -348,7 +348,7 @@ describe('エッジケース', () => {
     expect(res.status).toBe(400);
   });
 
-  it('AC-3 description を省略すると応答に含まれない', async () => {
+  it('AC-2 description を省略すると応答に含まれない', async () => {
     const created = await createItem({ name: '説明なし' });
 
     expect(created).not.toHaveProperty('description');

@@ -1,4 +1,8 @@
-/** @file items 一覧画面の検証。fetch を差し替えて、取得した item が表に並ぶことを確かめる。 */
+/**
+ * @file items 一覧画面の検証。fetch を差し替えて、画面に出る結果を確かめる。
+ *
+ * テスト名の先頭の AC-n は docs/仕様書.md の受入条件の番号（画面に現れる条件）。
+ */
 
 import { TestBed } from '@angular/core/testing';
 import type { Item } from '@app/shared/api';
@@ -36,6 +40,14 @@ function stubListResponse(body: unknown, status = 200): void {
   );
 }
 
+/** 一覧 API が応答を返さないままにする（読み込み中の状態を作る）。 */
+function stubPendingResponse(): void {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => new Promise<Response>(() => undefined)),
+  );
+}
+
 /** 画面を組み立てて、取得が終わるまで待つ。 */
 async function renderPage(): Promise<HTMLElement> {
   const fixture = TestBed.createComponent(ItemsPageComponent);
@@ -49,7 +61,7 @@ describe('ItemsPageComponent', () => {
   });
 
   describe('正常系', () => {
-    it('取得した item を表に並べる', async () => {
+    it('AC-8 取得した item を表に並べる', async () => {
       stubListResponse({ items, total: items.length });
 
       const element = await renderPage();
@@ -60,7 +72,7 @@ describe('ItemsPageComponent', () => {
       expect(cells).toContain('請求書テンプレート');
     });
 
-    it('状態は日本語の表示名にする', async () => {
+    it('AC-8 状態は日本語の表示名にする', async () => {
       stubListResponse({ items, total: items.length });
 
       const element = await renderPage();
@@ -71,8 +83,30 @@ describe('ItemsPageComponent', () => {
     });
   });
 
+  describe('異常系', () => {
+    it('AC-9 取得に失敗したら理由を通知する', async () => {
+      stubListResponse({ messageKey: 'APP_INTERNAL_ERROR', message: 'サーバー内部でエラーが発生しました。' }, 500);
+
+      await renderPage();
+
+      expect(document.body.textContent).toContain('サーバー内部でエラーが発生しました。（APP_INTERNAL_ERROR）');
+    });
+  });
+
   describe('エッジケース', () => {
-    it('総件数より取得できた件数が少ないときは、その旨を添える', async () => {
+    it('AC-9 読み込み中は進み具合を出す', async () => {
+      stubPendingResponse();
+
+      const fixture = TestBed.createComponent(ItemsPageComponent);
+      fixture.detectChanges();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      fixture.detectChanges();
+
+      const element = fixture.nativeElement as HTMLElement;
+      expect(element.querySelector('mat-progress-bar')).not.toBeNull();
+    });
+
+    it('AC-8 総件数より取得できた件数が少ないときは、その旨を添える', async () => {
       stubListResponse({ items, total: 137 });
 
       const element = await renderPage();
@@ -81,7 +115,7 @@ describe('ItemsPageComponent', () => {
       expect(element.textContent).toContain('先頭 2 件のみ表示しています');
     });
 
-    it('item が 0 件なら案内を出す', async () => {
+    it('AC-9 item が 0 件なら案内を出す', async () => {
       stubListResponse({ items: [], total: 0 });
 
       const element = await renderPage();

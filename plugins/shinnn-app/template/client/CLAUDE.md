@@ -97,19 +97,18 @@ client/
 - 配色は Material のシステム変数（`--mat-sys-*`）。`@theme` で Tailwind の色（`text-primary` など）に流し込んである。
   新しい色を直値で書かない
 
-## 画面の作り方
+## 画面の決まり
 
-1. Issue の受入条件を読む。作る画面と、必要なデータを確かめる
-2. `shared/src/api/<機能>.ts` に API 定義があるか確かめる。無ければ **shared → server → client の順**で先に用意する（同じ PR）
-3. `features/<機能>/` を作る。手本は `features/items/`（サンプルの `items` を消した後は、既存の機能を手本にする）。ディレクトリの形から逸脱しない
-4. `<機能>.routes.ts` を作り、`app.routes.ts` から `loadChildren` で繋ぐ
-5. 一覧は `shared/data-table` を使う。列定義（`DataTableColumn`）を書くだけにして、並べ替え・ページング・絞り込みを画面ごとに実装しない。
-   `data-table` が扱うのは**画面が取得済みの行だけ**なので、取得件数は `limit` を明示して決める（省略するとサーバーの既定 20 件になる）。
-   **100 件を超えうる一覧はサーバーページングにする**（`limit` と `offset` を画面の signal にして、ページャの操作で読み直す）。
-   総件数（`total`）と取得件数が食い違う場合は、そのことを画面に出す（`features/items/` が手本）
-6. 入力は `MatDialog` + Reactive Forms + Material の form field / select。編集対象は `MAT_DIALOG_DATA` で受け取る
-7. 取得は `resource()` + `call()`。**読み込み中・0 件・失敗の 3 状態を必ず出し分ける**。失敗は `MatSnackBar` に `describeError()` の文言を出す
-8. `*.test.ts` を書き（`正常系` / `異常系` / `エッジケース`）、`npm run check -w client` と `test` を通してから PR
+画面を足す手順は `/shinnn-app:add-screen`。ここには守る決まりだけを書く。手本は `features/items/`
+（サンプルの `items` を消した後は、既存の機能を手本にする）。
+
+- **取得と 3 状態**: 取得は `resource()` + `call()`。**読み込み中・0 件・失敗の 3 状態を必ず出し分ける**。
+  失敗は `MatSnackBar` に `describeError()` の文言を出す
+- **一覧**: `shared/data-table` を使う。列定義（`DataTableColumn`）を書くだけにして、並べ替え・ページング・絞り込みを画面ごとに実装しない。
+  `data-table` が扱うのは**画面が取得済みの行だけ**なので、取得件数は `limit` を明示して決める（省略するとサーバーの既定 20 件になる）。
+  **100 件を超えうる一覧はサーバーページングにする**（`limit` と `offset` を画面の signal にして、ページャの操作で読み直す）。
+  総件数（`total`）と取得件数が食い違う場合は、そのことを画面に出す
+- **入力**: `MatDialog` + Reactive Forms + Material の form field / select。編集対象は `MAT_DIALOG_DATA` で受け取る
 
 ## API 呼び出し
 

@@ -1,6 +1,7 @@
 ---
 paths:
   - 'server/src/db/**'
+  - 'server/src/service/**'
   - 'server/drizzle/**'
   - 'server/seed/**'
 ---
@@ -31,14 +32,14 @@ PostgreSQL 16 と Drizzle ORM です。層の位置づけは [server-architectur
   利用者の識別子が uuid とは限らないので `varchar` で持つ。持ち主ごとの一意性は `(owner_id, name)` のような
   複合の UNIQUE で表す（この索引が持ち主での絞り込みにも効く）
 - 削除は原則として物理削除。論理削除が要る場合は仕様書に理由を書いてから足す
+- 列は原則 `NOT NULL` にし、既定値を付ける。あとから必須にするのは、既存の行があると難しい
 
 ## マイグレーション
 
-1. `db/schema/*.ts` を編集する
-2. `npm run db:generate -w server` で `server/drizzle/` に SQL を生成する
-3. **生成された SQL を読む。** 意図しない `DROP` や型変更が入っていないか確認する
-4. `npm run db:migrate -w server` で適用する
+手順は `/shinnn-app:db-migrate`（スキーマを直す → SQL を生成する → 生成された SQL を読む → 適用する）。
 
+- **生成された SQL を読んでから適用する。** 意図しない `DROP` や型変更が入っていないか確認する
+- `drizzle-kit push` を使わない。マイグレーションを残さず DB を直接変えるので、他の環境で同じ状態を再現できない
 - **生成物を手で編集しない**（`.claude/settings.json` で編集が deny されている）。
   直したいときはスキーマを直して生成し直す
 - 生成済みのマイグレーションを後から書き換えない。**打ち消す新しいマイグレーションを足す**

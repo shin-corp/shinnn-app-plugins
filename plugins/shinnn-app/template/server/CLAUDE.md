@@ -67,20 +67,9 @@ api/<機能>/{index.ts, <機能>.controller.ts}  →  service/  →  db/
 
 この関係は `eslint.config.js` の `no-restricted-imports` で強制していて、破るとビルドが失敗する。
 
-## エンドポイントを追加する 6 手順
+## エンドポイントを追加する
 
-1. **API 定義**: `shared/src/api/<機能>.ts` に zod スキーマと `defineRoute(...)` を書き、`<機能>Api` にまとめる
-2. **ルーター**: `src/api/<機能>/index.ts` で `route(router, <機能>Api.xxx, controller.xxx)` を登録する。`router.get(...)` を直接書かない
-3. **controller**: `src/api/<機能>/<機能>.controller.ts` は薄く。検証済みの入力を service へ渡し、戻り値を返すだけ
-4. **service**: `src/service/<機能>.service.ts` に業務処理。失敗は `CommonException` で投げる。
-   利用者ごとのデータは controller から `currentUser(req).id` を受け取り、すべての条件を持ち主で絞る
-5. **テーブル**: 必要なら `src/db/schema/<テーブル>.ts` を足し、`db:generate` でマイグレーションを生成（SQL は手で書かない）
-6. **テストと docs**: `tests/<機能>.test.ts` を追加し、`docs/仕様書.md` の受入条件と `docs/env.md` を更新する
-
-API 定義・実装・テストは同じ PR にまとめる。片方だけ変えるとビルドか CI が落ちる。
-
-メッセージを足すときは `resources/messages.json` だけを編集して `npm run messages` を実行する。
-生成物の `src/util/message/message-keys.ts` は手で書き換えない。
+手順は `/shinnn-app:add-api`（API 定義 → テーブル → service → router と controller → テスト → docs）。
 
 ## Express 5 の注意
 
@@ -114,5 +103,5 @@ error middleware は 4 引数で `app.ts` に 1 か所だけ置く。エラー�
 - 要求先の URL は API 定義から組み立てる（`server.url(itemsApi.getItem, { id })`）。URL を手で書かない。
   手本はサンプルの `tests/items.test.ts`（サンプルの `items` を消した後は、既存の機能を手本にする）
 - `describe` は `正常系` / `異常系` / `エッジケース` に分け、テスト名の先頭に受入条件の番号（`AC-1` など）を書く
-- DB はテストごとに新しい PGlite を作り、本番と同じマイグレーションを流す。テスト間でデータは混ざらない
+- DB はテストファイルごとに PGlite を作って本番と同じマイグレーションを流し、テストごとに `reset()` でデータを空にする
 - 実装とテストが食い違ったときは、まず実装が正しいかを確かめる。仕様書に照らして実装が誤っていれば実装を直す

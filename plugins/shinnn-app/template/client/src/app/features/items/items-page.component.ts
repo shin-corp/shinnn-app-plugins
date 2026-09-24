@@ -52,8 +52,12 @@ export default class ItemsPageComponent {
       call(itemsApi.listItems, { query: { limit: fetchLimit } }, { signal: abortSignal }),
   });
 
-  protected readonly items = computed(() => this.itemsResource.value()?.items ?? []);
-  protected readonly total = computed(() => this.itemsResource.value()?.total ?? 0);
+  /*
+   * 取得に失敗した resource の value() は、読むと例外を投げる。hasValue() で確かめてから読まないと、
+   * 失敗したときに画面の描画ごと止まり、失敗の通知も出ない。
+   */
+  protected readonly items = computed(() => (this.itemsResource.hasValue() ? this.itemsResource.value().items : []));
+  protected readonly total = computed(() => (this.itemsResource.hasValue() ? this.itemsResource.value().total : 0));
 
   /** 総件数のうち取得できていない分があるか。件数の食い違いを黙って隠さないために出す。 */
   protected readonly hasUnfetched = computed(() => this.total() > this.items().length);
