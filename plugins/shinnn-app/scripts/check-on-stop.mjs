@@ -8,7 +8,7 @@
  * 一時的に黙らせたいときは、環境変数 SHINNN_SKIP_STOP_CHECK に値を入れる（何も出さずに終える）。
  */
 import { existsSync } from 'node:fs';
-import { fromRoot, hookOutput, isAppRepo, projectDir, readHookInput, run } from './lib/hook-io.mjs';
+import { appRootOf, fromRoot, hookOutput, projectDir, readHookInput, run } from './lib/hook-io.mjs';
 
 const LINTABLE = /\.(ts|tsx|mjs|cjs|js)$/;
 
@@ -86,9 +86,10 @@ if (input.stop_hook_active === true) {
   process.exit(0);
 }
 
-// テンプレートから作ったアプリのリポジトリでだけ動く
-const root = projectDir(input);
-if (!isAppRepo(root)) {
+// 作業している場所を含む、テンプレートから作ったアプリのリポジトリでだけ動く。
+// セッションの途中で worktree に入っていれば、その worktree の変更を検査する
+const root = appRootOf(input.cwd || projectDir(input));
+if (!root) {
   process.exit(0);
 }
 

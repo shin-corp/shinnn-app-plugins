@@ -6,7 +6,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { join, relative, resolve, sep } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 
 /** 標準入力の JSON を読む。壊れていても hook 自体は落とさない（空オブジェクトを返す） */
 export async function readHookInput() {
@@ -41,6 +41,25 @@ const SETUP_FILE = '.shinnn/setup.json';
  */
 export function isAppRepo(root) {
   return existsSync(join(root, SETUP_FILE));
+}
+
+/**
+ * 渡したパスを含むアプリのリポジトリのルート。アプリのリポジトリの中でなければ null。
+ *
+ * 目印か `.git` のあるフォルダまで親をたどり、そこをリポジトリのルートとする。worktree（同じリポジトリを別のフォルダに
+ * 取り出したもの。`.git` はフォルダではなくファイル）の中のパスなら、その worktree がルートになる。
+ * CLAUDE_PROJECT_DIR はセッションを始めたフォルダのまま変わらないので、作業している場所の手がかりには使わない。
+ */
+export function appRootOf(path) {
+  let dir = resolve(path);
+  while (!existsSync(join(dir, SETUP_FILE)) && !existsSync(join(dir, '.git'))) {
+    const parent = dirname(dir);
+    if (parent === dir) {
+      return null;
+    }
+    dir = parent;
+  }
+  return isAppRepo(dir) ? dir : null;
 }
 
 /** 絶対パス・相対パスのどちらで来ても、リポジトリルート起点の POSIX 相対パスに正規化する */

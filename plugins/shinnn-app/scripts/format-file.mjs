@@ -6,7 +6,8 @@
  * PostToolUse は操作を止められない（編集はもう済んでいる）ので、残った指摘は JSON の additionalContext で渡す。
  */
 import { existsSync } from 'node:fs';
-import { hookOutput, isAppRepo, readHookInput, projectDir, run, toRepoPath } from './lib/hook-io.mjs';
+import { dirname, resolve } from 'node:path';
+import { appRootOf, hookOutput, readHookInput, projectDir, run, toRepoPath } from './lib/hook-io.mjs';
 
 /** 対象拡張子。HTML と CSS は eslint の対象外なので触らない */
 const LINTABLE = /\.(ts|tsx|mjs|cjs|js)$/;
@@ -22,13 +23,20 @@ if (!['Edit', 'Write', 'MultiEdit'].includes(input.tool_name || '')) {
   process.exit(0);
 }
 
-// テンプレートから作ったアプリのリポジトリでだけ動く
-const root = projectDir(input);
-if (!isAppRepo(root)) {
+const filePath = input.tool_input?.file_path || '';
+if (!filePath) {
   process.exit(0);
 }
 
-const repoPath = toRepoPath(input.tool_input?.file_path || '', root);
+// 編集したファイルを含む、テンプレートから作ったアプリのリポジトリでだけ動く。
+// worktree の中のファイルなら、その worktree の依存と設定で lint する
+const absoluteFile = resolve(input.cwd || projectDir(input), filePath);
+const root = appRootOf(dirname(absoluteFile));
+if (!root) {
+  process.exit(0);
+}
+
+const repoPath = toRepoPath(absoluteFile, root);
 if (!repoPath || !LINTABLE.test(repoPath)) {
   process.exit(0);
 }
