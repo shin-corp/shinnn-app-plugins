@@ -5,16 +5,16 @@
  * どの条件を確かめているテストなのかを、実行結果からたどれるようにする。
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startServer, type TestServer } from './helpers/server.js';
 
 let server: TestServer;
 
-beforeEach(async () => {
+beforeAll(async () => {
   server = await startServer();
 });
 
-afterEach(async () => {
+afterAll(async () => {
   await server.close();
 });
 

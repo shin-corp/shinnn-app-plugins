@@ -10,7 +10,7 @@ import { buildPath } from '@app/shared/api';
 import type { AddressInfo } from 'node:net';
 import { createApp } from '../../src/app.js';
 import type { AppDatabase } from '../../src/db/client.js';
-import { createTestDb } from './db.js';
+import { clearTestDb, createTestDb } from './db.js';
 
 /** 立ち上げたテスト用サーバー。 */
 export interface TestServer {
@@ -25,12 +25,14 @@ export interface TestServer {
   readonly url: (route: AnyRouteDef, params?: PathParams) => string;
   /** テストデータを直接用意したいときに使う DB のハンドル。 */
   readonly db: AppDatabase;
+  /** DB のデータを空にする。前のテストが残したデータに依存しないよう、`beforeEach` で呼ぶ。 */
+  readonly reset: () => Promise<void>;
   /** サーバーと DB を止める。`afterAll` で必ず呼ぶ。 */
   readonly close: () => Promise<void>;
 }
 
 /**
- * テスト用のサーバーを立てる。
+ * テスト用のサーバーを立てる。テストファイルごとに 1 回、`beforeAll` で呼ぶ。
  *
  * @returns 立ち上げたサーバー
  */
@@ -54,6 +56,7 @@ export async function startServer(): Promise<TestServer> {
     baseUrl: `http://127.0.0.1:${port}`,
     url: (route, params) => `http://127.0.0.1:${port}${buildPath(route.path, params)}`,
     db: handle.db,
+    reset: () => clearTestDb(handle.db),
     close: async () => {
       await new Promise<void>((resolve, reject) => {
         server.close((error) => {

@@ -5,12 +5,12 @@
  *  - 要求先の URL は API 定義から組み立てる（`server.url(itemsApi.getItem, { id })`）
  *  - describe は 正常系 / 異常系 / エッジケース で分ける
  *  - テスト名の先頭に docs/仕様書.md の受入条件の番号（AC-n）を書く
- *  - テストごとにサーバーと DB を作り直すので、実行順に結果が左右されない
+ *  - サーバーと DB はファイルごとに 1 回作り、テストごとにデータを空にするので、実行順に結果が左右されない
  *  - 利用者ごとのデータは、別の利用者のトークンで「見えない・変えられない」ことを必ず確かめる（AC-11）
  */
 
 import { itemsApi, type Item, type ItemList } from '@app/shared/api';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createAuthHeaders } from './helpers/auth.js';
 import { startServer, type TestServer } from './helpers/server.js';
 
@@ -22,13 +22,17 @@ let otherUserHeaders: Record<string, string>;
 /** 存在しない item の id。形式は正しいので、404 と 400 を区別して確かめられる。 */
 const missingItemId = '11111111-1111-4111-8111-111111111111';
 
-beforeEach(async () => {
+beforeAll(async () => {
   server = await startServer();
   authHeaders = await createAuthHeaders();
   otherUserHeaders = await createAuthHeaders({ subject: '00000000-0000-4000-8000-000000000002' });
 });
 
-afterEach(async () => {
+beforeEach(async () => {
+  await server.reset();
+});
+
+afterAll(async () => {
   await server.close();
 });
 
