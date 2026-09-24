@@ -39,7 +39,7 @@
 
 内部スキル: `add-api` / `add-screen` / `db-migrate` / `code-review` / `commit-message` /
 `draft-pr` / `build-check` / `lint-check` / `pre-commit-check` / `test-run` / `mutation-check` /
-`dev-stack-start` / `handover-check` / `sync-standards` / `session-retro`
+`dev-stack-start` / `handover-check` / `update-rules` / `session-retro`
 
 `coding-guide` は `template/client/CLAUDE.md` と `template/.claude/rules/` に吸収したため未提供です。
 
@@ -54,7 +54,7 @@
 | セッションの開始時 | 次に着手する Issue、open な PR、直近の CI を表示する。取得できなかった欄には理由を出す |
 
 hooks は取り決めの案内で、`.env` や CI の設定や規約の編集を止めるのは `.claude/settings.json` の `deny` です。
-`deny` で止まるファイルを変える必要があるときは、`/shinnn-app:setup` か `/shinnn-app:sync-standards` を使ってください。
+`deny` で止まるファイルを変える必要があるときは、`/shinnn-app:setup` か `/shinnn-app:update-rules` を使ってください。
 
 ## 前提
 

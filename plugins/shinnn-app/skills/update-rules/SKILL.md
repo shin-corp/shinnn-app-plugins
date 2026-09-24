@@ -1,6 +1,6 @@
 ---
-name: sync-standards
-description: プラグインが配布する標準（CLAUDE.md 雛形・rules・アプリ作り方ガイド・権限の設定・git のフック）の更新を、リポジトリへ取り込んで PR にする。標準バージョンに差があるときに実行する。「標準を更新」「rules を最新に」「バージョンが古いと言われた」で起動
+name: update-rules
+description: プラグインが配布するルール（規約の rules・CLAUDE.md 雛形・アプリ作り方ガイド・権限の設定・git のフック）の更新を、リポジトリへ取り込んで PR にする。標準バージョンに差があるときに実行する。「ルールを更新」「決まりごとを新しくして」「標準を更新」「rules を最新に」「バージョンが古いと言われた」で起動
 ---
 
 # 標準の更新を取り込む
@@ -45,7 +45,7 @@ description: プラグインが配布する標準（CLAUDE.md 雛形・rules・�
 
    ```
    git fetch origin main
-   git switch -c feature/<Issue 番号>-sync-standards origin/main
+   git switch -c feature/<Issue 番号>-update-rules origin/main
    ```
 
 `gh` が無い・ログインできない場合は、Issue を GitHub の画面で作ってもらい、Issue の番号を聞いてから同じ名前で

@@ -17,7 +17,7 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 `.github/workflows/`、`.shinnn/`、`CODEOWNERS` への Edit / Write は `.claude/settings.json` の deny が止める。
 スクリプトで書くのは、何をどう変えたかが差分に残るようにするため。`.claude/settings.json` は、手順 0 の展開スクリプトが
 `claude plugin install` の書いたものをテンプレートのものに置き換える場合を除き、setup でも書き換えない。
-標準の更新は `/shinnn-app:sync-standards` が扱う。
+標準の更新は `/shinnn-app:update-rules` が扱う。
 
 ## 進め方
 
@@ -25,8 +25,8 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 
 - **無い**（テンプレートがまだ無いフォルダ）: 手順 0 だけを行い、起動し直すよう伝えて終える
 - **ある**: 手順 1〜6 を順に行う。ただし再実行で、リポジトリの `.claude/rules/.standards-version` が
-  `${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/.standards-version` と違うときは、先に `/shinnn-app:sync-standards` で
-  標準を取り込むよう伝えて終える（規約・権限の設定・git のフックの更新は setup ではなく sync-standards が扱う）
+  `${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/.standards-version` と違うときは、先に `/shinnn-app:update-rules` で
+  標準を取り込むよう伝えて終える（規約・権限の設定・git のフックの更新は setup ではなく update-rules が扱う）
 
 各手順の結果を短くまとめてから次に進み、**利用者が決める項目は必ず質問する**。
 
@@ -282,7 +282,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
 ```
 
 `templateVersion` には、手順 0 で展開したプラグインの版が入る（展開スクリプトが書く）。どの版のテンプレートから作ったかの記録になる。
-標準の版は `.shinnn/setup.json` に持たない。`.claude/rules/.standards-version` の 1 か所だけにあり、`/shinnn-app:sync-standards` が更新する。
+標準の版は `.shinnn/setup.json` に持たない。`.claude/rules/.standards-version` の 1 か所だけにあり、`/shinnn-app:update-rules` が更新する。
 
 **再実行のとき**は、既存の `.shinnn/setup.json` と今回の選択を比べ、**差分のある項目だけ**を変更する。
 進め方は初回と同じで、手順 5 の 2 の Issue の題を変える内容に合わせる。
@@ -323,5 +323,5 @@ setup の PR がまだマージされていなければ、先にマージして�
 | やりたいこと | スキル |
 |:--|:--|
 | 最初の機能を作る | `/shinnn-app:feature` |
-| 標準の更新を取り込む | `/shinnn-app:sync-standards` |
+| 標準の更新を取り込む | `/shinnn-app:update-rules` |
 | 引き継ぎの条件を満たしているか見る | `/shinnn-app:handover-check` |

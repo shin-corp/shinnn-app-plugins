@@ -158,7 +158,7 @@ for (const relativePath of REQUIRED_FILES) {
   if (!(await exists(relativePath))) {
     problems.push({
       what: `必須のファイルがありません: ${relativePath}`,
-      how: 'テンプレートから復元する（/shinnn-app:sync-standards か、シン株式会社に相談）',
+      how: 'テンプレートから復元する（/shinnn-app:update-rules か、シン株式会社に相談）',
     });
   }
 }
@@ -170,7 +170,7 @@ const missingDeny = REQUIRED_DENY.filter((entry) => !deny.has(entry));
 if (missingDeny.length > 0) {
   problems.push({
     what: `.claude/settings.json の deny から外れています: ${missingDeny.join(', ')}`,
-    how: '/shinnn-app:sync-standards で標準の deny を取り込み直す',
+    how: '/shinnn-app:update-rules で標準の deny を取り込み直す',
   });
 }
 
@@ -179,7 +179,7 @@ let ruleFiles = [];
 try {
   ruleFiles = (await readdir(join(repositoryRoot, '.claude', 'rules'))).filter((name) => name.endsWith('.md'));
 } catch {
-  problems.push({ what: '.claude/rules/ がありません', how: '/shinnn-app:sync-standards で取り込み直す' });
+  problems.push({ what: '.claude/rules/ がありません', how: '/shinnn-app:update-rules で取り込み直す' });
 }
 
 const expectedRules = isClientOnly
@@ -190,7 +190,7 @@ const missingRules = expectedRules.filter((name) => !ruleFiles.includes(name));
 if (missingRules.length > 0) {
   problems.push({
     what: `.claude/rules/ に規約がありません: ${missingRules.join(', ')}`,
-    how: '/shinnn-app:sync-standards で取り込み直す',
+    how: '/shinnn-app:update-rules で取り込み直す',
   });
 }
 

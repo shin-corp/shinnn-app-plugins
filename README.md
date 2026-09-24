@@ -93,7 +93,7 @@ claude plugin update shinnn-app@shinnn --scope project
 ```
 
 決まりごとが新しくなったときは、Claude Code を開いたときにお知らせします。
-`/shinnn-app:sync-standards` と入力すると取り込み、提出（PR）の形で残ります。
+`/shinnn-app:update-rules` と入力すると取り込み、提出（PR）の形で残ります。
 
 ## 困ったとき
 
