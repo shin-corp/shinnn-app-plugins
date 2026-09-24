@@ -1,63 +1,45 @@
 ---
 name: add-screen
-description: 画面を 1 つ追加する 8 手順（ルート → ページ → API 呼び出し → 表示 → 入力 → 状態 → スタイル → テスト）。「画面を追加したい」「新しいページを作る」で起動
+description: 画面を 1 つ追加する 7 手順（受入条件と API 定義 → 置き場所とルート → ページ → 取得と表示 → 入力 → スタイル → テスト）。「画面を追加したい」「新しいページを作る」で起動
 ---
 
 # 画面を 1 つ追加する
 
-`client/CLAUDE.md` の「画面の作り方」を手順にしたもの。**層を新しく作らない**（フラット構成を崩さない）。
+このスキルは順番だけを示す。守る決まりは `client/CLAUDE.md` と `.claude/rules/` の client の規約
+（`client-architecture.md`・`client-coding-conventions.md`・`client-styling.md`）にある。**層を新しく作らない。**
 
-## 1. 置き場所を決める
+最初に手本のサンプル `client/src/app/features/items/` を読む（サンプルの `items` を消した後は、既存の機能を手本にする）。
+読むと、`client/CLAUDE.md` と client の規約も読み込まれる。
 
-`client/src/app/features/<機能名>/` に、その画面に関わるものをまとめて置く。
-2 つ以上の画面から使うものだけを `client/src/app/shared/` に上げる。**1 つしか使わないうちは上げない。**
+## 1. 受入条件と API 定義を確かめる
 
-## 2. ルートを足す
+Issue の受入条件を読み、作る画面と要るデータを確かめる。`shared/src/api/<機能>.ts` に API 定義が無ければ、
+先に `/shinnn-app:add-api` で shared と server を用意する（同じ PR）。
 
-`features/<機能名>/<機能名>.routes.ts` を作り、`app.routes.ts` から `loadChildren` で繋ぐ。
-ページ本体は `loadComponent` で読み込むので、コンポーネントは `export default class` にする。
+## 2. 置き場所とルート
 
-## 3. ページのコンポーネントを作る
+`features/<機能>/` を作り、`<機能>.routes.ts` を `app.routes.ts` から `loadChildren` で繋ぐ。
+置き場所の決まりは `.claude/rules/client-architecture.md` の「新規ファイルの配置判断」。
 
-- standalone（`imports` に必要なものを並べる。NgModule は使わない）
-- `ChangeDetectionStrategy.OnPush`
-- 依存は `inject()` で受け取る（コンストラクタ引数で受けない）
-- セレクタは `app-kebab-case`
+## 3. ページのコンポーネント
 
-## 4. API を呼ぶ
+`client/CLAUDE.md` の「Angular 規約」に従って作る。
 
-**`api-client.ts` の `call()` だけ**を使う。`fetch` や `HttpClient` を画面から直接呼ばない。
-渡す入力と返る値の型は `shared` の API 定義から決まるので、型を手で書かない。
-手本はサンプルの `features/items/`（サンプルの `items` を消した後は、既存の機能を手本にする）。
+## 4. 取得と表示
 
-```ts
-const list = await call(itemsApi.listItems, { query: { limit: 20, offset: 0 } });
-```
+`client/CLAUDE.md` の「画面の決まり」（取得と 3 状態、一覧）と「API 呼び出し」に従う。
 
-エラーは `ApiError`（`status` / `messageKey` / `message`）で来る。**利用者に見せる文言は `describeError()` で作る。**
+## 5. 入力
 
-## 5. 表示する
+`client/CLAUDE.md` の「画面の決まり」（入力）に従う。
 
-- テンプレートは `@if` / `@for`（`*ngIf` / `*ngFor` は使わない）
-- 一覧・フォーム・ダイアログは Angular Material のコンポーネントを使い、自作しない
-- 子コンポーネントには `input()` で渡す。子から機能の状態を直接読みに行かせない
+## 6. スタイル
 
-## 6. 状態を持つ
+`.claude/rules/client-styling.md` に従う。
 
-- 画面の状態は `signal()`、そこから導ける値は `computed()`
-- `effect()` は「外の世界へ出す」用途だけ。値の計算に使わない
-- 購読が必要なら `takeUntilDestroyed(this.destroyRef)` を付ける
+## 7. テスト
 
-## 7. スタイルを当てる
-
-- Tailwind のユーティリティと Material のテーマ変数だけを使う
-- 独自の CSS ファイルを増やさない。どうしても必要なら理由をコメントに書く
-- 色は必ずテーマ変数から取る（値を直接書かない）
-
-## 8. テストを書く
-
-受入条件 `AC-n` ごとに 1 つ以上。テスト名に `AC-n` を含める。
-画面の見た目そのものではなく、**利用者にできること**（入力できる・一覧に出る・エラーが見える）を確認する。
+`.claude/rules/testing.md` の「画面のテスト」に従う。画面に現れる受入条件（表示・操作）は、ここで `AC-n` のテストにする。
 
 ## 確認
 

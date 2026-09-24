@@ -33,10 +33,16 @@ git diff origin/main...HEAD -- docs/仕様書.md
 **必ず「当てる → 走らせる → 元に戻す」を 1 組**にする。元に戻す処理は、失敗しても必ず走る形（`try` / `finally`）で書く。
 スクリプトは scratchpad に置き、リポジトリには置かない。
 
-走らせるのは、**狙った受入条件のテストだけ**にする（`-t 'AC-n '`）。ほかのテストの結果が混ざらず、
-狙ったテストが落ちたかどうかだけを読める。受入条件のテストは HTTP 経由でサーバーに置く決まりなので、
-`server` で走らせれば足りる。`-t` の後ろの空白は、`AC-1` が `AC-10` や `AC-11` に当たらないようにするため。
-受入条件に紐づかないテストを確かめるときは、そのテスト名の一部を `-t` に渡す。
+走らせるのは、**狙った受入条件のテストだけ**にする。ほかのテストの結果が混ざらず、狙ったテストが落ちたかどうかだけを読める。
+受入条件のテストは、API の振る舞いなら `server`、画面に現れることなら `client` にある（`.claude/rules/testing.md`）。
+
+| テストの場所 | 絞り方 |
+|:--|:--|
+| `server` | vitest の `-t 'AC-n '` |
+| `client` | `ng test` の `--filter 'AC-n '`（画面のテストは Angular のビルダー越しに動く） |
+
+`AC-n` の後ろの空白は、`AC-1` が `AC-10` や `AC-11` に当たらないようにするため。
+受入条件に紐づかないテストを確かめるときは、そのテスト名の一部を渡す。
 
 ```js
 // scratchpad/mutate.mjs の例。リポジトリのルートで node <scratchpad>/mutate.mjs と実行する
@@ -50,9 +56,16 @@ const mutations = [
     file: 'server/src/service/items.service.ts',
     from: 'and(eq(items.ownerId, ownerId), eq(items.id, id))',
     to: 'eq(items.id, id)',
-    test: 'AC-11 ',
+    test: 'AC-7 ',
+    workspace: 'server',
   },
 ];
+
+/** テストを走らせるコマンド。どちらもシェルを通さず node で起動する */
+const runners = {
+  server: (test) => ['../node_modules/vitest/vitest.mjs', 'run', '-t', test],
+  client: (test) => ['../node_modules/@angular/cli/bin/ng.js', 'test', '--watch=false', '--filter', test],
+};
 
 for (const mutation of mutations) {
   const original = readFileSync(mutation.file, 'utf8');
@@ -64,12 +77,13 @@ for (const mutation of mutations) {
 
   writeFileSync(mutation.file, original.replace(mutation.from, mutation.to));
   try {
-    const result = spawnSync(process.execPath, ['../node_modules/vitest/vitest.mjs', 'run', '-t', mutation.test], {
-      cwd: 'server',
+    const result = spawnSync(process.execPath, runners[mutation.workspace](mutation.test), {
+      cwd: mutation.workspace,
       encoding: 'utf8',
       timeout: 900_000,
     });
-    const lines = `${result.stdout}\n${result.stderr}`.split('\n');
+    // 画面のテストの出力は色を付ける制御文字を含むので、取り除いてから読む
+    const lines = `${result.stdout}\n${result.stderr}`.replace(/\x1b\[[0-9;]*m/g, '').split('\n');
     const summary = lines.filter((line) => line.trim().startsWith('Tests '));
     const failed = lines.filter((line) => line.includes('×'));
     console.log(`[${mutation.name}]`, summary.at(-1)?.trim() ?? '結果を読めませんでした');
@@ -82,7 +96,8 @@ for (const mutation of mutations) {
 }
 ```
 
-vitest はシェルを通さず `node` で直接起動する。Windows でシェルを通すと、`-t` に渡す文字列の空白が落ちる。
+テストはシェルを通さず `node` で直接起動する。Windows でシェルを通すと、絞り込みに渡す文字列の空白が落ちる。
+画面の受入条件なら、`workspace` を `client` にし、変異は画面のファイル（`client/src/app/features/<機能>/`）に当てる。
 
 **落とし穴**
 
@@ -113,7 +128,7 @@ vitest はシェルを通さず `node` で直接起動する。Windows でシェ
 ```
 
 PR を出すときは、この結果を本文の「確認した結果」に 1 行で書く
-（例: 「変異で確かめた: 1 件の条件から持ち主を外す → AC-11 のテストが落ちる」）。
+（例: 「変異で確かめた: 1 件の条件から持ち主を外す → AC-7 のテストが落ちる」）。
 
 ## いつ使うか
 

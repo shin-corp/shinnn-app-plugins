@@ -5,14 +5,12 @@ description: DB のスキーマ変更を drizzle-kit generate で migration に�
 
 # DB のマイグレーション
 
-**スキーマの正は `server/src/db/schema/*.ts`。** SQL を手で書かず、そこから生成する。
-生成された `server/drizzle/` のファイルは手で編集しない（`.claude/settings.json` の deny が止める）。
+このスキルは手順だけを示す。守る決まりは `.claude/rules/db.md` の「スキーマ」「マイグレーション」にある。
 
 ## 1. スキーマを直す
 
 `server/src/db/schema/` に、テーブル・カラム・制約を書く。
 
-- 列は原則 `notNull()` にし、既定値を付ける。あとから必須にするのは既存行があると難しい
 - 消す前に、その列を参照しているコードが無いことを確認する
 
 ## 2. マイグレーションを生成する
@@ -39,8 +37,6 @@ npm run db:generate -w server
 ```
 npm run db:migrate -w server
 ```
-
-`drizzle-kit push` は使わない（マイグレーションを残さず DB を直接変えるため、他の環境で同じ状態を再現できない）。
 
 `.shinnn/setup.json` の `database.mode` が `pglite` なら、`db:migrate` を実行せずに API サーバーを起動し直す。
 API サーバーが起動のたびに適用する（動かしている間は、同じ DB を別のプロセスから開けない）。

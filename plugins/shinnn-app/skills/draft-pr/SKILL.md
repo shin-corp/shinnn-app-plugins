@@ -10,14 +10,14 @@ description: 変更をブランチへコミット・プッシュしてドラフ�
 
 ## 1. ブランチを整える
 
-差分をきれいにするため、`main` の最新から切る。
+差分をきれいにするため、`main` の最新から切る。ブランチ名は `.claude/rules/git-workflow.md` のとおり。
 
 ```
 git fetch origin main
-git switch -c feature/<Issue 番号>-<slug> origin/main
+git switch -c <ブランチ名> origin/main
 ```
 
-すでにブランチがある場合はそのまま使う。`main` に直接コミットしない。
+すでにブランチがある場合はそのまま使う。
 
 ## 2. コミットしてプッシュする
 
@@ -54,4 +54,4 @@ CODEOWNERS があればシン株式会社の担当者は自動で付く。手で
 ## 5. 報告
 
 PR の番号と URL、ドラフトであること、次にやること（レビューを回す）を伝える。
-**ready にしない。マージもしない。** どちらも人が行う。
+**ready にしない。マージもしない。** マージの方針が `self-review` のときにマージまで行うのは `/shinnn-app:pr`。

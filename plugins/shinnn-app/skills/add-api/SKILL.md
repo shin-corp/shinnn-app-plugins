@@ -1,79 +1,50 @@
 ---
 name: add-api
-description: API のエンドポイントを 1 つ追加する 6 手順（API 定義 → controller → service → DB スキーマ → テスト → docs）。「API を足したい」「エンドポイントを追加」で起動
+description: API のエンドポイントを 1 つ追加する 6 手順（API 定義 → テーブル → service → router と controller → テスト → docs）。「API を足したい」「エンドポイントを追加」で起動
 ---
 
 # API を 1 つ追加する
 
-**API 定義（`shared`）が唯一の正**。ここを先に書き、server と client はそれを参照する。
-手書きの型を作らない。
+このスキルは順番だけを示す。守る決まりは `server/CLAUDE.md` と `.claude/rules/` の規約にある。
 
-## 1. API 定義（`shared/src/api/`）
+最初に手本を読む。サンプルの `shared/src/api/items.ts`・`server/src/api/items/`・`server/src/service/items.service.ts`・
+`server/tests/items.test.ts` が手本（サンプルの `items` を消した後は、既存の機能を手本にする）。
+これらを読むと、対応する規約も読み込まれる。
 
-入出力の zod スキーマと、ルートの定義を書く。手本はサンプルの `shared/src/api/items.ts`
-（サンプルの `items` を消した後は、既存の機能を手本にする）。
+**参照される側を先に書く**（API 定義 → テーブル → service → controller）。参照する側を先に書くと、途中で型が通らない。
 
-```ts
-export const CreateItemSchema = z.object({
-  name: z.string().min(1).max(100),
-  description: z.string().max(1000).optional(),
-});
+## 1. API 定義（`shared/src/api/<機能>.ts`）
 
-export const createItem = defineRoute({
-  method: 'POST',
-  path: '/api/items',
-  body: CreateItemSchema,
-  response: ItemSchema,
-});
-```
+入出力の zod スキーマと `defineRoute(...)` を書き、その機能の `<機能>Api` に束ねる。
+書き方は `.claude/rules/api-contract.md` の「スキーマの書き方」「ルート定義」。
 
-- `path` のパラメータは `/api/items/:id` の形で書く
-- 本文を返さない削除系は `response: z.undefined()`（204 になる）
-- 定義したルートは、その機能の `xxxApi` オブジェクトに `as const` で束ねる
+## 2. テーブル（`server/src/db/schema/`。要るときだけ）
 
-## 2. controller（`server/src/api/<機能>/`）
+スキーマを足してから `/shinnn-app:db-migrate` を実行する。決まりは `.claude/rules/db.md`。
 
-`route()` ヘルパーに定義とハンドラを渡す。**`req.body` / `req.query` / `req.params` を直接読まない。**
-検証はヘルパーが行い、失敗すれば 400 の `CommonException`（`APP_VALIDATION_FAILED`）になる。
+## 3. service（`server/src/service/<機能>.service.ts`）
 
-```ts
-route(router, itemsApi.createItem, async (input) => itemService.create(input.body));
-```
+業務処理を書く。エラー・ログ・利用者ごとのデータの絞り込みは `.claude/rules/server-coding-conventions.md`、
+クエリとトランザクションは `.claude/rules/db.md` の「クエリとトランザクション」に従う。
+
+## 4. router と controller（`server/src/api/<機能>/`）
+
+`route()` ヘルパーに API 定義とハンドラを渡す（`.claude/rules/server-coding-conventions.md` の「API 定義と検証」）。
+controller は検証済みの入力を service へ渡し、戻り値を返すだけにする（`.claude/rules/server-architecture.md` の「層ごとの責務」）。
 
 router を新設したら、`server/src/app.ts` の `app.use(...)` に足す（パスは API 定義が持つので、mount 先に URL を書かない）。
 
-## 3. service（`server/src/service/`）
+## 5. テスト（`server/tests/<機能>.test.ts`）
 
-業務処理はここに書く。controller には条件分岐を置かない。
+`.claude/rules/testing.md` の「テスト名」「観点」「サーバーのテスト」に従う。受入条件があれば `AC-n` のテストを書き、
+利用者ごとのデータなら別の利用者で確かめるテストも書く。
 
-- エラーは `throw new CommonException(statusCode, MessageKeys.XXX, details)`
-- ログは `Log` のみ（`console` は lint が落とす）
-- 複数の書き込みが 1 つの意味を持つなら `db.transaction` で包む
-- **利用者ごとのデータは、controller から `currentUser(req).id` を受け取り、取得・一覧・件数・更新・削除のすべての条件を持ち主で絞る。**
-  他人のデータは 404 にする。持ち主の id を API の入力から受け取らない
+## 6. docs とメッセージ
 
-## 4. DB スキーマ（`server/src/db/schema/`）
-
-テーブルが要るなら、スキーマを足してから `/shinnn-app:db-migrate` を実行する。
-`server/drizzle/` の生成物は手で書かない。
-
-## 5. テスト（`server/tests/`）
-
-**ルート 1 つにつき最低 2 本**（正常系・異常系）。エッジケースは必要に応じて足す。
-
-- 実サーバーを立てて（`app.listen(0)`）、`fetch` で本番と同じ HTTP 経路を叩く
-- 受入条件があるなら、テスト名に `AC-n` を含める（CI が照合する）
-- 利用者ごとのデータなら、別の利用者のトークン（`createAuthHeaders({ subject })`）で 404 になることと、一覧に入らないことを確かめる
-- テストの DB は既定で PGlite。実 PostgreSQL でしか確認できないものは、接続先を渡す環境変数を足し、`docs/env.md` に名前を書く
-
-## 6. docs
-
-- 新しい環境変数を足したら `docs/env.md` に書く
+- 新しい環境変数は、`.claude/rules/server-coding-conventions.md` の「環境変数」のとおりに書き足す
 - 仕様に関わる変更なら `docs/仕様書.md` の該当章を直す
-- 新しいメッセージは `server/resources/messages.json` に足し、`npm run messages` で生成する。
-  生成された `message-keys.ts` は手で書かない
+- 新しいメッセージは `.claude/rules/messages.md` の「編集の手順」で足す
 
-## 順番と PR
+## PR
 
-**shared → server → client を同じ PR に入れる。** 片方だけ変えると、参照している側が壊れたまま main に入る。
-コミットは層ごとに分ける（`.claude/rules/git-workflow.md` の「コミットの分け方」）。
+shared → server → client を同じ PR に入れ、コミットは層ごとに分ける（`.claude/rules/git-workflow.md`）。

@@ -78,23 +78,23 @@ gh issue edit <Issue 番号> --remove-label status:next --add-label status:doing
 
 | 順 | 場所 | やること |
 |:--|:--|:--|
-| 1 | `shared/src/api/` | zod スキーマと API 定義を書く。**ここが唯一の正**。手書きの型を作らない |
-| 2 | `server/src/db/schema/` | テーブルを足すなら先にスキーマ。`/shinnn-app:db-migrate` でマイグレーションを生成する |
-| 3 | `server/src/api/<機能>/` | router と controller。`route()` ヘルパーで API 定義を渡す。`req.body` を直接読まない |
-| 4 | `server/src/service/` | 業務処理。エラーは `CommonException` + `MessageKeys` |
-| 5 | `client/src/app/features/<機能>/` | 画面。API 呼び出しは `api-client.ts` の `call()` だけを通す |
-| 6 | `server/tests/` と `client/` の `.test.ts` | 受入条件 `AC-n` ごとにテストを 1 つ以上。テスト名に `AC-n` を入れる |
+| 1 | `shared/src/api/` | API 定義。**ここが唯一の正** |
+| 2 | `server/src/db/schema/` | テーブルを足すなら先にスキーマ（`/shinnn-app:db-migrate`） |
+| 3 | `server/src/service/` | 業務処理 |
+| 4 | `server/src/api/<機能>/` | router と controller |
+| 5 | `client/src/app/features/<機能>/` | 画面 |
+| 6 | `server/tests/` と画面の `.test.ts` | 受入条件 `AC-n` ごとにテスト。API の振る舞いはサーバー、画面に現れることは画面のテスト（`.claude/rules/testing.md`） |
 
 **参照される側を先に書く。** shared を変えずに server や client だけ直したくなったら、それは API 定義の考え漏れなので shared に戻る。
 
 各段階の確認は、応答を終えるたびに hook が触ったファイルの lint と関連テストを走らせるので、その結果を直してから次へ進む
 （全部書いてからまとめて直さない）。段階ごとに `/shinnn-app:check` をまとめて走らせない（`pr` が出す前に 1 回通す）。
-画面の作り方の詳細は `add-screen`、API の追加手順は `add-api` を読む。
+1〜4 とサーバーのテストは `/shinnn-app:add-api`、5 と画面のテストは `/shinnn-app:add-screen` の手順で進める。
+守る決まりは、それぞれが名指しする規約にある。
 
 ## 5. コミットする
 
-`.claude/rules/git-workflow.md` の「コミットメッセージ」「コミットの分け方」を読み直してから、**層ごとに分ける**（shared → server → client → テスト）。
-実装とテストは別コミットにする。
+`.claude/rules/git-workflow.md` の「コミットメッセージ」「コミットの分け方」を読み直してから、それに従ってコミットする。
 
 ## 6. 仕上げ
 

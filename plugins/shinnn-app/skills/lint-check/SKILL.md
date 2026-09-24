@@ -17,13 +17,14 @@ description: ESLint を実行してコード品質と規約違反を検出し、
 
 ## このテンプレートで特に効いているルール
 
-| ルール | 何を防ぐか | 直し方 |
-|:--|:--|:--|
-| `no-restricted-imports` | 層をまたいだ参照 | `.claude/rules/` の配置判断表で置き場所を決め直す。import を許す方向に設定を変えない |
-| `no-restricted-syntax`（動的 import） | 依存関係を静的に追えなくなること | 静的 import に直す |
-| `no-console` | 出力先が揃わないこと | `Log` を使う |
-| `@typescript-eslint/no-explicit-any` | 型がある意味を失うこと | 実際の型を書く。分からないなら `unknown` にして絞り込む |
-| Angular の signals / 制御フロー | 古い書き方の混在 | `signal()` と `@if` / `@for` に直す |
+直し方は、ルールごとに次の規約に従う（`.claude/rules/` の下）。
+
+| ルール | 規約 |
+|:--|:--|
+| `no-restricted-imports`、`no-restricted-syntax`（動的 import） | `server-architecture.md`・`client-architecture.md` の「新規ファイルの配置判断」「import の許可関係」 |
+| `no-console` | `server-coding-conventions.md` の「ログ」、`client-coding-conventions.md` の「その他」 |
+| `@typescript-eslint/no-explicit-any` | `server-coding-conventions.md`・`client-coding-conventions.md` の「型」 |
+| Angular の signals / 制御フロー | `client-coding-conventions.md` の「テンプレート」「状態」 |
 
 ## 落ちたとき
 
