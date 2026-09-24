@@ -46,6 +46,9 @@ Express 5 + PostgreSQL 16（Drizzle ORM）の API サーバー。TypeScript の 
 | `LOG_LEVEL`    | ログの下限レベル                                                     |
 | `DB_DRIVER`    | `pg`（既定）か `pglite`。pglite は PostgreSQL 無しで動かすためのもの |
 
+`DB_DRIVER=pglite` のデータは `server/.pglite/`（git 管理外）に残り、`index.ts` が起動のたびにマイグレーションを適用する。
+サーバーを動かしている間は、`db:migrate` や `seed` で同じ DB を開かない（別のプロセスから同時に開けない）。
+
 `process.env` を直接読んでよいのは `drizzle.config.ts` だけ（アプリの外で動くため）。
 
 ## 構成と import の許可関係

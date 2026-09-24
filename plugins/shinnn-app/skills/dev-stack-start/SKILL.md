@@ -22,9 +22,10 @@ description: 開発用のサーバー群（PostgreSQL・API サーバー・画�
    - `docker`: `docker compose --profile dev up -d`
    - `local-postgres` / `database-url` / `managed`: すでに動いているものを使う。
      起動していなければ人に伝える
-   - `embedded-postgres` / `pglite`: 起動の手順は `docs/env.md` の「ローカルの PostgreSQL」節に
-     setup の環境の検出（プラグインの `setup-env.mjs --write`）が記録している。そこに書かれた方法で起動する
-2. **マイグレーションの適用**: `npm run db:migrate -w server`
+   - `pglite`: 別に起動するものは無い。API サーバーの中で動く（`server/.env` の `DB_DRIVER=pglite`）。
+     設定の仕方は `docs/env.md` の「ローカルの PostgreSQL」節（setup が書く）
+2. **マイグレーションの適用**: `npm run db:migrate -w server`。`pglite` のときは実行しない（API サーバーが起動のたびに適用する。
+   API サーバーが開いている間は、同じ DB を別のプロセスから開けない）
 3. **API 定義**: `npm run build -w shared` のあと、`npm run dev -w shared`（`tsc --watch`。`shared/src` の変更で `shared/dist` を作り直す）
 4. **API サーバー**: `npm run dev -w server`（`node --watch` + tsx。`src/` と `shared/dist` の変更で自動再起動する）
 5. **画面**: `npm run dev -w client`（`shared/dist` の変更でも作り直す）

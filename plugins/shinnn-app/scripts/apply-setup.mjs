@@ -14,7 +14,7 @@
  *   --repo-dir <パス>     対象のリポジトリ（既定は CLAUDE_PROJECT_DIR、無ければカレント）
  *   --profile <名前>      full / client-only
  *   --reviewer <@名前>    CODEOWNERS に入れるシン株式会社の担当者のアカウント
- *   --database <方式>     database-url / local-postgres / docker / embedded-postgres / pglite / managed
+ *   --database <方式>     database-url / local-postgres / docker / pglite / managed
  *   --merge-policy <方針> human（人がマージする）/ self-review（/shinnn-app:pr がセルフレビューと CI 通過後にマージする）
  *   --enable <キー,…>     選択項目を有効にする（.shinnn/setup.json の optional のキー）
  *   --disable <キー,…>    選択項目を無効にする
@@ -42,7 +42,7 @@ const DISABLED_SUFFIX = '.disabled';
 const PROFILES = ['full', 'client-only'];
 
 /** 受け付ける DB の用意方法。scripts/setup-env.mjs の検出結果と同じ語を使う。 */
-const DATABASE_MODES = ['database-url', 'local-postgres', 'docker', 'embedded-postgres', 'pglite', 'managed'];
+const DATABASE_MODES = ['database-url', 'local-postgres', 'docker', 'pglite', 'managed'];
 
 /** 受け付けるマージの方針。human は人がマージ、self-review は /shinnn-app:pr がセルフレビューと CI の通過後にマージする。 */
 const MERGE_POLICIES = ['human', 'self-review'];

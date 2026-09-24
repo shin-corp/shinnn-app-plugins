@@ -8,7 +8,7 @@
   "$mergePolicyComment": "human: 人が ready にしてマージする / self-review: /shinnn-app:pr がセルフレビューと CI の通過後にマージする。/shinnn-app:setup の --merge-policy で変えます。",
   "database": {
     "mode": "undecided",
-    "$comment": "database-url / local-postgres / docker / embedded-postgres / pglite / managed のいずれか。/shinnn-app:setup の環境の検出が候補を示します。"
+    "$comment": "database-url / local-postgres / docker / pglite / managed のいずれか。/shinnn-app:setup の環境の検出が候補を示します。"
   },
   "mandatory": [
     "claude-md",

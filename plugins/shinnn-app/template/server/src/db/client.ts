@@ -2,14 +2,21 @@
  * @file Drizzle クライアントの生成。DB への接続を作るのはここだけにする。
  *
  * 既定は PostgreSQL（`DB_DRIVER=pg`）。`DB_DRIVER=pglite` にすると、PostgreSQL を用意せずに
- * その場限りの DB で動かせる（テストと動作確認用。本番では使わない）。
+ * 動かせる（Docker も PostgreSQL も無いパソコンでの開発用。本番では使わない）。
  */
 
+import { fileURLToPath } from 'node:url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { config } from '../config.js';
 import * as schema from './schema/index.js';
+
+/*
+ * `DB_DRIVER=pglite` で動かすときの保存先（server/.pglite。git の管理外）。再起動してもデータが残るよう、
+ * メモリではなくフォルダに置く。src から実行しても dist から実行しても 2 つ上が server/ になる。
+ */
+const pgliteDataDir = fileURLToPath(new URL('../../.pglite', import.meta.url));
 
 /** アプリが使う DB のハンドル。service はこの型だけを受け取る。 */
 export type AppDatabase = NodePgDatabase<typeof schema>;
@@ -80,13 +87,13 @@ export async function createPgliteDb(dataDir = 'memory://'): Promise<DbHandle> {
 }
 
 /**
- * `DB_DRIVER` に従って DB のハンドルを作る。
+ * `DB_DRIVER` に従って DB のハンドルを作る。pglite の保存先は server/.pglite。
  *
  * @returns DB のハンドル
  */
 export async function createDb(): Promise<DbHandle> {
   if (config.DB_DRIVER === 'pglite') {
-    return createPgliteDb();
+    return createPgliteDb(pgliteDataDir);
   }
   return createPgDb();
 }

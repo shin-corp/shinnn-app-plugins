@@ -98,3 +98,27 @@ test('setup-env --write: docs/env.md には PostgreSQL の節だけを追記し�
   assert.match(second.stdout, /節が既にあります/);
   assert.equal(readFileSync(join(repo, 'docs', 'env.md'), 'utf8'), written);
 });
+
+test('setup-env --database: 検出の結果ではなく、指定した方式の手順を書く', () => {
+  const repo = makeEnvRepo();
+  const result = runSetupEnv(repo, ['--write', '--database', 'pglite']);
+
+  assert.equal(result.status, 0, result.stderr);
+  const written = readFileSync(join(repo, 'docs', 'env.md'), 'utf8');
+  assert.match(written, /^- 採用: PGlite/m);
+  assert.match(written, /^- 設定: `server\/\.env` の `DB_DRIVER` を `pglite` にします/m);
+  // 検出では DATABASE_URL が先に見つかっている。指定で置き換えたことが分かるように残す
+  assert.match(written, /^- 指定された方法: pglite（検出で最初に見つかったのは database-url）$/m);
+});
+
+test('setup-env --database: 知らない方式は、何も書かずに止める', () => {
+  const repo = makeEnvRepo();
+  const result = runSetupEnv(repo, ['--write', '--database', 'embedded-postgres']);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /--database に指定できるのは database-url \/ local-postgres \/ docker \/ pglite \/ managed です/,
+  );
+  assert.equal(existsSync(join(repo, 'docs')), false);
+});

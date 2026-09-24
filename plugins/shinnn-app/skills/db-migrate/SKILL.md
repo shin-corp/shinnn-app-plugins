@@ -42,6 +42,9 @@ npm run db:migrate -w server
 
 `drizzle-kit push` は使わない（マイグレーションを残さず DB を直接変えるため、他の環境で同じ状態を再現できない）。
 
+`.shinnn/setup.json` の `database.mode` が `pglite` なら、`db:migrate` を実行せずに API サーバーを起動し直す。
+API サーバーが起動のたびに適用する（動かしている間は、同じ DB を別のプロセスから開けない）。
+
 ## 5. 確認する
 
 ```

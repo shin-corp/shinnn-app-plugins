@@ -8,6 +8,8 @@
 // 引数:
 //   --repo-dir <パス>  対象のリポジトリ（既定は CLAUDE_PROJECT_DIR、無ければカレント）。docs/env.md はこの下
 //   --write            PostgreSQL の検出結果を docs/env.md に追記する
+//   --database <方式>  検出の結果に関わらず、この方式の手順を出す（setup で利用者が選んだ方式を書くため）。
+//                      database-url / local-postgres / docker / pglite / managed
 //
 // 開発環境として、OS / Node.js / npm / Git / GitHub CLI（gh。ログインの状態とスコープ）/ Docker を表で示す。
 // 使う人のパソコンごとに違うので、この表は docs/env.md に書かない。
@@ -17,9 +19,8 @@
 //   1. DATABASE_URL が設定済み          → そのまま使う
 //   2. localhost:5432 に接続できる      → 既に動いている PostgreSQL を使う
 //   3. docker info が成功する           → docker compose --profile dev up -d
-//   4. embedded-postgres が入れられる   → npm から PostgreSQL 16 の実バイナリを起動する
-//   5. PGlite                           → 最終手段（忠実度に注意）
-//   6. いずれも不可                     → マネージドの無料枠を案内する
+//   4. いずれも無い                     → PGlite（API サーバーの中で動く。入れるものが無い）
+// 本番と同じ PostgreSQL で確かめたい場合は、マネージドの無料枠（managed）も選べる。
 //
 // このスクリプトは検出と案内だけを行う。導入の実行は /shinnn-app:setup が行う。
 
@@ -317,16 +318,48 @@ function canConnect(host, port) {
 }
 
 /**
- * Windows で「管理者として実行」したターミナルかを調べる。
- * embedded-postgres は管理者権限のターミナルからは PostgreSQL の起動を拒否する。
+ * PostgreSQL の用意の仕方。キーは `.shinnn/setup.json` の `database.mode` と同じ語。
+ * `howToStart` は docs/env.md の「起動と停止」に 1 行ずつ箇条書きで入る。
  */
-function isWindowsElevatedTerminal() {
-  if (process.platform !== 'win32') {
-    return false;
-  }
+const databaseModes = {
+  'database-url': {
+    label: '環境変数 DATABASE_URL の接続先',
+    howToStart: ['既に用意されている PostgreSQL に接続します。起動と停止は提供元の手順に従ってください。'],
+  },
+  'local-postgres': {
+    label: `このパソコンで動いている PostgreSQL（localhost:${postgresPort}）`,
+    howToStart: ['サービスとして常駐しています。停止と起動は OS のサービス管理から行います。'],
+  },
+  docker: {
+    label: 'Docker の PostgreSQL 16（docker-compose.yml。Docker Desktop でも WSL の Docker Engine でも動きます）',
+    howToStart: [
+      '起動: `docker compose --profile dev up -d`',
+      '停止: `docker compose --profile dev down`',
+      'テスト用（ポート 5433、データを残さない）: `docker compose --profile test up -d`',
+    ],
+  },
+  pglite: {
+    label: 'PGlite（API サーバーの中で動く PostgreSQL。Docker も PostgreSQL も要りません）',
+    howToStart: [
+      '設定: `server/.env` の `DB_DRIVER` を `pglite` にします（`.env.example` の `# DB_DRIVER=pg` の行）。`DATABASE_URL` は使われません',
+      '起動と停止: API サーバー（`npm run dev -w server`）と一緒に動きます。起動のたびにマイグレーションを適用するので、`db:migrate` は実行しません',
+      'データ: `server/.pglite/` に残ります（git の管理外）。消すと空の DB からやり直せます',
+      '注意: API サーバーを動かしている間は、`seed` など同じ DB を開く別のコマンドを実行しません。本番では使わず、本番の前に PostgreSQL で動作を確かめます',
+    ],
+  },
+  managed: {
+    label: 'マネージドの PostgreSQL（Neon などの無料枠）',
+    howToStart: ['接続先を `server/.env` の `DATABASE_URL` に書きます。起動と停止は提供元の管理画面で行います。'],
+  },
+};
 
-  // 管理者でないと開けないディレクトリへの書き込み権限で判定する
-  return commandSucceeds('net', ['session']);
+const databaseArgument = readOption('--database');
+
+if (databaseArgument !== undefined && !Object.hasOwn(databaseModes, databaseArgument)) {
+  console.error(
+    `--database に指定できるのは ${Object.keys(databaseModes).join(' / ')} です（指定: ${databaseArgument}）`,
+  );
+  process.exit(1);
 }
 
 const environment = detectEnvironment();
@@ -334,34 +367,26 @@ const environment = detectEnvironment();
 console.log(formatEnvironment(environment.rows));
 
 const results = [];
-let selected = null;
+let detected = null;
 
 if (typeof process.env.DATABASE_URL === 'string' && process.env.DATABASE_URL.length > 0) {
   results.push('DATABASE_URL: 設定済み');
-  selected = {
-    id: 'database-url',
-    label: '環境変数 DATABASE_URL の接続先',
-    howToStart: '既に用意されている PostgreSQL に接続します。起動と停止は提供元の手順に従ってください。',
-  };
+  detected = 'database-url';
 } else {
   results.push('DATABASE_URL: 未設定');
 }
 
-if (selected === null) {
+if (detected === null) {
   const reachable = await canConnect('127.0.0.1', postgresPort);
 
   results.push(`localhost:${postgresPort}: ${reachable ? '接続できました' : '接続できません'}`);
 
   if (reachable) {
-    selected = {
-      id: 'local-postgres',
-      label: `このパソコンで動いている PostgreSQL（localhost:${postgresPort}）`,
-      howToStart: 'サービスとして常駐しています。停止と起動は OS のサービス管理から行います。',
-    };
+    detected = 'local-postgres';
   }
 }
 
-if (selected === null) {
+if (detected === null) {
   const dockerAvailable = environment.dockerRunning;
 
   results.push(`docker: ${dockerAvailable ? '使えます' : '使えません'}`);
@@ -376,55 +401,31 @@ if (selected === null) {
   }
 
   if (dockerAvailable) {
-    selected = {
-      id: 'docker',
-      label: 'Docker の PostgreSQL 16（docker-compose.yml。Docker Desktop でも WSL の Docker Engine でも動きます）',
-      howToStart: [
-        '起動: `docker compose --profile dev up -d`',
-        '停止: `docker compose --profile dev down`',
-        'テスト用（ポート 5433、データを残さない）: `docker compose --profile test up -d`',
-      ].join('\n'),
-    };
+    detected = 'docker';
   }
 }
 
-if (selected === null) {
-  const elevated = isWindowsElevatedTerminal();
+// Docker も PostgreSQL も無いパソコンでは、API サーバーの中で動く PGlite を使う（入れるものが無い）
+if (detected === null) {
+  detected = 'pglite';
+}
 
-  results.push(`管理者として実行したターミナル: ${elevated ? 'はい' : 'いいえ'}`);
+const adopted = databaseArgument ?? detected;
 
-  if (elevated) {
-    console.error('');
-    console.error('  何が: 管理者として実行したターミナルで動いています。');
-    console.error('  なぜ: この後の候補である embedded-postgres は、管理者権限のターミナルからは');
-    console.error('        PostgreSQL の起動を拒否します（PostgreSQL 本体の仕様です）。');
-    console.error('  どう直す: 通常のターミナル（管理者としてではなく開いたもの）で開き直し、');
-    console.error('            もう一度このコマンドを実行してください。');
-    console.error('');
-    process.exit(1);
-  }
-
-  selected = {
-    id: 'embedded-postgres',
-    label: 'embedded-postgres（npm から入る PostgreSQL 16 の実バイナリ）',
-    howToStart: [
-      '導入: `npm install -D embedded-postgres -w server` のあと `npm install-scripts approve embedded-postgres`',
-      '起動と停止はサーバーの起動スクリプトが行います。管理者権限は要りません。',
-      '注意: Windows では「管理者として実行」したターミナルから起動できません。',
-    ].join('\n'),
-  };
+if (adopted !== detected) {
+  results.push(`指定された方法: ${adopted}（検出で最初に見つかったのは ${detected}）`);
 }
 
 const summary = [
   '',
   '## ローカルの PostgreSQL',
   '',
-  `- 採用: ${selected.label}`,
+  `- 採用: ${databaseModes[adopted].label}`,
   `- 検出日: ${new Date().toISOString().slice(0, 10)}`,
   '',
   '### 起動と停止',
   '',
-  selected.howToStart,
+  ...databaseModes[adopted].howToStart.map((line) => `- ${line}`),
   '',
   '### 検出の結果',
   '',
@@ -433,7 +434,7 @@ const summary = [
   '### 採用しなかった場合の代わり',
   '',
   '- テストは常に PGlite（Postgres の WASM 版）を使うので、上のどれが選ばれても実行できます。',
-  '- どの方法も使えない場合は、マネージドの PostgreSQL の無料枠（Neon など）を検討してください。',
+  '- 本番と同じ PostgreSQL で確かめたいときは、マネージドの PostgreSQL の無料枠（Neon など）も使えます。',
   '  接続先を `DATABASE_URL` に設定すれば、このスクリプトは 1 番目の候補として認識します。',
   '',
 ].join('\n');
@@ -457,7 +458,7 @@ try {
 
 if (existing.includes('## ローカルの PostgreSQL')) {
   console.log('docs/env.md に「ローカルの PostgreSQL」の節が既にあります。');
-  console.log('内容が変わった場合は、その節を人が置き換えてください（自動では上書きしません）。');
+  console.log('内容が変わった場合は、その節を上の内容で置き換えてください（自動では上書きしません）。');
   process.exit(0);
 }
 

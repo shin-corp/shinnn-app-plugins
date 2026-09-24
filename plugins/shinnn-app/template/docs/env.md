@@ -20,6 +20,7 @@
 | `DB_DRIVER`    | DB の接続方式（`pg` / `pglite`）。`pglite` は本番で使わない      | 実行環境                      | いいえ（既定 pg）          |
 
 テストは常に PGlite（Postgres の WASM 版）を使うので、テスト用の接続先は要りません。
+開発で `DB_DRIVER=pglite` にすると、DB は API サーバーの中で動き、データは `server/.pglite/`（git 管理外）に残ります。
 
 開発中に画面から API を呼ぶための通行証は `npm run token -w server` で発行します
 （`JWT_SECRET` と `JWT_AUDIENCE` を使います。手順は README.md）。

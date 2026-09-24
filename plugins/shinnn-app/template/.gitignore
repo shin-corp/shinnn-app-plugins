@@ -12,6 +12,9 @@ playwright-report/
 .env.*
 !.env.example
 
+# DB_DRIVER=pglite で動かしたときの DB（server/.pglite）。手元だけのデータなので共有しない。
+.pglite/
+
 # 個人の設定と個人用のメモ。認証情報やローカルのパスを含みうるので共有しない。
 .claude/settings.local.json
 # Claude Code が作る worktree（作業ツリー）。中身が元のリポジトリの未追跡ファイルとして見えないようにする。

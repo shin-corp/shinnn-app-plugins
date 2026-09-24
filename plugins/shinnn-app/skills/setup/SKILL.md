@@ -103,7 +103,10 @@ allowed-tools: Bash(node *setup-env.mjs*)
   入るまでは Issue と PR を GitHub の画面で扱ってもらう。GitHub 自体を使えない顧客は対象外（手順 0 から GitHub のリポジトリを前提にしている）
 - PostgreSQL は検出順に従って選ぶ。Docker は `docker` コマンドが動けばよく、Docker Desktop でも WSL の Docker Engine でも構わない
   （WSL の中だけにある場合、Windows 側からは見えないので「使えません」になる。WSL でコンテナを起動すれば `localhost:5432` の検出で拾える）
-- Docker が使えない場合は組み込み版（`embedded-postgres`）の導入まで代行する。手で PostgreSQL を入れてもらう案内はしない（管理者権限が要らない組み込み版で足りる）
+- Docker も PostgreSQL も無い場合は PGlite（API サーバーの中で動く PostgreSQL）を使う。入れるものは無く、
+  利用者に `server/.env` の `DB_DRIVER` を `pglite` にしてもらうだけでよい（`.env` は Claude が読み書きしない）。
+  手で PostgreSQL を入れてもらう案内はしない。本番と同じ PostgreSQL で確かめたい利用者には、マネージドの無料枠（`managed`）も示す
+- 選んだ方式は手順 5 で `--database` に渡し、`docs/env.md` にも書く
 - GitHub 側は、シン株式会社の担当者のアカウントの招待状況を確認する。招待は手順 5 の 9 で行う。
   ブランチ保護（`main` に入れる変更に CI の通過を必須にする GitHub の設定）は、使えるプランなら手順 5 の 12 で設定する。
   テンプレートは `main` に直接書き込む仕組みを持たないので、CI の通過を必須にしても止まるものは無い
@@ -196,7 +199,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
    `already exists` で失敗するが、そのまま使う（`--force` で色や説明を上書きしない）
 2. 適用の Issue を `gh issue create` で作る。題は初回なら `[設定] 初回セットアップの適用`、再実行なら変える内容に合わせる
    （例: `[設定] PR の AI レビューの有効化`）。本文には決めた内容を箇条書きで書き、ラベルは `status:doing` を付ける
-3. `main` の最新から、2 の Issue の番号でブランチを切る。手順 2（環境の検出）で出た変更（組み込み版の PostgreSQL の導入など）は、
+3. `main` の最新から、2 の Issue の番号でブランチを切る。手順 2（環境の検出）で出た変更があれば、
    コミットせずにこのブランチへ持ち越す
 
    ```
@@ -217,7 +220,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
    |:--|:--|
    | `--profile` | `full` / `client-only`（`optional.client-only-profile` も一緒に合わせる） |
    | `--reviewer` | `CODEOWNERS` の `@SHINNN_REVIEWER` を置き換えるシン株式会社の担当者のアカウント |
-   | `--database` | `database-url` / `local-postgres` / `docker` / `embedded-postgres` / `pglite` / `managed` |
+   | `--database` | `database-url` / `local-postgres` / `docker` / `pglite` / `managed` |
    | `--merge-policy` | `human`（既定。人が ready にしてマージする）/ `self-review`（`/shinnn-app:pr` がセルフレビューと CI の通過後にマージする） |
    | `--enable` / `--disable` | 選択項目。`.shinnn/setup.json` の `optional` にあるキーだけを受け付ける |
    | `--handover-issue` | 「引き継ぎメモ」Issue の番号（下の 8 で Issue を作ってから渡す） |
@@ -227,7 +230,14 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
    スクリプトが `.disabled` を外す（有効化）／付け直す（無効化）だけを行う。
    選ばなかったものを消さないのは、あとから選び直したときに戻せるようにするため。
    スクリプトが触らない残りのファイル（5〜7）は、通常の Edit / Write で書く
-5. `docs/` の雛形（`仕様書.md` / `env.md` / `decisions/`）を、無いものだけ作る
+5. `docs/` の雛形（`仕様書.md` / `env.md` / `decisions/`）を、無いものだけ作る。`full` なら続けて、選んだ DB の用意方法の
+   手順（起動と停止）を `docs/env.md` の「ローカルの PostgreSQL」節に書く
+
+   ```
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/setup-env.mjs --write --database <選んだ方式>
+   ```
+
+   節が既にあれば、スクリプトは書き足さない。再実行で方式を変えたときは、出力された節で既にある節を置き換える
 6. `README.md` の「有効な機能」表を、決めた内容で書き換える（マージの方針とブランチ保護の行も含める。ブランチ保護は 12 の結果を書く）
 7. `docs/decisions/` の**空いている次の番号**で `<番号>-setup.md` を作り、**選んだ理由と選ばなかった理由**を残す
    （テンプレートに `0001-template-stack.md`・`0002-package-manager.md`・`0003-node-version.md` が同梱されているので、初回は通常 `0004-setup.md`）
