@@ -55,7 +55,7 @@ Dependabot（依存更新の bot）が作る PR には、ワークフロー `dep
 
 - `git push --force` / `git reset --hard` / `git rebase` / `git clean`（すべて deny されている）
 - `git commit --no-verify` / `git push --no-verify` / `HUSKY=0`（husky のフックを飛ばす行為。deny されている）
-- `main` への直接コミットと push（push は `.husky/pre-push` が止める）
+- `main` への直接コミットと push（`main` へは作業ブランチからの PR でだけ入れる）
 - 改行コードだけが変わった差分を作ること（LF に統一。`.gitattributes` を参照）
 - 生成物の手編集（`package-lock.json` / `server/drizzle/` / メッセージキーの生成物）
 
@@ -73,5 +73,6 @@ force push と `--no-verify` を禁じるのは、いったん壊れると非エ
 履歴を書き換えずに前へ進む（打ち消しコミットを積む）方が、常に安全です。
 
 作業ブランチへの push は確認なしで実行します。push の中身を見て良し悪しを判断することは、コードを読まない人には
-できないからです。代わりに、困ることを仕組みで止めます。`main` への push は `.husky/pre-push` が断ります
-（GitHub のブランチ保護を使えないプランでも効く）。秘密情報は `.env` の読み取りの禁止と `.gitignore` と CI で止めます。
+できないからです。代わりに、困ることを仕組みで止めます。`main` への push を確実に止めるのは GitHub のブランチ保護で、
+使えるプランなら setup が設定します（推奨）。`.husky/pre-push` は誤って push したときに断る安全網で、
+フックを飛ばす書き方があるので、これだけには頼りません。秘密情報は `.env` の読み取りの禁止と `.gitignore` と CI で止めます。
