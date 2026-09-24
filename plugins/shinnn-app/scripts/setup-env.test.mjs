@@ -1,21 +1,21 @@
 /**
- * テンプレートの scripts/setup-env.mjs（/shinnn-app:setup の手順 2 が使う環境の検出）の回帰テスト。
+ * scripts/setup-env.mjs（/shinnn-app:setup の手順 2 が使う環境の検出）の回帰テスト。
  * `node --test scripts/` で実行する。
  *
- * 同梱のテンプレートは書き換えず、スクリプトを一時フォルダに写して動かす。`--write` は写したフォルダの
- * docs/env.md に書く。外部のコマンドが 1 つも無い環境で動かし、コマンドが無くても落ちないことと、
+ * 対象のリポジトリは一時フォルダを `--repo-dir` で渡し、`--write` はその docs/env.md に書く。
+ * 外部のコマンドが 1 つも無い環境で動かし、コマンドが無くても落ちないことと、
  * 手元に何が入っているかに結果が左右されないことを両方確かめる。
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-/** 同梱のテンプレートの環境の検出スクリプト */
-const setupEnvScript = fileURLToPath(new URL('../template/scripts/setup-env.mjs', import.meta.url));
+/** 環境の検出スクリプト */
+const setupEnvScript = fileURLToPath(new URL('./setup-env.mjs', import.meta.url));
 
 /** テストで使う一時ファイルをすべて置くディレクトリ */
 let workRoot;
@@ -30,18 +30,18 @@ function envWithoutCommands(extra) {
   return { ...env, PATH: emptyDir, ...extra };
 }
 
-/** setup-env.mjs を写した一時フォルダ */
+/** 対象のリポジトリにする空の一時フォルダ */
 function makeEnvRepo() {
-  const repo = mkdtempSync(join(workRoot, 'env-'));
-  mkdirSync(join(repo, 'scripts'));
-  cpSync(setupEnvScript, join(repo, 'scripts', 'setup-env.mjs'));
-  return repo;
+  return mkdtempSync(join(workRoot, 'env-'));
 }
 
-/** setup-env.mjs をコマンドの無い環境で実行する。DB の検出は DATABASE_URL で済ませ、接続も docker も試さない */
+/**
+ * setup-env.mjs をコマンドの無い環境で実行する。DB の検出は DATABASE_URL で済ませ、接続も docker も試さない。
+ * カレントは対象の外に置き、書き込み先が `--repo-dir` で決まることも確かめる
+ */
 function runSetupEnv(repo, args) {
-  const result = spawnSync(process.execPath, [join(repo, 'scripts', 'setup-env.mjs'), ...args], {
-    cwd: repo,
+  const result = spawnSync(process.execPath, [setupEnvScript, '--repo-dir', repo, ...args], {
+    cwd: workRoot,
     encoding: 'utf8',
     env: envWithoutCommands({ DATABASE_URL: 'postgres://localhost:5432/app' }),
   });

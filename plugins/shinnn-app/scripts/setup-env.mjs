@@ -2,8 +2,12 @@
 // 開発環境を調べ、ローカルの PostgreSQL をどう用意するかを決める。検出だけを行う。
 //
 // 実行例:
-//   node scripts/setup-env.mjs             検出して結果を表示する
-//   node scripts/setup-env.mjs --write      PostgreSQL の検出結果を docs/env.md に追記する
+//   node <プラグイン>/scripts/setup-env.mjs             検出して結果を表示する
+//   node <プラグイン>/scripts/setup-env.mjs --write      PostgreSQL の検出結果を docs/env.md に追記する
+//
+// 引数:
+//   --repo-dir <パス>  対象のリポジトリ（既定は CLAUDE_PROJECT_DIR、無ければカレント）。docs/env.md はこの下
+//   --write            PostgreSQL の検出結果を docs/env.md に追記する
 //
 // 開発環境として、OS / Node.js / npm / Git / GitHub CLI（gh。ログインの状態とスコープ）/ Docker を表で示す。
 // 使う人のパソコンごとに違うので、この表は docs/env.md に書かない。
@@ -24,17 +28,22 @@ import { existsSync, readFileSync } from 'node:fs';
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { createConnection } from 'node:net';
 import { release, version as osVersion } from 'node:os';
-import { fileURLToPath } from 'node:url';
-import { delimiter, join } from 'node:path';
+import { delimiter, join, resolve } from 'node:path';
 
-const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
+/** 値を取る引数（`--名前 値`）を読む。無ければ undefined */
+function readOption(name) {
+  const index = process.argv.indexOf(name);
+  return index === -1 ? undefined : process.argv[index + 1];
+}
+
+const repositoryRoot = resolve(readOption('--repo-dir') || process.env.CLAUDE_PROJECT_DIR || process.cwd());
 const envDocumentPath = join(repositoryRoot, 'docs', 'env.md');
 const shouldWrite = process.argv.includes('--write');
 const postgresPort = 5432;
 const connectTimeoutMs = 1500;
 const commandTimeoutMs = 15000;
 
-/** 前提の Node.js の版。ルートの package.json の engines（>=24.15 <25）と同じ */
+/** 前提の Node.js の版。テンプレートのルートの package.json の engines（>=24.15 <25）と同じ */
 const requiredNode = { major: 24, minor: 15 };
 
 /** 前提の npm の系。Node.js 24 に同梱される版 */

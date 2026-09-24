@@ -54,4 +54,4 @@
 | Tailwind CSS                     | 4 系  |
 | zod                              | 4 系  |
 
-<!-- ここから下は node scripts/setup-env.mjs --write が追記します。 -->
+<!-- ここから下は /shinnn-app:setup の環境の検出（プラグインの setup-env.mjs --write）が追記します。 -->

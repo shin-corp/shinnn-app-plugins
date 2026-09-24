@@ -1,6 +1,6 @@
 ---
 name: update-rules
-description: プラグインが配布するルール（規約の rules・CLAUDE.md 雛形・アプリ作り方ガイド・権限の設定・git のフック）の更新を、リポジトリへ取り込んで PR にする。標準バージョンに差があるときに実行する。「ルールを更新」「決まりごとを新しくして」「標準を更新」「rules を最新に」「バージョンが古いと言われた」で起動
+description: プラグインが配布するルール（規約の rules・CLAUDE.md 雛形・アプリ作り方ガイド・権限の設定・git のフック・確認のスクリプト）の更新を、リポジトリへ取り込んで PR にする。標準バージョンに差があるときに実行する。「ルールを更新」「決まりごとを新しくして」「標準を更新」「rules を最新に」「バージョンが古いと言われた」で起動
 ---
 
 # 標準の更新を取り込む
@@ -33,6 +33,8 @@ description: プラグインが配布するルール（規約の rules・CLAUDE.
 
 規約の変更で**既存コードが違反する場合は、その一覧も出す**（直すかは別の作業として Issue にする）。
 
+確認のスクリプト（`scripts/`）が変わっていれば、何を確かめるようになったかも示す。
+
 ## 3. Issue とブランチを用意する
 
 **`main` に直接コミット・push しない。** 先に Issue を作り、そのブランチで取り込んで PR にする。
@@ -61,8 +63,12 @@ cp ${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/.standards-version .claude/rules
 cp ${CLAUDE_PLUGIN_ROOT}/template/docs/アプリ作り方ガイド.md docs/
 cp ${CLAUDE_PLUGIN_ROOT}/template/.claude/settings.json .claude/
 cp ${CLAUDE_PLUGIN_ROOT}/template/.husky/pre-commit ${CLAUDE_PLUGIN_ROOT}/template/.husky/pre-push .husky/
+cp ${CLAUDE_PLUGIN_ROOT}/template/scripts/*.mjs scripts/
 ```
 
+- 確認のスクリプト（`scripts/`）は CI と `/shinnn-app:check` が使う。同じ名前のファイルを置き換え、案件で足したスクリプトは残す。
+  コピーの前に `git diff --no-index` で差を見て、リポジトリ側で書き換えていた箇所（許可するライセンスの追加など）があれば、
+  コピーの後に同じ変更を当て直し、PR 本文に書く。`scripts/setup-env.mjs` は標準に含まれない（環境の検出はプラグインが行う）ので、あれば消す
 - `.claude/settings.json`（権限）は丸ごと置き換える。リポジトリ側で足していた許可や禁止があれば、コピーの前に
   `git diff --no-index` で差を見て一覧にし、PR 本文に書く（残すかはシン株式会社のレビューで決める）
 - `.gitignore` に `.claude/worktrees/` の行が無ければ、末尾に 1 行足す。ほかの行は触らない（案件ごとに書き足すファイルのため）
@@ -85,6 +91,8 @@ cp ${CLAUDE_PLUGIN_ROOT}/template/.husky/pre-commit ${CLAUDE_PLUGIN_ROOT}/templa
 
 PR 本文の 1 行目は `Closes #<手順 3 の Issue の番号>`。続けて、手順 2 でまとめた 3 分類と、
 **既存コードが違反している箇所の一覧**を書く。規約の変更に伴うコード修正は、この PR に混ぜない（別の Issue にする）。
+ただし、取り込んだ確認のスクリプトで `/shinnn-app:check` や CI が落ちる場合は、通すのに要る修正だけをこの PR に含める
+（落ちたままではマージできないため）。含めた修正は本文に分けて書く。
 ready にするか、マージまで行うかは `/shinnn-app:pr` がマージの方針（`human` / `self-review`）に従って決める。
 
 `.claude/settings.json` はセッションの開始時に読み込まれる。マージした後に Claude Code を起動し直すよう、利用者に伝える。

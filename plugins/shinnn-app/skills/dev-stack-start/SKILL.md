@@ -23,7 +23,7 @@ description: 開発用のサーバー群（PostgreSQL・API サーバー・画�
    - `local-postgres` / `database-url` / `managed`: すでに動いているものを使う。
      起動していなければ人に伝える
    - `embedded-postgres` / `pglite`: 起動の手順は `docs/env.md` の「ローカルの PostgreSQL」節に
-     `node scripts/setup-env.mjs --write` が記録している。そこに書かれた方法で起動する
+     setup の環境の検出（プラグインの `setup-env.mjs --write`）が記録している。そこに書かれた方法で起動する
 2. **マイグレーションの適用**: `npm run db:migrate -w server`
 3. **API 定義**: `npm run build -w shared` のあと、`npm run dev -w shared`（`tsc --watch`。`shared/src` の変更で `shared/dist` を作り直す）
 4. **API サーバー**: `npm run dev -w server`（`node --watch` + tsx。`src/` と `shared/dist` の変更で自動再起動する）

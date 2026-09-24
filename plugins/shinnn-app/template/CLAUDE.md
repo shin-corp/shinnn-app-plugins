@@ -17,7 +17,7 @@ Claude Code がこのリポジトリで作業するときの全体方針です�
 | `server/`  | Express 5 のサーバー。`api/` → `service/` → `db/` の一方向                              |
 | `client/`  | Angular の画面。API 呼び出しは `api-client.ts` の `call()` のみ                         |
 | `docs/`    | 仕様書・環境変数・設計判断の記録・自動テストで確かめられないものの確認結果              |
-| `scripts/` | セットアップと CI が使う Node スクリプト                                                |
+| `scripts/` | CI と `/shinnn-app:check` が使う確認のスクリプト                                        |
 | `.claude/` | Claude Code の設定とルール                                                              |
 | `.shinnn/` | セットアップの記録とプロファイル                                                        |
 

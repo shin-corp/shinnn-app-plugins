@@ -1,6 +1,7 @@
 ---
 name: setup
 description: アプリの初回セットアップを対話で行う。空のフォルダでは同梱のテンプレートを展開して git と GitHub のリポジトリを用意する。テンプレートを展開した後は、テンプレートの選択・環境の検出・必須項目の確認・選択項目の決定・適用までを 1 回で通す。再実行すると選択の変更を差分の PR にする。「セットアップ」「初期設定」「最初に何をすればいい」で起動
+allowed-tools: Bash(node *setup-env.mjs*)
 ---
 
 # 初回セットアップ
@@ -26,7 +27,7 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 - **無い**（テンプレートがまだ無いフォルダ）: 手順 0 だけを行い、起動し直すよう伝えて終える
 - **ある**: 手順 1〜6 を順に行う。ただし再実行で、リポジトリの `.claude/rules/.standards-version` が
   `${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/.standards-version` と違うときは、先に `/shinnn-app:update-rules` で
-  標準を取り込むよう伝えて終える（規約・権限の設定・git のフックの更新は setup ではなく update-rules が扱う）
+  標準を取り込むよう伝えて終える（規約・権限の設定・git のフック・確認のスクリプトの更新は setup ではなく update-rules が扱う）
 
 各手順の結果を短くまとめてから次に進み、**利用者が決める項目は必ず質問する**。
 
@@ -94,7 +95,7 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 
 ### 2. 環境の検出
 
-`node scripts/setup-env.mjs` を実行して、OS / Node / npm / Git / gh（ログインの状態とスコープ）/ Docker と PostgreSQL の候補を調べる。
+`node ${CLAUDE_PLUGIN_ROOT}/scripts/setup-env.mjs` を実行して、OS / Node / npm / Git / gh（ログインの状態とスコープ）/ Docker と PostgreSQL の候補を調べる。
 スクリプトが出す表を示し、**足りないものは導入手順を案内する**（管理者として実行したターミナルが必要なものはその旨を伝える）。
 
 - Node は 24 系（24.15 以上）が前提。npm は Node.js 24 に同梱される 11 系をそのまま使う
