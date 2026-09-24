@@ -126,7 +126,6 @@ plugins/shinnn-app/
   agents/                         レビュー担当 3 体
   hooks/hooks.json                自動で動くものの設定
   scripts/                        hooks の実体と、setup の展開・適用スクリプト
-  standards/                      レビュー観点（顧客には配らない）
   template/                       setup が展開するテンプレート（アプリの土台）。規約と CLAUDE.md 雛形もこの中にある
 ```
 

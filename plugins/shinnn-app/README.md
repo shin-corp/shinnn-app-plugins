@@ -15,7 +15,6 @@
 | レビュー担当 | 正確性 / セキュリティ / 規約 の 3 体。`code-review` から同時に動く |
 | hooks | 取り決めの案内。保存のたびの `eslint --fix`、変更したファイルの lint とテスト、セッション開始時の状況 |
 | 適用スクリプト | `scripts/apply-setup.mjs`。`setup` が `.shinnn/setup.json` / ワークフロー / `CODEOWNERS` を書き換える唯一の手段 |
-| レビュー観点 | `standards/REVIEW.md`。顧客には配らず、レビュー担当が読む |
 | テンプレート | アプリの土台（`template/`）。`setup` が空のフォルダに展開する |
 
 ## コマンド
