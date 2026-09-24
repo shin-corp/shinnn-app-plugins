@@ -10,7 +10,7 @@
 
 | 種類 | 内容 |
 |:--|:--|
-| コマンド | 初回の `setup` と、日常の 5 つ（feature / check / pr / why / retro） |
+| コマンド | 初回の `setup` と、普段の `feature`（続けて `pr` が `check` を通して PR を出し、`retro` まで行う）、理由を聞く `why` |
 | 内部スキル | API の追加、画面の追加、マイグレーション、レビュー、コミット規約 など 16 |
 | レビュー担当 | 正確性 / セキュリティ / 規約 の 3 体。`code-review` から同時に動く |
 | hooks | 取り決めの案内。保存のたびの `eslint --fix`、変更したファイルの lint とテスト、セッション開始時の状況 |
@@ -25,16 +25,17 @@
 |:--|:--|
 | `/shinnn-app:setup` | 初回セットアップ。同梱のテンプレートの展開・種類の選択・環境の確認・必要な機能の決定と適用 |
 
-日常の 5 コマンド。毎日使うのは `feature` / `check` / `pr` の 3 つで、
-`why` と `retro` は困ったとき・終わったときに使う。
+利用者が普段打つのは `feature` だけで、`why` は理由を知りたいときに使う。
+`check` / `pr` / `retro` は `feature` が続けて行う（`feature` の仕上げが `pr` を呼び、`pr` が出す前に `check` を 1 回、
+出した後に `retro` を呼ぶ）。利用者が直接呼んでもよい。
 
 | コマンド | 内容 |
 |:--|:--|
-| `/shinnn-app:feature <作りたいこと>` | PR 1 本ずつの Issue に分けて順番を決め、Issue の作成 → 仕様書への反映 → 実装 → テスト |
-| `/shinnn-app:check` | 型検査・lint・テストと、受入条件および API 定義のカバレッジ |
-| `/shinnn-app:pr` | コミット → プッシュ → ドラフト PR → レビューの収束 |
+| `/shinnn-app:feature <作りたいこと>` | PR 1 本ずつの Issue に分けて順番を決め、Issue の作成 → 仕様書への反映 → 実装 → テスト → `pr` |
 | `/shinnn-app:why <話題>` | 決まりの理由を、根拠を引いて説明する |
-| `/shinnn-app:retro` | Issue への振り返りコメントと引き継ぎメモの追記 |
+| `/shinnn-app:pr` | `check` → コミット → プッシュ → ドラフト PR → レビューの収束 → `retro`（`feature` が呼ぶ） |
+| `/shinnn-app:check` | 型検査・lint・テストと、受入条件および API 定義のカバレッジ（`pr` が PR 1 本につき 1 回呼ぶ） |
+| `/shinnn-app:retro` | Issue への振り返りコメントと引き継ぎメモの追記（`pr` が呼ぶ） |
 
 内部スキル: `add-api` / `add-screen` / `db-migrate` / `code-review` / `commit-message` /
 `draft-pr` / `build-check` / `lint-check` / `pre-commit-check` / `test-run` / `mutation-check` /

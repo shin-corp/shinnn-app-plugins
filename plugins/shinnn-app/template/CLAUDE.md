@@ -7,7 +7,7 @@ Claude Code がこのリポジトリで作業するときの全体方針です�
 1. **open な Issue と PR を見る**（次に着手する Issue と open な PR はセッション開始時に表示されます。出ないときは `gh issue list` / `gh pr list` か GitHub の画面で見ます）。作業項目の正本は GitHub Issues、引き継ぎの注意は pin した「引き継ぎメモ」Issue です。
 2. 対象の Issue を決め、`feature/<Issue 番号>-<slug>` ブランチを切ります。1 Issue = 1 ブランチ = 1 PR。
 3. `shared`（API 定義）→ `server` → `client` → テストの順に実装します。
-4. `/shinnn-app:check` が通ったら `/shinnn-app:pr` で PR を作ります。本文に `Closes #<番号>` を書きます。
+4. `/shinnn-app:pr` で PR を作ります（出す前に `/shinnn-app:check` を 1 回通し、出した後に `/shinnn-app:retro` で振り返りを残す）。本文に `Closes #<番号>` を書きます。`feature` が続けて行うので、利用者に打たせません。
 
 ## 2. リポジトリ構成
 
@@ -48,7 +48,7 @@ Claude Code がこのリポジトリで作業するときの全体方針です�
 | `/shinnn-app:setup`                  | 初回セットアップ（1 回だけ。再実行で設定を変えられる）            |
 | `/shinnn-app:feature <作りたいこと>` | 要望を PR 1 本ずつの Issue に分け、受入条件を起こして順に実装する |
 | `/shinnn-app:check`                  | 型検査・lint・テスト・受入条件カバレッジ・API 定義カバレッジ      |
-| `/shinnn-app:pr`                     | コミット → push → ドラフト PR → レビュー                          |
+| `/shinnn-app:pr`                     | コミット → push → ドラフト PR → レビュー → `retro`                |
 | `/shinnn-app:why <話題 or ファイル>` | 規約の理由を平易な日本語と before / after で説明する              |
 | `/shinnn-app:retro`                  | 学びを Issue に残し、引き継ぎに関わることを「引き継ぎメモ」に足す |
 
