@@ -128,7 +128,7 @@ plugins/shinnn-app/
   skills/                         コマンドと内部スキル
   agents/                         レビュー担当 3 体
   hooks/hooks.json                自動で動くものの設定
-  scripts/                        hooks の実体と、setup の展開・適用スクリプト
+  scripts/                        hooks の実体と、setup の展開・適用、update-rules の写しのスクリプト
   template/                       setup が展開するテンプレート（アプリの土台）。規約と CLAUDE.md 雛形もこの中にある
 ```
 

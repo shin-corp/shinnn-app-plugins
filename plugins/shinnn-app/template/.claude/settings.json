@@ -26,6 +26,7 @@
       "Bash(node *mutate*.mjs)",
       "Bash(node *check-plugin-version.mjs*)",
       "Bash(node *setup-env.mjs*)",
+      "Bash(node *copy-standard.mjs*)",
       "Bash(claude plugin marketplace update shinnn)",
       "Bash(claude plugin update shinnn-app@shinnn *)",
       "Bash(git status *)",

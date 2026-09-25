@@ -1,6 +1,6 @@
 ---
 name: update-rules
-description: プラグインが配布するルール（規約の rules・CLAUDE.md 雛形・アプリ作り方ガイド・権限の設定・git のフック・確認のスクリプト）の更新を、リポジトリへ取り込んで PR にする。標準バージョンに差があるときに実行する。「ルールを更新」「決まりごとを新しくして」「標準を更新」「rules を最新に」「バージョンが古いと言われた」で起動
+description: プラグインが配布するルール（規約の rules・CLAUDE.md 雛形・アプリ作り方ガイド・権限の設定・git のフック・確認のスクリプト・ワークフロー・PR テンプレート）の更新を、リポジトリへ取り込んで PR にする。標準バージョンに差があるときに実行する。「ルールを更新」「決まりごとを新しくして」「標準を更新」「rules を最新に」「バージョンが古いと言われた」で起動
 ---
 
 # 標準の更新を取り込む
@@ -33,7 +33,7 @@ description: プラグインが配布するルール（規約の rules・CLAUDE.
 
 規約の変更で**既存コードが違反する場合は、その一覧も出す**（直すかは別の作業として Issue にする）。
 
-確認のスクリプト（`scripts/`）が変わっていれば、何を確かめるようになったかも示す。
+確認のスクリプト（`scripts/`）やワークフロー（`.github/workflows/`）が変わっていれば、何を確かめるようになったかも示す。
 
 ## 3. Issue とブランチを用意する
 
@@ -55,27 +55,36 @@ description: プラグインが配布するルール（規約の rules・CLAUDE.
 
 ## 4. 適用する
 
-コピー元はすべて `${CLAUDE_PLUGIN_ROOT}/template/` の下にある。
+写すのはプラグインのスクリプトで行う（写し元は `${CLAUDE_PLUGIN_ROOT}/template/`）。
+`.claude/` と `.github/workflows/` は権限の設定の deny で守られていて、`cp` や Edit / Write では書けない。
+先に `--dry-run` で変わるファイルの一覧を出し、下の「写す前に見るもの」を済ませてから、`--dry-run` を外して実行する。
 
 ```
-cp ${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/*.md .claude/rules/
-cp ${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/.standards-version .claude/rules/
-cp ${CLAUDE_PLUGIN_ROOT}/template/docs/アプリ作り方ガイド.md docs/
-cp ${CLAUDE_PLUGIN_ROOT}/template/.claude/settings.json .claude/
-cp ${CLAUDE_PLUGIN_ROOT}/template/.husky/pre-commit ${CLAUDE_PLUGIN_ROOT}/template/.husky/pre-push .husky/
-cp ${CLAUDE_PLUGIN_ROOT}/template/scripts/*.mjs scripts/
+node ${CLAUDE_PLUGIN_ROOT}/scripts/copy-standard.mjs --dry-run
+node ${CLAUDE_PLUGIN_ROOT}/scripts/copy-standard.mjs
 ```
 
-- 確認のスクリプト（`scripts/`）は CI と `/shinnn-app:check` が使う。同じ名前のファイルを置き換え、案件で足したスクリプトは残す。
-  コピーの前に `git diff --no-index` で差を見て、リポジトリ側で書き換えていた箇所（許可するライセンスの追加など）があれば、
-  コピーの後に同じ変更を当て直し、PR 本文に書く。`scripts/setup-env.mjs` は標準に含まれない（環境の検出はプラグインが行う）ので、あれば消す
-- `.claude/settings.json`（権限）は丸ごと置き換える。リポジトリ側で足していた許可や禁止があれば、コピーの前に
-  `git diff --no-index` で差を見て一覧にし、PR 本文に書く（残すかはシン株式会社のレビューで決める）
+リポジトリの権限の設定が古く、このスクリプトの許可が無いと、実行の前に確認が出る。許可してもらって進める
+（写した後の権限の設定には許可が入っているので、次からは出ない）。
+
+写すのは、規約（`.claude/rules/`）、権限の設定（`.claude/settings.json`）、アプリ作り方ガイド、git のフック（`.husky/`）、
+確認のスクリプト（`scripts/*.mjs`）、ワークフロー（`.github/workflows/`）、PR テンプレート。
+**上書きと追加だけで、消さない。** 案件で足したファイルは残る。有効にしているワークフローは有効の名前に写し、
+有効・無効は setup で選んだまま変えない。サーバー側を持たないリポジトリ（`server/` が無い）には、元から無かった規約を増やさない。
+
+写す前に見るもの（リポジトリ側で書き換えていたものを失わないため）。一覧で「更新」と出たファイルについて、
+`git diff --no-index <テンプレートのファイル> <リポジトリのファイル>` で差を見る。
+
+- 確認のスクリプト（`scripts/`）は CI と `/shinnn-app:check` が使う。リポジトリ側で書き換えていた箇所（許可するライセンスの追加など）が
+  あれば、写した後に同じ変更を当て直し、PR 本文に書く。`scripts/setup-env.mjs` は標準に含まれない（環境の検出はプラグインが行う）ので、あれば消す
+- ワークフロー（`.github/workflows/`）は Claude が編集できない（deny）ので、リポジトリ側の書き換えは人が入れたもの。
+  書き換えがあれば、差を PR 本文に書き、写した後に人に当て直してもらう
+- `.claude/settings.json`（権限）は丸ごと置き換わる。リポジトリ側で足していた許可や禁止があれば一覧にし、
+  PR 本文に書く（残すかはシン株式会社のレビューで決める）
+
+写した後に行うこと:
+
 - `.gitignore` に `.claude/worktrees/` の行が無ければ、末尾に 1 行足す。ほかの行は触らない（案件ごとに書き足すファイルのため）
-
-- コピーは Bash 経由で行う（`.claude/rules/` への Edit / Write は `.claude/settings.json` の deny が止める）
-- サーバー側を持たないリポジトリには、**元から無かった規約を増やさない**。
-  コピー前に `.claude/rules/` の顔ぶれを控えておき、増えた分は消す
 - `${CLAUDE_PLUGIN_ROOT}/template/CLAUDE.md` / `.../template/client/CLAUDE.md` / `.../template/server/CLAUDE.md`
   を、それぞれ `CLAUDE.md` / `client/CLAUDE.md` / `server/CLAUDE.md` へ当てる。**案件固有の記述を消さないように**
   マージする（雛形が変わった箇所だけを当て、埋めてある内容は残す）
@@ -94,6 +103,9 @@ PR 本文の 1 行目は `Closes #<手順 3 の Issue の番号>`。続けて、
 ただし、取り込んだ確認のスクリプトで `/shinnn-app:check` や CI が落ちる場合は、通すのに要る修正だけをこの PR に含める
 （落ちたままではマージできないため）。含めた修正は本文に分けて書く。
 ready にするか、マージまで行うかは `/shinnn-app:pr` がマージの方針（`human` / `self-review`）に従って決める。
+
+ワークフローを変える PR は、push とマージに `gh` の `workflow` スコープが要る。スコープの不足で断られたら、
+`gh auth refresh -h github.com -s workflow` を案内する。
 
 `.claude/settings.json` はセッションの開始時に読み込まれる。マージした後に Claude Code を起動し直すよう、利用者に伝える。
 

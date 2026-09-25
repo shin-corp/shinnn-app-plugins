@@ -14,7 +14,7 @@
 | 内部スキル | API の追加、画面の追加、マイグレーション、レビュー、コミット規約 など 16 |
 | レビュー担当 | 正確性 / セキュリティ / 規約 の 3 体。`code-review` から同時に動く |
 | hooks | 取り決めの案内。保存のたびの `eslint --fix`、変更したファイルの lint とテスト、セッション開始時の状況 |
-| 適用スクリプト | `scripts/apply-setup.mjs`。`setup` が `.shinnn/setup.json` / ワークフロー / `CODEOWNERS` を書き換える唯一の手段 |
+| 適用スクリプト | `scripts/apply-setup.mjs`（`setup` が `.shinnn/setup.json` / ワークフロー / `CODEOWNERS` を書き換える）と `scripts/copy-standard.mjs`（`update-rules` が規約・権限の設定・ワークフローなどの標準を写す）。deny で守られたファイルは、この 2 つからだけ書き換える |
 | テンプレート | アプリの土台（`template/`）。`setup` が空のフォルダに展開する |
 
 ## コマンド
