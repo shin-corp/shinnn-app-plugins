@@ -24,7 +24,7 @@
 // .claude/ と .github/workflows/ は権限の設定の deny で守られていて、Claude の cp では書けない。
 // このスクリプトはテンプレートと同じ中身を写すだけで、変更は PR にしてシン株式会社がレビューする。
 
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -169,6 +169,10 @@ for (const { from, to } of copies) {
 for (const { path, reason } of RETIRED_FILES) {
   const target = join(repositoryRoot, path);
   if (!existsSync(target)) {
+    continue;
+  }
+  if (!statSync(target).isFile()) {
+    console.log(`消さなかった ${path}（ファイルではない。案件で置いたものかもしれないので、人が確かめる）`);
     continue;
   }
 

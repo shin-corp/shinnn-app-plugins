@@ -232,6 +232,18 @@ test('main に直接コミットするワークフロー（progress-snapshot.yam
   assert.deepEqual(apiCalls(result.calls, 'PUT'), []);
 });
 
+test('案件で置いた progress-snapshot.yml が残っている: 設定せず、標準の取り込みでは消えないことを案内する', () => {
+  const result = runProtect(
+    { protection: NOT_PROTECTED },
+    { files: { '.github/workflows/progress-snapshot.yml': 'name: 進捗スナップショット\n' } },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /設定するには: テンプレートが配ったものではない（案件で置いた）ワークフロー/);
+  assert.doesNotMatch(result.stdout, /update-rules/);
+  assert.deepEqual(apiCalls(result.calls, 'PUT'), []);
+});
+
 test('無効にした雛形（progress-snapshot.yaml.disabled）は、main に直接コミットするワークフローとして扱わない', () => {
   const result = runProtect(
     { protection: NOT_PROTECTED },

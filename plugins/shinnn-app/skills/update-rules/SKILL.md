@@ -31,10 +31,9 @@ description: プラグインが配布するルール（規約の rules・CLAUDE.
 - **変わった規約**: 書き方が変わったもの。既存コードが違反していないかを確認する
 - **消えた規約**: 守らなくてよくなったもの
 
-`--dry-run` で「削除」と出たファイル（テンプレートから消したもの）は、括弧の中の理由とあわせて別に示す。
-
 分ける前に `node ${CLAUDE_PLUGIN_ROOT}/scripts/copy-standard.mjs --dry-run` で、写るファイルと飛ばす規約を見ておく。
 「飛ばした」と出る規約（`server/` の無いリポジトリには増やさないもの）は、追加された規約に入れない。
+「削除」と出たファイル（テンプレートから消したもの）は、3 分類とは別に、括弧の中の理由とあわせて示す。
 
 規約の変更で**既存コードが違反する場合は、その一覧も出す**（直すかは別の作業として Issue にする）。
 
@@ -47,7 +46,7 @@ description: プラグインが配布するルール（規約の rules・CLAUDE.
 規約どおりにする（CI の規約チェックが本文の `Closes` を確かめる）。
 
 1. 取り込みの Issue を `gh issue create` で作る。題は `[標準] 標準 <新バージョン> の取り込み`、本文には手順 2 でまとめた
-   3 分類を書き、ラベルは `status:doing` を付ける
+   3 分類と、消すファイルとその理由を書き、ラベルは `status:doing` を付ける
 2. `main` の最新から、1 の Issue の番号でブランチを切る
 
    ```
@@ -107,7 +106,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/copy-standard.mjs
 /shinnn-app:pr
 ```
 
-PR 本文の 1 行目は `Closes #<手順 3 の Issue の番号>`。続けて、手順 2 でまとめた 3 分類と、
+PR 本文の 1 行目は `Closes #<手順 3 の Issue の番号>`。続けて、手順 2 でまとめた 3 分類、消したファイルとその理由、
 **既存コードが違反している箇所の一覧**を書く。規約の変更に伴うコード修正は、この PR に混ぜない（別の Issue にする）。
 ただし、取り込んだ確認のスクリプトで `/shinnn-app:check` や CI が落ちる場合は、通すのに要る修正だけをこの PR に含める
 （落ちたままではマージできないため）。含めた修正は本文に分けて書く。
@@ -119,8 +118,15 @@ ready にするか、マージまで行うかは `/shinnn-app:pr` がマージ�
 `.claude/settings.json` はセッションの開始時に読み込まれる。マージした後に Claude Code を起動し直すよう、利用者に伝える。
 
 `.github/workflows/progress-snapshot.yaml` を消したときは、マージした後に、それが残っていたために設定できなかったブランチ保護を
-設定できる。`node ${CLAUDE_PLUGIN_ROOT}/scripts/protect-branch.mjs --dry-run` で設定する内容を見せて確認を取り、
-`--dry-run` を外して実行する（`/shinnn-app:setup` の手順 5 の 12 と同じ）。
+設定できる。
+
+1. `node ${CLAUDE_PLUGIN_ROOT}/scripts/protect-branch.mjs --dry-run` で設定する内容を見せて確認を取り、
+   `--dry-run` を外して実行する（`/shinnn-app:setup` の手順 5 の 12 と同じ）
+2. 最後の行に出る 1 行の要約（`ブランチ保護: …` で始まる）で、`README.md` の「有効な機能」表のブランチ保護の行を書き換え、
+   `docs/decisions/` の setup の記録（`<番号>-setup.md`）に書き足す。Issue → ブランチ → PR で入れる
+
+マージを人が行い、その場で 1・2 を行えないときは、PR 本文と「引き継ぎメモ」Issue に「マージの後にブランチ保護を設定する
+（`/shinnn-app:update-rules` の手順 5 の終わり）」と残す。
 
 ## 6. 適用しない選択
 

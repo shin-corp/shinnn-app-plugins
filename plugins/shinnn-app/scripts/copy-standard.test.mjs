@@ -218,6 +218,17 @@ test('copy-standard --dry-run: テンプレートから消したファイルを�
   assert.equal(readFileSync(join(repo, '.claude/rules/.standards-version'), 'utf8'), '0.0.1\n');
 });
 
+test('copy-standard: 一覧のパスがフォルダなら消さずに示し、取り込みは続ける', () => {
+  const repo = makeOldRepo();
+  mkdirSync(join(repo, 'docs/progress.md'), { recursive: true });
+  const result = runCopyStandard(repo);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /^消さなかった docs\/progress\.md（ファイルではない/m);
+  assert.ok(existsSync(join(repo, 'docs/progress.md')));
+  assert.ok(sameAsTemplate(repo, '.claude/rules/.standards-version'));
+});
+
 test('retired-files.json: 挙げたファイルはテンプレートに無く（有効・無効のどちらの名前でも）、消す理由がある', () => {
   assert.ok(retiredFiles.length > 0);
   for (const { path, reason } of retiredFiles) {
@@ -225,6 +236,8 @@ test('retired-files.json: 挙げたファイルはテンプレートに無く（
     for (const name of names) {
       assert.equal(existsSync(join(templateRoot, name)), false, `テンプレートにまだある: ${name}`);
     }
+    // リポジトリの外を指さない（一覧を書き間違えて、関係ないファイルを消さないため）
+    assert.ok(!path.startsWith('/') && !path.split('/').includes('..'), path);
     assert.equal(typeof reason, 'string', path);
     assert.notEqual(reason.trim(), '', path);
   }
