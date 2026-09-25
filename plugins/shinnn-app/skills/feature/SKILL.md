@@ -1,7 +1,6 @@
 ---
 name: feature
 description: 作りたいことを受け取り（1 つでも、まとめていくつでも）、PR 1 本に収まる大きさの Issue に分けて順番を決め、1 本ずつ Issue の作成 → 仕様書への反映 → ブランチ作成 → shared → server → client → テスト の順で実装する。「機能を追加したい」「〜を作りたい」「こういうアプリがほしい」「続きをお願い」で起動
-allowed-tools: Bash(node *check-plugin-version.mjs*) Bash(claude plugin marketplace update shinnn) Bash(claude plugin update shinnn-app@shinnn *)
 ---
 
 # 作りたいことを形にする
