@@ -131,6 +131,28 @@ test('copy-standard: サーバー側を持たないリポジトリには、元�
   assert.ok(sameAsTemplate(repo, '.claude/rules/.standards-version'));
   assert.equal(existsSync(join(repo, '.claude/rules/db.md')), false);
   assert.equal(existsSync(join(repo, '.claude/rules/api-contract.md')), false);
+  // 飛ばした規約は出力に出す（PR 本文に「追加された規約」として書かないように）
+  assert.match(result.stdout, /^飛ばした \.claude\/rules\/db\.md（server\/ が無いリポジトリには/m);
+});
+
+test('copy-standard: 途中で失敗したときは、標準の版を新しくしない', () => {
+  const repo = makeOldRepo();
+  // .husky をファイルにしておくと、フックを写すところで失敗する
+  writeRepoFile(repo, '.husky', 'not a folder\n');
+  const result = runCopyStandard(repo);
+
+  assert.notEqual(result.status, 0);
+  assert.equal(readFileSync(join(repo, '.claude/rules/.standards-version'), 'utf8'), '0.0.1\n');
+});
+
+test('copy-standard --repo-dir: 値が無ければ、何も書かずに止める', () => {
+  const cwd = mkdtempSync(join(workRoot, 'cwd-'));
+  writeRepoFile(cwd, '.claude/rules/.standards-version', '0.0.1\n');
+  const result = spawnSync(process.execPath, [copyStandardScript, '--repo-dir'], { cwd, encoding: 'utf8' });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /--repo-dir には値が要ります/);
+  assert.equal(existsSync(join(cwd, '.claude/settings.json')), false);
 });
 
 test('copy-standard --dry-run: 変わるファイルを示すだけで書かない', () => {
