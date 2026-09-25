@@ -38,7 +38,7 @@
 | `/shinnn-app:retro` | Issue への振り返りコメントと引き継ぎメモの追記（`pr` が呼ぶ） |
 
 内部スキル: `add-api` / `add-screen` / `db-migrate` / `code-review` /
-`draft-pr` / `build-check` / `lint-check` / `pre-commit-check` / `test-run` / `mutation-check` /
+`build-check` / `lint-check` / `pre-commit-check` / `test-run` / `mutation-check` /
 `dev-stack-start` / `handover-check` / `update-rules` / `session-retro`
 
 `coding-guide` は `template/client/CLAUDE.md` と `template/.claude/rules/` に吸収したため未提供です。

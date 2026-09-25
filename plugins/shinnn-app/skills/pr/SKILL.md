@@ -76,13 +76,21 @@ git -c core.quotepath=false diff --name-only origin/main...HEAD
 
 | PR の性質 | レビュー |
 |:--|:--|
-| コードを変える PR | `/shinnn-app:code-review` → （有効なら）Copilot。どちらも Critical / Warning が 0 件になるまで |
+| コードを変える PR | `/shinnn-app:code-review` → （Copilot が有効な設定なら）Copilot。どちらも Critical / Warning が 0 件になるまで |
 | 文書だけの PR（`docs/` と `*.md` のみ） | `/shinnn-app:code-review` を 1 巡だけ。Copilot には依頼しない |
 
 `core.quotepath=false` を省くと、日本語のファイル名がエスケープされて判定を誤る。
 
-Copilot が有効な設定なら、コードレビューが 1 巡してから依頼する（レビュー回数に上限があるため、
-設計レベルの指摘を先に潰しておく）。
+**Copilot が有効な設定**とは、`.shinnn/setup.json` の `optional.copilot-review` が `true` のこと。そのときだけ、
+コードレビューが 1 巡してから依頼する（レビュー回数に上限があるため、設計レベルの指摘を先に潰しておく）。
+PR を作った時点では依頼しない。
+
+```
+gh pr edit <PR 番号> --add-reviewer <Copilot のレビュアー名>
+```
+
+設定が `false`、または組織で Copilot が使えないときは飛ばす。**エラーにしない。**
+シン株式会社の担当者は `CODEOWNERS` で自動でレビュアーに付くので、手で足さない。
 
 ## 5. 指摘への対応
 
