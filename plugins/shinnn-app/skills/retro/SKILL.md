@@ -35,7 +35,7 @@ gh issue comment <番号> --body-file <本文のパス>
 
 ## 3. 引き継ぎメモに追記する
 
-pin されている「引き継ぎメモ」Issue（番号は `.shinnn/setup.json` の `handoverIssue`）に、
+pin されている「引き継ぎメモ」Issue（番号は `.shinnn/setup.json` の `handoverIssue`）の「引き継ぎの注意」に、
 **引き継ぐ人が知らないと困ることだけ**を追記する。
 
 - 仮置きで進めた決定と、その理由
