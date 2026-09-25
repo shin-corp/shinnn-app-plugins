@@ -11,10 +11,10 @@
 | 種類 | 内容 |
 |:--|:--|
 | コマンド | 初回の `setup` と、普段の `feature`（続けて `pr` が `check` を通して PR を出し、`retro` まで行う）、理由を聞く `why` |
-| 内部スキル | API の追加、画面の追加、マイグレーション、レビュー、テストが効いているかの確認 など 12 |
+| 内部スキル | API の追加、画面の追加、マイグレーション、レビュー、テストが効いているかの確認 など 9 |
 | レビュー担当 | 正確性 / セキュリティ / 規約 の 3 体。`code-review` から同時に動く |
 | hooks | 取り決めの案内。保存のたびの `eslint --fix`、変更したファイルの lint とテスト、セッション開始時の状況 |
-| 適用スクリプト | `scripts/apply-setup.mjs`（`setup` が `.shinnn/setup.json` / ワークフロー / `CODEOWNERS` を書き換える）と `scripts/copy-standard.mjs`（`update-rules` が規約・権限の設定・ワークフローなどの標準を写す）。deny で守られたファイルは、この 2 つからだけ書き換える |
+| 適用スクリプト | `scripts/apply-setup.mjs`（`setup` が `.shinnn/setup.json` / ワークフロー / `CODEOWNERS` を書き換える）と `scripts/copy-standard.mjs`（`update-rules` が規約・権限の設定・ワークフローなどの標準を写す）。deny で守られたファイルは、setup の展開（`scripts/fetch-template.mjs`）とこの 2 つから書き換える |
 | テンプレート | アプリの土台（`template/`）。`setup` が空のフォルダに展開する |
 
 ## コマンド

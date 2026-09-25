@@ -4,7 +4,7 @@
 
 `items` は item（name / description / status）の一覧・作成・編集・削除を、
 API 定義（`shared`）→ サーバー（`server`）→ 画面（`client`）まで一通り実装したもの。
-`client/CLAUDE.md` の「画面の作り方」8 手順は、この `items` の形に沿っている。
+画面を足す手順（`/shinnn-app:add-screen`）と、`client/CLAUDE.md` の「画面の決まり」は、この `items` の形に沿っている。
 
 見るところ:
 
