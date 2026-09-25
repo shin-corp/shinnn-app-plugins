@@ -14,7 +14,8 @@
 // ワークフロー（.github/workflows/）、PR テンプレート。
 // CLAUDE.md の雛形は案件固有の記述を残してマージするので、ここでは写さない（update-rules が当てる）。
 //
-// 上書きと追加だけを行い、消さない。テンプレートから消えたファイルはリポジトリに残る。
+// 上書きと追加に加えて、テンプレートから消したファイル（scripts/retired-files.json に挙げたもの）が残っていれば消す。
+// 消すのは一覧にあるものだけで、テンプレートに無いファイルを片っ端から消すことはしない（案件で足したファイルは残る）。
 // ワークフローの雛形（*.yaml.disabled）は、リポジトリで有効にしている（.disabled の無い名前がある）なら
 // その名前に写し、そうでなければ .disabled のまま写す。有効・無効は setup で選んだまま変えない。
 // サーバー側を持たないリポジトリ（server/ が無い）には、元から無かった規約を増やさない（飛ばしたものは出力に出す）。
@@ -23,7 +24,7 @@
 // .claude/ と .github/workflows/ は権限の設定の deny で守られていて、Claude の cp では書けない。
 // このスクリプトはテンプレートと同じ中身を写すだけで、変更は PR にしてシン株式会社がレビューする。
 
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -54,6 +55,12 @@ const DISABLED_SUFFIX = '.disabled';
 /** 標準のバージョンの置き場所。テンプレートから作ったリポジトリかどうかの目印にも使う */
 const STANDARDS_VERSION = '.claude/rules/.standards-version';
 
+/**
+ * テンプレートから消したファイル（リポジトリの中の相対パスと、消す理由）。
+ * テンプレートから、ここで写すファイルを消したら 1 件足す。足さないと、既存のリポジトリに残り続ける
+ */
+const RETIRED_FILES = JSON.parse(readFileSync(new URL('./retired-files.json', import.meta.url), 'utf8'));
+
 /** 1 つずつ名前で写すファイル */
 const SINGLE_FILES = [
   '.claude/settings.json',
@@ -76,7 +83,7 @@ function listTemplateFiles(folder) {
 
 /**
  * 写すファイル（`from` はテンプレートの中、`to` はリポジトリの中の相対パス）と、写さずに飛ばす規約の一覧。
- * 標準の版は最後に写す。途中で失敗したときに、版だけが新しくなって「取り込み済み」に見えないようにするため
+ * 標準の版は含めない（消すファイルを消した後に、最後に写す）
  */
 function listCopies() {
   const copies = [];
@@ -117,7 +124,6 @@ function listCopies() {
     copies.push({ from, to: isEnabled ? enabledPath : from });
   }
 
-  copies.push({ from: STANDARDS_VERSION, to: STANDARDS_VERSION });
   return { copies, skipped };
 }
 
@@ -157,6 +163,29 @@ for (const { from, to } of copies) {
   if (!dryRun) {
     mkdirSync(dirname(target), { recursive: true });
     copyFileSync(source, target);
+  }
+}
+
+for (const { path, reason } of RETIRED_FILES) {
+  const target = join(repositoryRoot, path);
+  if (!existsSync(target)) {
+    continue;
+  }
+
+  console.log(`削除 ${path}（テンプレートから消したファイル: ${reason}）`);
+  if (!dryRun) {
+    unlinkSync(target);
+  }
+}
+
+// 標準の版は最後に写す。途中で失敗したときに、版だけが新しくなって「取り込み済み」に見えないようにするため
+const versionKind = changeKind(join(templateRoot, STANDARDS_VERSION), join(repositoryRoot, STANDARDS_VERSION));
+if (versionKind === undefined) {
+  unchangedCount += 1;
+} else {
+  console.log(`${versionKind} ${STANDARDS_VERSION}`);
+  if (!dryRun) {
+    copyFileSync(join(templateRoot, STANDARDS_VERSION), join(repositoryRoot, STANDARDS_VERSION));
   }
 }
 

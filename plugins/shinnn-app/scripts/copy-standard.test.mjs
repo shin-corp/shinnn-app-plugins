@@ -3,6 +3,7 @@
  * `node --test scripts/` で実行する。
  *
  * 写し元はプラグインに同梱の本物のテンプレート。対象のリポジトリは一時フォルダを `--repo-dir` で渡す。
+ * テンプレートから消したファイル（retired-files.json）は、残っていれば消し、一覧に無いファイルは残すことも確かめる。
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -14,6 +15,9 @@ import { fileURLToPath } from 'node:url';
 
 /** 標準を写すスクリプト */
 const copyStandardScript = fileURLToPath(new URL('./copy-standard.mjs', import.meta.url));
+
+/** テンプレートから消したファイルの一覧 */
+const retiredFiles = JSON.parse(readFileSync(new URL('./retired-files.json', import.meta.url), 'utf8'));
 
 /** 写し元のテンプレート */
 const templateRoot = fileURLToPath(new URL('../template/', import.meta.url));
@@ -176,6 +180,54 @@ test('copy-standard --dry-run: 変わるファイルを示すだけで書かな�
   assert.match(result.stdout, /--dry-run なので書いていません。/);
   assert.equal(readFileSync(join(repo, '.github/workflows/ci.yaml'), 'utf8'), 'old\n');
   assert.equal(existsSync(join(repo, '.github/PULL_REQUEST_TEMPLATE.md')), false);
+});
+
+test('copy-standard: テンプレートから消したファイルが残っていれば消し、一覧に無い案件のファイルは残す', () => {
+  const repo = makeOldRepo();
+  for (const { path } of retiredFiles) {
+    writeRepoFile(repo, path, 'old\n');
+  }
+  const result = runCopyStandard(repo);
+
+  assert.equal(result.status, 0, result.stderr);
+  for (const { path } of retiredFiles) {
+    assert.equal(existsSync(join(repo, path)), false, path);
+    assert.ok(
+      result.stdout.split('\n').some((line) => line.startsWith(`削除 ${path}（テンプレートから消したファイル: `)),
+      path,
+    );
+  }
+  assert.equal(readFileSync(join(repo, '.claude/rules/project-only.md'), 'utf8'), 'project\n');
+  assert.equal(readFileSync(join(repo, 'scripts/project-only.mjs'), 'utf8'), 'project\n');
+  assert.ok(sameAsTemplate(repo, '.claude/rules/.standards-version'));
+
+  // 2 回目は消すものが無い
+  const second = runCopyStandard(repo);
+  assert.equal(second.status, 0, second.stderr);
+  assert.doesNotMatch(second.stdout, /^削除 /m);
+});
+
+test('copy-standard --dry-run: テンプレートから消したファイルを示すだけで消さない', () => {
+  const repo = makeOldRepo();
+  writeRepoFile(repo, '.github/workflows/progress-snapshot.yaml', 'old\n');
+  const result = runCopyStandard(repo, ['--dry-run']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /^削除 \.github\/workflows\/progress-snapshot\.yaml（/m);
+  assert.equal(readFileSync(join(repo, '.github/workflows/progress-snapshot.yaml'), 'utf8'), 'old\n');
+  assert.equal(readFileSync(join(repo, '.claude/rules/.standards-version'), 'utf8'), '0.0.1\n');
+});
+
+test('retired-files.json: 挙げたファイルはテンプレートに無く（有効・無効のどちらの名前でも）、消す理由がある', () => {
+  assert.ok(retiredFiles.length > 0);
+  for (const { path, reason } of retiredFiles) {
+    const names = [path, path.endsWith('.disabled') ? path.slice(0, -'.disabled'.length) : `${path}.disabled`];
+    for (const name of names) {
+      assert.equal(existsSync(join(templateRoot, name)), false, `テンプレートにまだある: ${name}`);
+    }
+    assert.equal(typeof reason, 'string', path);
+    assert.notEqual(reason.trim(), '', path);
+  }
 });
 
 test('copy-standard: テンプレートから作ったリポジトリでなければ、何も書かずに止める', () => {

@@ -31,6 +31,8 @@ description: プラグインが配布するルール（規約の rules・CLAUDE.
 - **変わった規約**: 書き方が変わったもの。既存コードが違反していないかを確認する
 - **消えた規約**: 守らなくてよくなったもの
 
+`--dry-run` で「削除」と出たファイル（テンプレートから消したもの）は、括弧の中の理由とあわせて別に示す。
+
 分ける前に `node ${CLAUDE_PLUGIN_ROOT}/scripts/copy-standard.mjs --dry-run` で、写るファイルと飛ばす規約を見ておく。
 「飛ばした」と出る規約（`server/` の無いリポジトリには増やさないもの）は、追加された規約に入れない。
 
@@ -72,7 +74,8 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/copy-standard.mjs
 
 写すのは、規約（`.claude/rules/`）、権限の設定（`.claude/settings.json`）、アプリ作り方ガイド、git のフック（`.husky/`）、
 確認のスクリプト（`scripts/*.mjs`）、ワークフロー（`.github/workflows/`）、PR テンプレート。
-**上書きと追加だけで、消さない。** 案件で足したファイルは残る。有効にしているワークフローは有効の名前に写し、
+上書きと追加に加えて、**テンプレートから消したファイル**（一覧はプラグインの `scripts/retired-files.json`）が残っていれば消す。
+一覧に無いファイルは消さないので、案件で足したファイルは残る。有効にしているワークフローは有効の名前に写し、
 有効・無効は setup で選んだまま変えない。サーバー側を持たないリポジトリ（`server/` が無い）には、元から無かった規約を増やさない
 （「飛ばした」と出るので、PR 本文の「追加された規約」には入れず、飛ばしたことを書く）。
 
@@ -80,9 +83,11 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/copy-standard.mjs
 `git diff --no-index <テンプレートのファイル> <リポジトリのファイル>` で差を見る。
 
 - 確認のスクリプト（`scripts/`）は CI と `/shinnn-app:check` が使う。リポジトリ側で書き換えていた箇所（許可するライセンスの追加など）が
-  あれば、写した後に同じ変更を当て直し、PR 本文に書く。`scripts/setup-env.mjs` は標準に含まれない（環境の検出はプラグインが行う）ので、あれば消す
+  あれば、写した後に同じ変更を当て直し、PR 本文に書く
 - ワークフロー（`.github/workflows/`）は Claude が編集できない（deny）ので、リポジトリ側の書き換えは人が入れたもの。
   書き換えがあれば、差を PR 本文に書き、写した後に人に当て直してもらう
+- 「削除」と出たファイルは、`git log --oneline -- <ファイル>` でリポジトリ側の変更を見る。書き換えて使っていたなら、
+  消えることと理由を PR 本文に書く（残すかはシン株式会社のレビューで決める。消さずに残すと、次の取り込みでまた消える）
 - `.claude/settings.json`（権限）は丸ごと置き換わる。リポジトリ側で足していた許可や禁止があれば一覧にし、
   PR 本文に書く（残すかはシン株式会社のレビューで決める）
 
@@ -112,6 +117,10 @@ ready にするか、マージまで行うかは `/shinnn-app:pr` がマージ�
 `gh auth refresh -h github.com -s workflow` を案内する。
 
 `.claude/settings.json` はセッションの開始時に読み込まれる。マージした後に Claude Code を起動し直すよう、利用者に伝える。
+
+`.github/workflows/progress-snapshot.yaml` を消したときは、マージした後に、それが残っていたために設定できなかったブランチ保護を
+設定できる。`node ${CLAUDE_PLUGIN_ROOT}/scripts/protect-branch.mjs --dry-run` で設定する内容を見せて確認を取り、
+`--dry-run` を外して実行する（`/shinnn-app:setup` の手順 5 の 12 と同じ）。
 
 ## 6. 適用しない選択
 

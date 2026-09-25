@@ -1,0 +1,22 @@
+[
+  {
+    "path": ".github/workflows/progress-snapshot.yaml",
+    "reason": "main に直接コミットするワークフローは置かない。open な Issue・PR と直近の CI の一覧は、月次の健全性レポートが Issue に投稿する"
+  },
+  {
+    "path": "docs/progress.md",
+    "reason": "進捗の正本は GitHub の Issue・PR・CI で、写しのファイルは置かない"
+  },
+  {
+    "path": ".github/workflows/e2e-nightly.yaml",
+    "reason": "ブラウザで通しで動かすテスト（Playwright）は標準に含めない"
+  },
+  {
+    "path": ".github/workflows/e2e-nightly.yaml.disabled",
+    "reason": "ブラウザで通しで動かすテスト（Playwright）は標準に含めない"
+  },
+  {
+    "path": "scripts/setup-env.mjs",
+    "reason": "環境の検出はプラグインのスクリプトが行う"
+  }
+]

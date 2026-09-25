@@ -225,6 +225,8 @@ test('main に直接コミットするワークフロー（progress-snapshot.yam
     result.stdout,
     /main に直接コミットするワークフロー（\.github\/workflows\/progress-snapshot\.yaml）が残っている/,
   );
+  // 消し方（標準の取り込み）を案内する
+  assert.match(result.stdout, /設定するには: \/shinnn-app:update-rules で標準を取り込むと消える/);
   assert.equal(result.summary, 'ブランチ保護: 設定していない（main に直接コミットするワークフローがある）');
   assert.deepEqual(apiCalls(result.calls, 'GET'), []);
   assert.deepEqual(apiCalls(result.calls, 'PUT'), []);
