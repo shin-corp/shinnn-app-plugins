@@ -3,13 +3,15 @@
  *
  * ワークフローの YAML から手順のシェルを取り出し、Actions と同じく bash で動かして結果を確かめる。
  * - 「PR 本文に Closes #n があること」は、HTML のコメント（<!-- -->）の中の Closes #n では通さない
- * - 「API 定義を変えたらテストも変えていること」の git fetch は、全部取った履歴を浅くしない
+ * - 「API 定義を変えたらテストも変えていること」は、PR 本文の「テストを変えない理由: 〜」の行で通す。
+ *   箇条書き・番号付き・太字・引用の形でも通し、コメントの中・見出し・理由が空の形では通さない
+ * - 同じ手順の git fetch は、全部取った履歴を浅くしない
  *   （浅くなると、同じジョブの後の gitleaks が一部のコミットしか調べない）
  * プラグインの CI は依存を入れずに動くので yaml パッケージは使わず、YAML の文字列を行で読む。
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
@@ -121,4 +123,66 @@ test('API 定義の確認の git fetch は、全部取った履歴を浅くし�
   assert.equal(result.status, 0, result.stderr);
   assert.equal(git(clone, 'rev-parse', '--is-shallow-repository'), 'false');
   assert.equal(git(clone, 'rev-list', '--count', 'HEAD'), '61');
+});
+
+/**
+ * shared/src/api を変え、テストを変えていない作業ブランチを持つ手元（全履歴）を作る。
+ * API 定義の確認の手順を、そのブランチの上で動かすために使う
+ */
+function makeApiChangeClone() {
+  const origin = mkdtempSync(join(workRoot, 'api-origin-'));
+  git(origin, 'init', '-q', '-b', 'main');
+  writeFileSync(join(origin, 'README.md'), 'x\n');
+  git(origin, 'add', '.');
+  git(origin, 'commit', '-q', '-m', 'main');
+  git(origin, 'switch', '-q', '-c', 'feature/1-api');
+  mkdirSync(join(origin, 'shared', 'src', 'api'), { recursive: true });
+  writeFileSync(join(origin, 'shared', 'src', 'api', 'items.ts'), '// コメントだけの変更\n');
+  git(origin, 'add', '.');
+  git(origin, 'commit', '-q', '-m', 'api');
+  git(origin, 'switch', '-q', 'main');
+
+  const clone = mkdtempSync(join(workRoot, 'api-clone-'));
+  git(workRoot, 'clone', '-q', pathToFileURL(origin).href, clone);
+  git(clone, 'switch', '-q', 'feature/1-api');
+  return clone;
+}
+
+const apiStep = 'API 定義を変えたらテストも変えていること';
+
+test('テストを変えない理由: 行の頭が箇条書き・番号付き・太字・引用でも通す', () => {
+  const clone = makeApiChangeClone();
+  for (const line of [
+    'テストを変えない理由: コメントだけの変更',
+    'テストを変えない理由：コメントだけの変更',
+    '- テストを変えない理由: コメントだけの変更',
+    '* テストを変えない理由: コメントだけの変更',
+    '1. テストを変えない理由: コメントだけの変更',
+    '**テストを変えない理由**: コメントだけの変更',
+    '**テストを変えない理由:** コメントだけの変更',
+    '- **テストを変えない理由**: コメントだけの変更',
+    '> テストを変えない理由: コメントだけの変更',
+  ]) {
+    const body = `## 確認した結果\n\n<!-- 説明 -->\n\n${line}\n`;
+    const result = runBash(stepScript(apiStep), { cwd: clone, env: { BASE_REF: 'main', PR_BODY: body } });
+
+    assert.equal(result.status, 0, `${line}: ${result.stderr}`);
+  }
+});
+
+test('テストを変えない理由: コメントの中・見出し・理由が空なら通さない', () => {
+  const clone = makeApiChangeClone();
+  for (const body of [
+    '<!-- テストを変えない理由: コメントだけの変更 -->\n',
+    '## テストを変えない理由\n\nコメントだけの変更\n',
+    '## テストを変えない理由: コメントだけの変更\n',
+    'テストを変えない理由:\n',
+    '**テストを変えない理由**:\n',
+    '',
+  ]) {
+    const result = runBash(stepScript(apiStep), { cwd: clone, env: { BASE_REF: 'main', PR_BODY: body } });
+
+    assert.equal(result.status, 1, JSON.stringify(body));
+    assert.match(result.stderr, /テストが 1 つも変わっていません/);
+  }
 });
