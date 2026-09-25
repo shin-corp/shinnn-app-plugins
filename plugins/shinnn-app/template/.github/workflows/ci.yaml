@@ -93,19 +93,26 @@ jobs:
       - name: 必須項目が外されていないこと
         run: node scripts/check-mandatory.mjs
 
+      # コメントや整形だけの変更のようにテストを変えなくてよいときは、PR 本文の「テストを変えない理由: 〜」の行で通す。
+      # 理由は PR に残り、レビューで確かめられる。本文を直すと走り直す（上の edited）。
       - name: API 定義を変えたらテストも変えていること
         if: github.event_name == 'pull_request'
         env:
           BASE_REF: ${{ github.base_ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           git fetch --no-tags --depth=50 origin "$BASE_REF"
           CHANGED=$(git diff --name-only "origin/$BASE_REF...HEAD")
           if echo "$CHANGED" | grep -q '^shared/src/api/'; then
             if echo "$CHANGED" | grep -qE '(^server/tests/|[.]test[.]ts$)'; then
               echo "API 定義の変更に対するテストの変更を確認しました。"
+            elif printf '%s\n' "$PR_BODY" | grep -Eq '^[[:space:]]*([-*][[:space:]]+)?テストを変えない理由(:|：)[[:space:]]*[^[:space:]]'; then
+              echo "テストの変更はありませんが、PR 本文に「テストを変えない理由」があるので通します。"
             else
               echo "shared/src/api を変えたのに、テストが 1 つも変わっていません。" >&2
               echo "API 定義は画面とサーバーの入口です。入口を変えたら、その振る舞いを固定するテストも変えてください。" >&2
+              echo "コメントや整形だけの変更のようにテストを変えなくてよいときは、PR 本文に「テストを変えない理由: 〜」の行を書けば通ります。" >&2
+              echo "本文を直すと、この確認は自動で走り直します。" >&2
               exit 1
             fi
           else

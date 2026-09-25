@@ -24,7 +24,8 @@ Closes #
 
 ## 確認結果
 
-<!-- /shinnn-app:check の結果を貼ります。すべて緑であること。 -->
+<!-- /shinnn-app:check の結果を貼ります。すべて緑であること。
+API 定義（shared/src/api/）を変えてテストを変えないときは、その理由を「テストを変えない理由: 」で始まる 1 行で書きます（CI が見ます）。 -->
 
 - [ ] `npm run check`（型検査 + lint）
 - [ ] `npm test`（テスト）
