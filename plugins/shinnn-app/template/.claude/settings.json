@@ -31,10 +31,13 @@
       "Bash(claude plugin update shinnn-app@shinnn *)",
       "Bash(git status *)",
       "Bash(git diff *)",
+      "Bash(git -c core.quotepath=false diff *)",
       "Bash(git log *)",
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git switch *)",
+      "Bash(git fetch *)",
+      "Bash(git pull --ff-only*)",
       "Bash(git push *)",
       "Bash(gh pr *)",
       "Bash(gh issue *)"

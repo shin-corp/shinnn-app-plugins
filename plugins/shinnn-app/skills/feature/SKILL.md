@@ -1,6 +1,6 @@
 ---
 name: feature
-description: 作りたいことを受け取り（1 つでも、まとめていくつでも）、PR 1 本に収まる大きさの Issue に分けて順番を決め、1 本ずつ Issue の作成 → 仕様書への反映 → ブランチ作成 → shared → server → client → テスト の順で実装する。「機能を追加したい」「〜を作りたい」「こういうアプリがほしい」「続きをお願い」で起動
+description: 作りたいことを受け取り（1 つでも、まとめていくつでも）、PR 1 本に収まる大きさの Issue に分けて順番を決め、1 本ずつ Issue の作成 → 仕様書への反映 → ブランチ作成 → shared → server → client → テスト の順で実装する。文言 1 つの変更や不具合の修正もこのスキルで進める。「機能を追加したい」「〜を作りたい」「〜を変えて」「〜を直して」「不具合を直して」「こういうアプリがほしい」「続きをお願い」で起動
 ---
 
 # 作りたいことを形にする
@@ -34,6 +34,12 @@ PR 1 本の目安は、**使う人から見て 1 つできるようになるこ�
 | 1 本に収まる | 1 から順に進める |
 | 収まらない（できるようになることが 2 つ以上ある、など） | 同じフォルダの `plan.md` で計画を作り、利用者の確認を取る。先頭の Issue を 2 から進める |
 
+**文言 1 つの直しや不具合の修正も、同じ流れ（Issue → ブランチ → PR）で進める。** `main` で直接編集しない。違うのは次だけ。
+
+- 不具合の Issue は `gh issue create --template bug.yml` で作り、ブランチは `fix/<Issue 番号>-<slug>` にする
+- 不具合の受入条件は、直った後の正しい振る舞いにする。そのテストは、直す前の実装では落ちるものにする（`/shinnn-app:mutation-check` の「いつ使うか」）
+- 振る舞いが変わらない変更（文言・見た目の調整）は、受入条件を足さなくてよい。Issue の受入条件の欄と、PR 本文の「対応した受入条件」に「無し（文言だけの変更）」のように書く
+
 ## 1. Issue を作る
 
 - **確認の質問は 3 つまで。** 分からないことは仮置きし、Issue の「未決」に書く（質問を重ねて止めない）
@@ -64,7 +70,7 @@ PR 1 本の目安は、**使う人から見て 1 つできるようになるこ�
 
 ```
 git fetch origin main
-git switch -c feature/<Issue 番号>-<英小文字の短い slug> origin/main
+git switch -c feature/<Issue 番号>-<英小文字の短い slug> origin/main   # 不具合の修正は fix/<Issue 番号>-<slug>
 gh issue edit <Issue 番号> --remove-label status:next --add-label status:doing
 ```
 
@@ -135,6 +141,13 @@ PR を出したあとの動きは `.shinnn/setup.json` の `mergePolicy` で決�
 
 ## 続きから始める
 
+0. **Issue に紐づかない変更**が手元にあれば、先にそれを流れに乗せる。`main` の上に未コミットの変更か `origin/main` より先のコミットがある、
+   または今のブランチの名前が `feature/<番号>-`・`fix/<番号>-` で始まらないときがこれに当たる
+   1. その変更の Issue を手順 1 で作る。振る舞いが変わる変更なら、手順 2 で受入条件を仕様書に足す
+   2. `git switch -c feature/<Issue 番号>-<slug>` で作業ブランチを作る（未コミットの変更もコミットも、そのまま移る）
+   3. `main` にコミットがあったときは、`git switch -C main origin/main` で手元の `main` を `origin/main` に戻し、
+      `git switch feature/<Issue 番号>-<slug>` で作業ブランチに戻る（コミットは作業ブランチに残る）
+   4. 手順 4 以降（残りの実装とテスト、コミット、`pr`）を進める
 1. 作業途中のブランチ（`git status` に変更がある、または PR の無い `feature/` ブランチ）があれば、その Issue を先に仕上げる
 2. `git switch main && git pull --ff-only`
 3. `plan.md` の「依存が解けた Issue を進める」を行う
