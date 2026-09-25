@@ -106,6 +106,14 @@ describe('ItemsPageComponent', () => {
       expect(element.querySelector('mat-progress-bar')).not.toBeNull();
     });
 
+    it('AC-9 読み込みが終わったら進み具合を消す', async () => {
+      stubListResponse({ items, total: items.length });
+
+      const element = await renderPage();
+
+      expect(element.querySelector('mat-progress-bar')).toBeNull();
+    });
+
     it('AC-8 総件数より取得できた件数が少ないときは、その旨を添える', async () => {
       stubListResponse({ items, total: 137 });
 

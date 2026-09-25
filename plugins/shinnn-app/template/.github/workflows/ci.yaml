@@ -95,6 +95,7 @@ jobs:
 
       # コメントや整形だけの変更のようにテストを変えなくてよいときは、PR 本文の「テストを変えない理由: 〜」の行で通す。
       # 理由は PR に残り、レビューで確かめられる。本文を直すと走り直す（上の edited）。
+      # HTML のコメント（<!-- -->）の中は見ない。PR テンプレートの説明の中に書いても、読む人には見えないため。
       - name: API 定義を変えたらテストも変えていること
         if: github.event_name == 'pull_request'
         env:
@@ -106,7 +107,7 @@ jobs:
           if echo "$CHANGED" | grep -q '^shared/src/api/'; then
             if echo "$CHANGED" | grep -qE '(^server/tests/|[.]test[.]ts$)'; then
               echo "API 定義の変更に対するテストの変更を確認しました。"
-            elif printf '%s\n' "$PR_BODY" | grep -Eq '^[[:space:]]*([-*][[:space:]]+)?テストを変えない理由(:|：)[[:space:]]*[^[:space:]]'; then
+            elif printf '%s\n' "$PR_BODY" | perl -0pe 's/<!--.*?-->//gs' | grep -Eq '^[[:space:]]*([-*][[:space:]]+)?テストを変えない理由(:|：)[[:space:]]*[^[:space:]]'; then
               echo "テストの変更はありませんが、PR 本文に「テストを変えない理由」があるので通します。"
             else
               echo "shared/src/api を変えたのに、テストが 1 つも変わっていません。" >&2
