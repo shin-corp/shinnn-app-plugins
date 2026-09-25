@@ -21,7 +21,7 @@ description: ESLint を実行してコード品質と規約違反を検出し、
 
 | ルール | 規約 |
 |:--|:--|
-| `no-restricted-imports`、`no-restricted-syntax`（動的 import） | `server-architecture.md`・`client-architecture.md` の「新規ファイルの配置判断」「import の許可関係」 |
+| `no-restricted-imports`、`no-restricted-syntax`（server の `src/` の動的 import） | `server-architecture.md`・`client-architecture.md` の「新規ファイルの配置判断」「import の許可関係」 |
 | `no-console` | `server-coding-conventions.md` の「ログ」、`client-coding-conventions.md` の「その他」 |
 | `@typescript-eslint/no-explicit-any` | `server-coding-conventions.md`・`client-coding-conventions.md` の「型」 |
 | Angular の signals / 制御フロー | `client-coding-conventions.md` の「テンプレート」「状態」 |

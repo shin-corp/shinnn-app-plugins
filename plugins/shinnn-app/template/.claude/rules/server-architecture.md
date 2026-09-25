@@ -72,8 +72,9 @@ tests/         → app.ts, tests/helpers/, @app/shared
 
 - **逆方向の import を作らない**（`db/` から `service/` を呼ばない、`service/` から `api/` を呼ばない）。
   ESLint の `no-restricted-imports` で止める。`npm run check -w server` が失敗する
-- **動的 import（`import()`）を使わない。** 静的に検査できないので `no-restricted-syntax` で止める。
-  例外は `db/client.ts` と `db/migrate.ts` だけ（開発とテストでしか使わない PGlite を本番の起動経路に載せないため）
+- **`src/` では動的 import（`import()`）を使わない。** 静的に検査できないので `no-restricted-syntax` で止める。
+  例外は `db/client.ts` と `db/migrate.ts` だけ（開発とテストでしか使わない PGlite を本番の起動経路に載せないため）。
+  テスト（`tests/`）は対象外で、読み込む前に環境変数やモックを差し替えるとき（`vi.doMock` の後など）に使ってよい
 - **`client/` のソースを import しない**
 - **`@app/shared` に業務ロジックと DB 依存を置かない。** zod スキーマだけ
 - 循環が必要に見えたら、共通部分を型として `@app/shared` に切り出す
@@ -104,7 +105,8 @@ tests/         → app.ts, tests/helpers/, @app/shared
 「型を移し替えるだけのコード」の区別が付かなくなります。
 
 一方向の import を lint で強制するのは、規約が「気をつける」で守られないからです。ビルドが失敗すれば、
-規約を知らなくても間違いに気づけます。
+規約を知らなくても間違いに気づけます。動的 import を止めるのは、この import の向きの検査が動的 import を
+見られないためです。テストには向きの検査を掛けていないので、動的 import も止めません。
 
 error middleware を 1 か所にするのは、エラー応答の形をアプリ全体で 1 つに保つためです。
 画面側は `ApiError` 1 種類だけを扱えばよくなります。
