@@ -55,7 +55,7 @@ claude plugin install shinnn-app@shinnn --scope local
 
 ## 普段の使い方
 
-最初の `setup` は 1 回だけです。普段は、作りたいことを `feature` で伝えるだけです。
+最初の `setup` は 1 回だけです。普段は、作りたいこと・直したいことを `feature` で伝えるだけです。
 
 | 入力するもの | いつ使うか |
 | :-- | :-- |

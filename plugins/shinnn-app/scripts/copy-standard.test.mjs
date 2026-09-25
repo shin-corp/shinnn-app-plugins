@@ -54,6 +54,7 @@ function runCopyStandard(repo, args = []) {
   const result = spawnSync(process.execPath, [copyStandardScript, '--repo-dir', repo, ...args], {
     cwd: workRoot,
     encoding: 'utf8',
+    env: { ...process.env, CLAUDE_PROJECT_DIR: '' },
   });
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
@@ -145,13 +146,24 @@ test('copy-standard: 途中で失敗したときは、標準の版を新しく�
   assert.equal(readFileSync(join(repo, '.claude/rules/.standards-version'), 'utf8'), '0.0.1\n');
 });
 
-test('copy-standard --repo-dir: 値が無ければ、何も書かずに止める', () => {
+test('copy-standard --repo-dir: 値が無い・空・「=」でつないだ形なら、何も書かずに止める', () => {
+  // どれもカレントを対象にしてしまう形なので、カレントをテンプレートから作ったリポジトリにしておき、書かれないことを見る
   const cwd = mkdtempSync(join(workRoot, 'cwd-'));
   writeRepoFile(cwd, '.claude/rules/.standards-version', '0.0.1\n');
-  const result = spawnSync(process.execPath, [copyStandardScript, '--repo-dir'], { cwd, encoding: 'utf8' });
+  for (const args of [['--repo-dir'], ['--repo-dir', ''], [`--repo-dir=${cwd}`]]) {
+    const result = spawnSync(process.execPath, [copyStandardScript, ...args], {
+      cwd,
+      encoding: 'utf8',
+      env: { ...process.env, CLAUDE_PROJECT_DIR: '' },
+    });
 
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /--repo-dir には値が要ります/);
+    assert.equal(result.status, 1, args.join(' '));
+    assert.match(
+      result.stderr,
+      /--repo-dir (には値が要ります|は「--repo-dir <値>」の形で渡してください)/,
+      args.join(' '),
+    );
+  }
   assert.equal(existsSync(join(cwd, '.claude/settings.json')), false);
 });
 

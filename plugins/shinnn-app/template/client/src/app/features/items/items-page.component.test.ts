@@ -87,9 +87,10 @@ describe('ItemsPageComponent', () => {
     it('AC-9 取得に失敗したら理由を通知する', async () => {
       stubListResponse({ messageKey: 'APP_INTERNAL_ERROR', message: 'サーバー内部でエラーが発生しました。' }, 500);
 
-      await renderPage();
+      const element = await renderPage();
 
       expect(document.body.textContent).toContain('サーバー内部でエラーが発生しました。（APP_INTERNAL_ERROR）');
+      expect(element.querySelector('mat-progress-bar')).toBeNull();
     });
   });
 

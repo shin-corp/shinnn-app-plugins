@@ -29,12 +29,16 @@ import { fileURLToPath } from 'node:url';
 
 /** 値を取る引数（`--名前 値`）を読む。引数が無ければ undefined。値が抜けていれば止める（書き込み先を取り違えないため） */
 function readOption(name) {
+  if (process.argv.some((arg) => arg.startsWith(`${name}=`))) {
+    console.error(`${name} は「${name} <値>」の形で渡してください。`);
+    process.exit(1);
+  }
   const index = process.argv.indexOf(name);
   if (index === -1) {
     return undefined;
   }
   const value = process.argv[index + 1];
-  if (value === undefined || value.startsWith('--')) {
+  if (value === undefined || value === '' || value.startsWith('--')) {
     console.error(`${name} には値が要ります。`);
     process.exit(1);
   }
