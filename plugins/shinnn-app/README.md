@@ -11,7 +11,7 @@
 | 種類 | 内容 |
 |:--|:--|
 | コマンド | 初回の `setup` と、普段の `feature`（続けて `pr` が `check` を通して PR を出し、`retro` まで行う）、理由を聞く `why` |
-| 内部スキル | API の追加、画面の追加、マイグレーション、レビュー、コミット規約 など 16 |
+| 内部スキル | API の追加、画面の追加、マイグレーション、レビュー、テストが効いているかの確認 など 12 |
 | レビュー担当 | 正確性 / セキュリティ / 規約 の 3 体。`code-review` から同時に動く |
 | hooks | 取り決めの案内。保存のたびの `eslint --fix`、変更したファイルの lint とテスト、セッション開始時の状況 |
 | 適用スクリプト | `scripts/apply-setup.mjs`（`setup` が `.shinnn/setup.json` / ワークフロー / `CODEOWNERS` を書き換える）と `scripts/copy-standard.mjs`（`update-rules` が規約・権限の設定・ワークフローなどの標準を写す）。deny で守られたファイルは、この 2 つからだけ書き換える |
@@ -37,11 +37,8 @@
 | `/shinnn-app:check` | 型検査・lint・テストと、受入条件および API 定義のカバレッジ（`pr` が PR 1 本につき 1 回呼ぶ） |
 | `/shinnn-app:retro` | Issue への振り返りコメントと引き継ぎメモの追記（`pr` が呼ぶ） |
 
-内部スキル: `add-api` / `add-screen` / `db-migrate` / `code-review` /
-`build-check` / `lint-check` / `pre-commit-check` / `test-run` / `mutation-check` /
+内部スキル: `add-api` / `add-screen` / `db-migrate` / `code-review` / `mutation-check` /
 `dev-stack-start` / `handover-check` / `update-rules` / `session-retro`
-
-`coding-guide` は `template/client/CLAUDE.md` と `template/.claude/rules/` に吸収したため未提供です。
 
 ## hooks
 

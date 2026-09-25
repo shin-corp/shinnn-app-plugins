@@ -1,6 +1,6 @@
 ---
 name: check
-description: リポジトリ全体の型検査・lint・テストと、受入条件および API 定義のカバレッジを確認する。/shinnn-app:pr が PR を出す前に 1 回呼ぶ。「チェックして」「テストを通して」「壊れていないか確認」でも起動
+description: リポジトリ全体の型検査・lint・テストと、受入条件および API 定義のカバレッジを確認する。範囲を絞ったビルド・lint・テストの仕方と、落ちたときの直し方も持つ。/shinnn-app:pr が PR を出す前に 1 回呼ぶ。「チェックして」「テストを通して」「壊れていないか確認」「型エラーを見て」「lint を通して」「このテストだけ実行」でも起動
 ---
 
 # まとめて確認する
@@ -31,15 +31,41 @@ PR を出す前に、CI と同じ内容を手元で通す。**ここが緑にな
 
 `scripts/` の確認スクリプトが無い場合は、その項目を飛ばして「未導入」と報告する（勝手に作らない）。
 
+## 一部だけ確かめるとき
+
+実装の途中は hook が確かめる（保存のたびの `eslint --fix`、応答の終わりに変えたファイルの lint と関連テスト）。
+手で範囲を絞るときは次を使う。**範囲を絞るコマンドは `shared` を建てない**ので、`shared` を変えた直後は先に `npm run build -w shared` を通す。
+
+| 確かめたいこと | コマンド |
+|:--|:--|
+| 1 つのパッケージのビルド | `npm run build -w <client\|server\|shared>` |
+| テストと seed も含めた型検査 | `npm exec -w <server\|shared> -- tsc -p tsconfig.check.json --noEmit` |
+| 1 つのパッケージの lint | `npm run lint -w <パッケージ>`。自動修正は `npm exec -w <パッケージ> -- eslint --fix <パス>` |
+| 1 つのパッケージのテスト | `npm run test -w <パッケージ>` |
+| server / shared のテストを絞る | `npm exec -w <server\|shared> -- vitest run <パス>`。変えたファイルに関係するものだけなら `npm exec -w <server\|shared> -- vitest related --run <変更ファイル>` |
+| client（画面）のテストを絞る | `npm run test -w client -- --filter '<テスト名の一部>'`（画面のテストは Angular のビルダー越しにしか動かないので、`vitest` を直接呼ばない） |
+
 ## 落ちたときの読み方
 
 | 症状 | たいていの原因 | 直し方 |
 |:--|:--|:--|
+| 型エラーがたくさん出る | 最初の 1 件の波及 | **最初の 1 件から読む** |
 | 型エラーが client に出る | `shared` の API 定義を変えたのに画面を直していない | `shared` の定義を正として画面側を合わせる。定義の方を戻さない |
-| `no-restricted-imports` | 層をまたいだ参照 | `.claude/rules/` の配置判断表で、その処理の置き場所を決め直す |
+| `Cannot find module '@app/shared'` | `shared` が未ビルド | 先に `npm run build -w shared` |
+| lint の指摘 | 規約違反 | 自動修正できるものは先に `eslint --fix` で潰す。残りは下の表の規約に従って直す。**ルールの設定を緩めて通さない**（規約違反を規約の側で消しているだけになる）。意図が分からなければ `/shinnn-app:why <ルール名>` |
+| テストが落ちる | 実装かテストのどちらかが違う | **実装が正か、テストが正かを先に決める。** 判断は `.claude/rules/testing.md` の「何をテストするか」の表に従う。テストを通すためだけの分岐を入れたくなったら、実装が間違っている合図 |
 | テストは通るのに `check-ac-coverage` が落ちる | 受入条件を足したがテストを書いていない | AC-n をテスト名に含めたテストを足す |
 | `check-api-coverage` が落ちる | API 定義を足したがテストが無い | 正常系 1 つと異常系 1 つを足す |
 | DB のテストだけ落ちる | マイグレーション未適用 | `/shinnn-app:db-migrate` を実行する |
+
+lint のルールごとの直し方の規約（`.claude/rules/` の下）:
+
+| ルール | 規約 |
+|:--|:--|
+| `no-restricted-imports`、`no-restricted-syntax`（server の `src/` の動的 import） | `server-architecture.md`・`client-architecture.md` の「新規ファイルの配置判断」「import の許可関係」 |
+| `no-console` | `server-coding-conventions.md` の「ログ」、`client-coding-conventions.md` の「その他」 |
+| `@typescript-eslint/no-explicit-any` | `server-coding-conventions.md`・`client-coding-conventions.md` の「型」 |
+| Angular の signals / 制御フロー | `client-coding-conventions.md` の「テンプレート」「状態」 |
 
 ## 報告
 
@@ -52,11 +78,4 @@ AC カバレッジ: 満たしている AC / 全体
 API 定義カバレッジ: テストがあるルート / 全体
 ```
 
-## 関連
-
-| やりたいこと | スキル |
-|:--|:--|
-| ビルドだけ確認する | `build-check` |
-| lint だけ確認する | `lint-check` |
-| テストだけ走らせる | `test-run` |
-| コミット直前の一括確認 | `pre-commit-check` |
+範囲を絞って確かめたときは、確かめた範囲と結果（成功 N / 失敗 N、失敗したものの名前）だけを短く報告する。
