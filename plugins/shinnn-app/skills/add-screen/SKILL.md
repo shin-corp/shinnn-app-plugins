@@ -38,7 +38,8 @@ description: 画面を 1 つ追加する手順（見た目の方針 → 受入�
    出来上がる値は少し変わることも伝える
 3. 確かめた内容を仕様書の「見た目の方針」に書く（節が無ければ「画面」の章の終わりに足す）。配色は、生成に渡した色を書く
 4. テーマと書体を入れる（決まりは `client-styling.md` の「テーマと書体」）。案で主色のほかの色も決めたなら
-   `--secondary-color` / `--tertiary-color` でも渡す。作り直すときも同じコマンドで、`--force` が上書きする
+   `--secondary-color` / `--tertiary-color` でも渡す。作り直すときも同じコマンドで、`--force` が上書きする。
+   どちらもリポジトリのルートで実行する（`-w client` が `client` を指す）
 
    ```
    npm exec -w client -- ng generate @angular/material:theme-color --primary-color=<主色> --is-scss=false --directory=src/ --interactive=false --force
