@@ -10,7 +10,7 @@
 //   --dry-run          書かずに、変わるファイルの一覧だけを出す
 //
 // 写すもの: 規約（.claude/rules/ と .standards-version）、権限の設定（.claude/settings.json）、
-// アプリ作り方ガイド、git のフック（.husky/pre-commit・pre-push）、確認のスクリプト（scripts/*.mjs）、
+// アプリ作り方ガイド、git のフック（.husky/pre-commit・pre-push）とコミット時の整形の設定（.lintstagedrc.json）、確認のスクリプト（scripts/*.mjs）、
 // ワークフロー（.github/workflows/）、PR テンプレート。
 // CLAUDE.md の雛形は案件固有の記述を残してマージするので、ここでは写さない（update-rules が当てる）。
 //
@@ -67,6 +67,7 @@ const SINGLE_FILES = [
   'docs/アプリ作り方ガイド.md',
   '.husky/pre-commit',
   '.husky/pre-push',
+  '.lintstagedrc.json',
   '.github/PULL_REQUEST_TEMPLATE.md',
 ];
 

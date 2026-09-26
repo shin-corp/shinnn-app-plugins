@@ -45,6 +45,11 @@ jobs:
 
       - run: npm run check
 
+      # 画面（client）の .ts は prettier の書き方にそろえる（保存時の hook とコミット時の lint-staged が整える）。
+      # server と shared には掛けない。改行が増えて、かえって読みにくくなることがあるため。
+      - name: 画面の .ts の書式（prettier）
+        run: npx prettier --check "client/**/*.ts"
+
   test:
     name: テスト
     runs-on: ubuntu-latest

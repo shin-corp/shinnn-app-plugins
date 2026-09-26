@@ -1,6 +1,7 @@
 /**
  * PostToolUse（Edit / Write）フォーマッタ。
  * 触ったファイルが属するパッケージの eslint --fix を掛け、直せなかった error だけを Claude に返す。
+ * 画面（client）の .ts には、続けて prettier も掛ける（コミット時の lint-staged と CI の確認と同じ対象）。
  * これで「lint は最後にまとめて直す」を無くし、規約違反をその場で潰す。
  *
  * PostToolUse は操作を止められない（編集はもう済んでいる）ので、残った指摘は JSON の additionalContext で渡す。
@@ -11,6 +12,11 @@ import { appRootOf, hookOutput, readHookInput, projectDir, run, toRepoPath } fro
 
 /** 対象拡張子。HTML と CSS は eslint の対象外なので触らない */
 const LINTABLE = /\.(ts|tsx|mjs|cjs|js)$/;
+
+/**
+ * prettier で整える .ts。server と shared には掛けない（改行が増えて、かえって読みにくくなることがあるため）
+ */
+const PRETTIER_TARGET = /^client\/.+\.ts$/;
 
 /** リポジトリルート起点の相対パスから、eslint を動かすワークスペースを決める */
 function workspaceOf(repoPath) {
@@ -61,6 +67,12 @@ const result = run('npm', ['exec', '-w', workspace, '--', 'eslint', '--fix', '--
   cwd: root,
   timeout: 90_000,
 });
+
+// 画面の .ts は、eslint --fix の後に prettier で整える。書けない（構文の誤りなど）ときは黙って通す。
+// 構文の誤りは eslint が指摘として返す
+if (PRETTIER_TARGET.test(repoPath)) {
+  run('npm', ['exec', '--', 'prettier', '--write', '--log-level', 'warn', absolute], { cwd: root, timeout: 60_000 });
+}
 
 // eslint が起動しない（未導入・パッケージ名の変更など）場合は黙って通す。開発を止めない
 if (result.failedToStart) {

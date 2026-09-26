@@ -60,9 +60,10 @@ Dependabot（依存更新の bot）が作る PR には、ワークフロー `dep
 - `git commit --no-verify` / `git push --no-verify` / `HUSKY=0`（husky のフックを飛ばす行為。deny されている）
 - `main` への直接コミットと push（`main` へは作業ブランチからの PR でだけ入れる）
 - 改行コードだけが変わった差分を作ること（LF に統一。`.gitattributes` を参照）
-- `.ts` に `prettier --write` を掛けること。prettier の対象は json・md・yaml だけで、`.ts` は prettier の書き方に
-  そろえていない。掛けると、変更と関係ない行の改行の位置まで変わる（`.ts` に保存時とコミット時に掛かる `eslint --fix` は
-  lint の指摘の自動修正で、改行や字下げは整えない）
+- `server` と `shared` の `.ts` に `prettier --write` を掛けること。prettier で整えるのは、画面（`client`）の `.ts` と
+  json・md・yaml だけ。`server` と `shared` は、改行が増えてかえって読みにくくなることがあるので、prettier の書き方に
+  そろえていない（掛けると、変更と関係ない行の改行の位置まで変わる。`eslint --fix` は改行や字下げを整えない）。
+  `client` の `.ts` は保存時の hook とコミット時の lint-staged が整え、CI が確かめるので、手で掛けなくてよい
 - 生成物の手編集（`package-lock.json` / `server/drizzle/` / メッセージキーの生成物）
 
 ## なぜ

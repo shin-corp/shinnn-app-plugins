@@ -39,6 +39,27 @@ description: プラグインが配布するルール（規約の rules・CLAUDE.
 
 確認のスクリプト（`scripts/`）やワークフロー（`.github/workflows/`）が変わっていれば、何を確かめるようになったかも示す。
 
+### 画面の `.ts` の整形
+
+CI（`ci.yaml`）は、画面（`client`）の `.ts` が prettier の書き方にそろっているかを確かめる。そろっていないリポジトリに
+取り込むと、取り込みの PR の CI が落ちる。取り込みの前に、次で確かめる。
+
+```
+npx prettier --list-different "client/**/*.ts"
+```
+
+ファイルが出たら、**取り込みより先に、整形だけの PR を別に出す**。整形の差分を取り込みの PR や機能の PR に混ぜると、
+レビューで本当の変更が埋もれるため。
+
+1. Issue を作る（題は `[整形] 画面の .ts の prettier での整形`、ラベルは `status:doing`）
+2. `main` の最新から `feature/<Issue 番号>-format-client` を切り、`npx prettier --write "client/**/*.ts"` を実行する
+3. 変わったのが改行・字下げ・引用符などの書式だけであることを `git diff` で確かめ、1 コミットにして `/shinnn-app:pr` で PR にする
+   （本文に「書式だけの変更。振る舞いは変えない」と書く）
+4. この PR をマージしてから、手順 3 以降の取り込みに進む。マージを人が行い、その場で進めないときは、
+   ここで止めて「整形の PR をマージした後に、もう一度 `/shinnn-app:update-rules` を実行する」と伝える
+
+`server` と `shared` の `.ts` には prettier を掛けない（規約 `git-workflow.md` の「やらないこと」）。
+
 ## 3. Issue とブランチを用意する
 
 **`main` に直接コミット・push しない。** 先に Issue を作り、そのブランチで取り込んで PR にする。
@@ -72,7 +93,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/copy-standard.mjs
 （写した後の権限の設定には許可が入っているので、次からは出ない）。
 
 写すのは、規約（`.claude/rules/`）、権限の設定（`.claude/settings.json`）、アプリ作り方ガイド、git のフック（`.husky/`）、
-確認のスクリプト（`scripts/*.mjs`）、ワークフロー（`.github/workflows/`）、PR テンプレート。
+コミット時の整形の設定（`.lintstagedrc.json`）、確認のスクリプト（`scripts/*.mjs`）、ワークフロー（`.github/workflows/`）、PR テンプレート。
 上書きと追加に加えて、**テンプレートから消したファイル**（一覧はプラグインの `scripts/retired-files.json`）が残っていれば消す。
 一覧に無いファイルは消さないので、案件で足したファイルは残る。有効にしているワークフローは有効の名前に写し、
 有効・無効は setup で選んだまま変えない。サーバー側を持たないリポジトリ（`server/` が無い）には、元から無かった規約を増やさない
@@ -87,6 +108,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/copy-standard.mjs
   書き換えがあれば、差を PR 本文に書き、写した後に人に当て直してもらう
 - 「削除」と出たファイルは、`git log --oneline -- <ファイル>` でリポジトリ側の変更を見る。書き換えて使っていたなら、
   消えることと理由を PR 本文に書く（残すかはシン株式会社のレビューで決める。消さずに残すと、次の取り込みでまた消える）
+- `.lintstagedrc.json`（コミット時の整形）でリポジトリ側で足していた対象があれば、写した後に同じ変更を当て直し、PR 本文に書く
 - `.claude/settings.json`（権限）は丸ごと置き換わる。リポジトリ側で足していた許可や禁止があれば一覧にし、
   PR 本文に書く（残すかはシン株式会社のレビューで決める）
 
