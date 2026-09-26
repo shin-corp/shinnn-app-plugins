@@ -93,7 +93,8 @@ client/
 
 - 見た目は **Tailwind のユーティリティ + Material の部品**で作る。`styles.css` にクラス定義を書き足さない
 - `styles.css` がカスケードレイヤの順を `tailwind-base → material → tailwind-utilities` に固定している。
-  この順のおかげで Material の見た目が Tailwind の preflight に潰されず、余白などはユーティリティで上書きできる
+  Material の部品自身の CSS はレイヤの外に入るので、部品の要素に付けたユーティリティは、部品が決めている性質
+  （並べ方・余白・揃え）には効かない。並べ方や余白は部品の中の `div` に付ける（`.claude/rules/client-styling.md`）
 - 配色は Material のシステム変数（`--mat-sys-*`）。`@theme` で Tailwind の色（`text-primary` など）に流し込んである。
   新しい色を直値で書かない
 - 配色と書体は `styles.css` の 1 か所で決める（画面だけで使うものも、役割の名前で `@theme` に足す）。
