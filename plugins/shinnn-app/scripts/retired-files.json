@@ -18,5 +18,9 @@
   {
     "path": "scripts/setup-env.mjs",
     "reason": "環境の検出はプラグインのスクリプトが行う"
+  },
+  {
+    "path": "docs/初回セッション.md",
+    "reason": "始め方はプラグインの README、動かし方はリポジトリの README、普段の進め方は docs/アプリ作り方ガイド.md にある"
   }
 ]
