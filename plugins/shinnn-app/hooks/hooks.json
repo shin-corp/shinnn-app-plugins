@@ -9,7 +9,7 @@
             "command": "node",
             "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/format-file.mjs"],
             "timeout": 120,
-            "statusMessage": "eslint --fix を掛けています"
+            "statusMessage": "eslint --fix と書式の整形を掛けています"
           }
         ]
       }

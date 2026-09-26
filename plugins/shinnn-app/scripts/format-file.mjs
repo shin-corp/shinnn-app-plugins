@@ -2,11 +2,13 @@
  * PostToolUse（Edit / Write）フォーマッタ。
  * 触ったファイルが属するパッケージの eslint --fix を掛け、直せなかった error だけを Claude に返す。
  * 画面（client）の .ts には、続けて prettier も掛ける（コミット時の lint-staged と CI の確認と同じ対象）。
+ * prettier を掛けるのは、リポジトリのコミット時の設定（.lintstagedrc.json）が client の .ts に prettier を掛けているときだけ。
+ * 標準を取り込む前のリポジトリで、触ったファイル全体の書式の差分が機能の変更に混ざらないようにするため。
  * これで「lint は最後にまとめて直す」を無くし、規約違反をその場で潰す。
  *
  * PostToolUse は操作を止められない（編集はもう済んでいる）ので、残った指摘は JSON の additionalContext で渡す。
  */
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { appRootOf, hookOutput, readHookInput, projectDir, run, toRepoPath } from './lib/hook-io.mjs';
 
@@ -17,6 +19,17 @@ const LINTABLE = /\.(ts|tsx|mjs|cjs|js)$/;
  * prettier で整える .ts。server と shared には掛けない（改行が増えて、かえって読みにくくなることがあるため）
  */
 const PRETTIER_TARGET = /^client\/.+\.ts$/;
+
+/** コミット時の設定（.lintstagedrc.json）が、client の .ts に prettier を掛けているか。読めなければ掛けていないとみなす */
+function lintStagedFormatsClient(root) {
+  try {
+    const config = JSON.parse(readFileSync(`${root}/.lintstagedrc.json`, 'utf8'));
+    const commands = [config['client/**/*.ts']].flat();
+    return commands.some((command) => typeof command === 'string' && /\bprettier\b/.test(command));
+  } catch {
+    return false;
+  }
+}
 
 /** リポジトリルート起点の相対パスから、eslint を動かすワークスペースを決める */
 function workspaceOf(repoPath) {
@@ -63,15 +76,19 @@ if (!existsSync(`${root}/node_modules`)) {
 
 // npm exec -w <pkg> はパッケージのディレクトリで動くため、ファイルは絶対パスで渡す
 const absolute = `${root}/${repoPath}`;
-const result = run('npm', ['exec', '-w', workspace, '--', 'eslint', '--fix', '--format', 'stylish', absolute], {
-  cwd: root,
-  timeout: 90_000,
-});
+const eslintArgs = ['exec', '-w', workspace, '--', 'eslint', '--format', 'stylish'];
+// 上限の合計（50 + 20 + 40 秒）は、hooks.json の timeout（120 秒）に収める
+let result = run('npm', [...eslintArgs, '--fix', absolute], { cwd: root, timeout: 50_000 });
 
-// 画面の .ts は、eslint --fix の後に prettier で整える。書けない（構文の誤りなど）ときは黙って通す。
-// 構文の誤りは eslint が指摘として返す
-if (PRETTIER_TARGET.test(repoPath)) {
-  run('npm', ['exec', '--', 'prettier', '--write', '--log-level', 'warn', absolute], { cwd: root, timeout: 60_000 });
+// 画面の .ts は、eslint --fix の後に prettier で整える（コミット時の lint-staged と同じ順番）。
+// 書けない（構文の誤りなど）ときは黙って通す。構文の誤りは eslint が指摘として返す
+if (PRETTIER_TARGET.test(repoPath) && lintStagedFormatsClient(root)) {
+  const before = readFileSync(absolute, 'utf8');
+  run('npm', ['exec', '--', 'prettier', '--write', '--log-level', 'warn', absolute], { cwd: root, timeout: 20_000 });
+  // 整形で行がずれたら、返す指摘の行番号を整形後のファイルに合わせるため、eslint を掛け直す（直さずに調べるだけ）
+  if (!result.failedToStart && result.status !== 0 && readFileSync(absolute, 'utf8') !== before) {
+    result = run('npm', [...eslintArgs, absolute], { cwd: root, timeout: 40_000 });
+  }
 }
 
 // eslint が起動しない（未導入・パッケージ名の変更など）場合は黙って通す。開発を止めない

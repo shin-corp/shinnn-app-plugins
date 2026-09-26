@@ -64,6 +64,7 @@ Dependabot（依存更新の bot）が作る PR には、ワークフロー `dep
   json・md・yaml だけ。`server` と `shared` は、改行が増えてかえって読みにくくなることがあるので、prettier の書き方に
   そろえていない（掛けると、変更と関係ない行の改行の位置まで変わる。`eslint --fix` は改行や字下げを整えない）。
   `client` の `.ts` は保存時の hook とコミット時の lint-staged が整え、CI が確かめるので、手で掛けなくてよい
+  （既存のアプリを一度にそろえる整形は、`/shinnn-app:update-rules` の手順で整形だけの PR にする）
 - 生成物の手編集（`package-lock.json` / `server/drizzle/` / メッセージキーの生成物）
 
 ## なぜ
