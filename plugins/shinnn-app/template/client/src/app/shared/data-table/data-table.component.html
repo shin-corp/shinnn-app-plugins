@@ -40,7 +40,9 @@
     <tr mat-row *matRowDef="let row; columns: displayedColumns()"></tr>
 
     <tr class="mat-row" *matNoDataRow>
-      <td class="p-4 text-center" [attr.colspan]="displayedColumns().length">該当するデータがありません。</td>
+      <td [attr.colspan]="displayedColumns().length">
+        <div class="p-4 text-center">該当するデータがありません。</div>
+      </td>
     </tr>
   </table>
 </div>

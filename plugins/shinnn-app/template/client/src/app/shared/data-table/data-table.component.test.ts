@@ -134,7 +134,7 @@ describe('DataTableComponent', () => {
 
       const element = fixture.nativeElement as HTMLElement;
       expect(element.querySelector('.mat-mdc-paginator-page-size-label')?.textContent?.trim()).toBe('表示件数:');
-      expect(element.querySelector('.mat-mdc-paginator-range-label')?.textContent?.trim()).toBe('全 3 件中 1〜2 件');
+      expect(element.querySelector('.mat-mdc-paginator-range-label')?.textContent?.trim()).toBe('3 件中 1〜2 件');
       expect(element.querySelector('button.mat-mdc-paginator-navigation-next')?.getAttribute('aria-label')).toBe(
         '次のページ',
       );
@@ -166,6 +166,14 @@ describe('DataTableComponent', () => {
       await fixture.whenStable();
 
       expect((fixture.nativeElement as HTMLElement).textContent).toContain('該当するデータがありません。');
+    });
+
+    it('行が無いときはページャに 0 件と出す', async () => {
+      const fixture = createTable([]);
+      await fixture.whenStable();
+
+      const element = fixture.nativeElement as HTMLElement;
+      expect(element.querySelector('.mat-mdc-paginator-range-label')?.textContent?.trim()).toBe('0 件');
     });
   });
 });

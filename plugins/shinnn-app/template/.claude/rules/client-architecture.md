@@ -45,7 +45,7 @@ client/src/app/features/<機能>/   画面（signal で状態を持つ）
 ```
 features/<機能>/  → api-client.ts, @app/shared（zod スキーマと型）,
                     同じ features/<機能>/ の中, app/shared/（共通部品）, @angular/*, @angular/material/*
-app/shared/       → @app/shared（型のみ）, @angular/*, @angular/material/*
+app/shared/       → @app/shared（型のみ）, 同じ部品のフォルダの中, @angular/*, @angular/material/*
 api-client.ts     → @app/shared（API 定義）のみ
 app.routes.ts     → features/<機能>/<機能>.routes.ts（loadChildren）
 ```

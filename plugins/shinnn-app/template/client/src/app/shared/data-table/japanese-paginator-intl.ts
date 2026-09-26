@@ -15,13 +15,16 @@ export class JapanesePaginatorIntl extends MatPaginatorIntl {
   override firstPageLabel = '最初のページ';
   override lastPageLabel = '最後のページ';
 
-  /** 「全 12 件中 1〜10 件」の形にする。範囲の外のページは、Material の既定と同じく件数を超えて数える。 */
+  /**
+   * 「12 件中 1〜10 件」の形にする。画面の件数表示の「全 n 件」と紛れないよう「全」を付けない。
+   * ページが件数を超えたとき（3 件を 1 ページ 2 件で出す 3 ページ目など）は、Material の既定と同じく「3 件中 5〜6 件」と出す。
+   */
   override getRangeLabel = (page: number, pageSize: number, length: number): string => {
     if (length === 0 || pageSize === 0) {
-      return `全 ${length} 件`;
+      return `${length} 件`;
     }
     const startIndex = page * pageSize;
     const endIndex = startIndex < length ? Math.min(startIndex + pageSize, length) : startIndex + pageSize;
-    return `全 ${length} 件中 ${startIndex + 1}〜${endIndex} 件`;
+    return `${length} 件中 ${startIndex + 1}〜${endIndex} 件`;
   };
 }

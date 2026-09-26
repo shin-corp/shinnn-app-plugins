@@ -2,11 +2,10 @@
  * 全画面共通のスタイル。ここに独自のクラス定義を書き足さない。
  * 見た目は Tailwind のユーティリティと Angular Material の部品で作る。
  *
- * カスケードレイヤ（@layer）で Tailwind と Material の強さを固定する。
- * 後に書いたレイヤほど強いので、Material のスタイルは Tailwind の土台（preflight）より強く、
- * Tailwind のユーティリティ（p-4 など）より弱くなる。これで
- * 「Material の見た目が preflight に潰されない」「Material の余白をユーティリティで調整できる」
- * の両方が成り立つ。
+ * カスケードレイヤ（@layer）の順は、Tailwind の土台（preflight）→ Material のテーマ（--mat-sys-* の変数）→
+ * Tailwind のユーティリティ。後に書いたレイヤほど強く、レイヤの外（下の html など）はどのレイヤよりも強い。
+ * Material の部品自身の CSS は Angular が画面を出すときにレイヤの外で差し込むので、部品が決めている性質
+ * （並べ方・余白・揃え）はユーティリティでは変わらない（.claude/rules/client-styling.md）。
  */
 @layer tailwind-base, material, tailwind-utilities;
 
