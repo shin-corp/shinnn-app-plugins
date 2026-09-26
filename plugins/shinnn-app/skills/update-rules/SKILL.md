@@ -138,6 +138,9 @@ ready にするか、マージまで行うかは `/shinnn-app:pr` がマージ�
 `gh auth refresh -h github.com -s workflow` を案内する。
 
 `.claude/settings.json` はセッションの開始時に読み込まれる。マージした後に Claude Code を起動し直すよう、利用者に伝える。
+スキルの一覧に `frontend-design` が無ければ、起動し直してもらう前に
+`claude plugin install frontend-design@claude-plugins-official --scope local` を実行する（権限の設定で有効にしていても、
+入れるのは各自の手元。画面の見た目の案を立てる `/shinnn-app:add-screen` が使う）。
 
 `.github/workflows/progress-snapshot.yaml` を消したときは、マージした後に、それが残っていたために設定できなかったブランチ保護を
 設定できる。

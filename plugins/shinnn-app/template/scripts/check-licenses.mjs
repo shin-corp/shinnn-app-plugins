@@ -33,6 +33,8 @@ const ALLOWED_LICENSES = new Set([
   'Unlicense',
   'Python-2.0',
   'Zlib',
+  // 書体（@fontsource のパッケージ）のライセンス
+  'OFL-1.1',
 ]);
 
 /** SPDX の式が許可リストに収まるか。括弧は見ない（OR と AND の別だけで判定できる）。 */

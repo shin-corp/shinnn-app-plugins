@@ -17,16 +17,18 @@ Claude Code でアプリを作るための道具をまとめた置き場所で�
 ## アプリを新しく作る
 
 1. アプリ用の**空のフォルダ**を作ります。フォルダの名前が、そのままアプリの名前の候補になります
-2. ターミナルでそのフォルダに移り、次の 3 行を実行します
+2. ターミナルでそのフォルダに移り、次の 4 行を実行します
 
    ```
    claude plugin marketplace add shin-corp/shinnn-app-plugins
    claude plugin install shinnn-app@shinnn --scope project
+   claude plugin install frontend-design@claude-plugins-official --scope project
    claude
    ```
 
-   1 行目でシン株式会社の置き場所を登録し、2 行目で道具を**このフォルダだけで使う形**で入れ、3 行目で Claude Code を起動します。
-   ほかのフォルダでの作業には影響しません。
+   1 行目でシン株式会社の置き場所を登録し、2 行目で道具を**このフォルダだけで使う形**で入れます。
+   3 行目は、画面の見た目の案を立てる Anthropic 公式の道具です。4 行目で Claude Code を起動します。
+   ほかのフォルダでの作業には影響しません。3 行目が失敗しても先へ進めて構いません（最初の画面を作るときに Claude が入れます）。
 
 3. 「このフォルダを信頼しますか」と聞かれたら、承認します
 4. 次のように入力します
@@ -48,6 +50,7 @@ Claude Code でアプリを作るための道具をまとめた置き場所で�
 
 ```
 claude plugin install shinnn-app@shinnn --scope local
+claude plugin install frontend-design@claude-plugins-official --scope local
 ```
 
 自分の手元だけで使う形で入るので、ほかの人の設定は変わりません。

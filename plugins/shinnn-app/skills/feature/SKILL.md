@@ -95,6 +95,7 @@ gh issue edit <Issue 番号> --remove-label status:next --add-label status:doing
 各段階の確認は、応答を終えるたびに hook が触ったファイルの lint と関連テストを走らせるので、その結果を直してから次へ進む
 （全部書いてからまとめて直さない）。段階ごとに `/shinnn-app:check` をまとめて走らせない（`pr` が出す前に 1 回通す）。
 1〜4 とサーバーのテストは `/shinnn-app:add-api`、5 と画面のテストは `/shinnn-app:add-screen` の手順で進める。
+アプリ全体の見た目（配色・書体・画面の骨組み）を変えるときは、`add-screen` の「0. 見た目の方針を確かめる」から進める。
 守る決まりは、それぞれが名指しする規約にある。
 
 ## 5. コミットする

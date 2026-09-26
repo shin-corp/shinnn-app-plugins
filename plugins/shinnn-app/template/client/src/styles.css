@@ -14,6 +14,10 @@
 @import 'tailwindcss/preflight.css' layer(tailwind-base);
 @import 'tailwindcss/utilities.css' layer(tailwind-utilities);
 
+/*
+ * 配色。アプリの見た目の方針を決めたら、主色から生成した ./theme.css の読み込みに置き換える。
+ * 書体もここで読み込む（.claude/rules/client-styling.md の「テーマと書体」）。
+ */
 @import '@angular/material/prebuilt-themes/azure-blue.css' layer(material);
 
 /* Tailwind に読ませる走査対象。ここに無いファイルのクラス名は出力されない。 */

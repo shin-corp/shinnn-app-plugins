@@ -9,7 +9,8 @@
     }
   },
   "enabledPlugins": {
-    "shinnn-app@shinnn": true
+    "shinnn-app@shinnn": true,
+    "frontend-design@claude-plugins-official": true
   },
   "permissions": {
     "defaultMode": "acceptEdits",
@@ -29,6 +30,7 @@
       "Bash(node *copy-standard.mjs*)",
       "Bash(claude plugin marketplace update shinnn)",
       "Bash(claude plugin update shinnn-app@shinnn *)",
+      "Bash(claude plugin install frontend-design@claude-plugins-official --scope local)",
       "Bash(git status *)",
       "Bash(git diff *)",
       "Bash(git -c core.quotepath=false diff *)",
