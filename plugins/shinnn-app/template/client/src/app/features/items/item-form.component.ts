@@ -25,14 +25,7 @@ export interface ItemFormData {
 
 @Component({
   selector: 'app-item-form',
-  imports: [
-    MatButtonModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    ReactiveFormsModule,
-  ],
+  imports: [MatButtonModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatSelectModule, ReactiveFormsModule],
   templateUrl: './item-form.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

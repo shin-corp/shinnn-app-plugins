@@ -48,8 +48,7 @@ export default class ItemsPageComponent {
 
   /** 一覧のデータ。`reload()` で読み直す。 */
   protected readonly itemsResource = resource({
-    loader: ({ abortSignal }) =>
-      call(itemsApi.listItems, { query: { limit: fetchLimit } }, { signal: abortSignal }),
+    loader: ({ abortSignal }) => call(itemsApi.listItems, { query: { limit: fetchLimit } }, { signal: abortSignal }),
   });
 
   /*

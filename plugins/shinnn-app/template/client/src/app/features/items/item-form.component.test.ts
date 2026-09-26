@@ -15,9 +15,7 @@ function stubResponse(body: unknown, status: number): void {
   vi.stubGlobal(
     'fetch',
     vi.fn(() =>
-      Promise.resolve(
-        new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }),
-      ),
+      Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })),
     ),
   );
 }
