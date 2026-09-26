@@ -19,9 +19,11 @@ import {
 } from '@angular/core';
 import type { TemplateRef } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { MatPaginatorModule, type PageEvent } from '@angular/material/paginator';
+import { MatPaginatorIntl, MatPaginatorModule, type PageEvent } from '@angular/material/paginator';
 import { MatSortModule, type Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
+
+import { JapanesePaginatorIntl } from './japanese-paginator-intl';
 
 /** 表の 1 列。`value` が表示・並べ替え・絞り込みのすべてに使われる。 */
 export interface DataTableColumn<T> {
@@ -100,6 +102,7 @@ export function sortRows<T>(rows: readonly T[], columns: readonly DataTableColum
 @Component({
   selector: 'app-data-table',
   imports: [MatPaginatorModule, MatSortModule, MatTableModule, NgTemplateOutlet],
+  providers: [{ provide: MatPaginatorIntl, useClass: JapanesePaginatorIntl }],
   templateUrl: './data-table.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

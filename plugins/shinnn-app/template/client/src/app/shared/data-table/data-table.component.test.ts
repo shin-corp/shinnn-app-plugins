@@ -127,6 +127,18 @@ describe('DataTableComponent', () => {
 
       expect(readBodyRows(fixture.nativeElement as HTMLElement)).toHaveLength(2);
     });
+
+    it('ページャの文言を日本語で出す', async () => {
+      const fixture = createTable(rows, 2);
+      await fixture.whenStable();
+
+      const element = fixture.nativeElement as HTMLElement;
+      expect(element.querySelector('.mat-mdc-paginator-page-size-label')?.textContent?.trim()).toBe('表示件数:');
+      expect(element.querySelector('.mat-mdc-paginator-range-label')?.textContent?.trim()).toBe('全 3 件中 1〜2 件');
+      expect(element.querySelector('button.mat-mdc-paginator-navigation-next')?.getAttribute('aria-label')).toBe(
+        '次のページ',
+      );
+    });
   });
 
   describe('エッジケース', () => {
