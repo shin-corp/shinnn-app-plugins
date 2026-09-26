@@ -112,7 +112,8 @@ client/
   総件数（`total`）と取得件数が食い違う場合は、そのことを画面に出す
 - **入力**: `MatDialog` + Reactive Forms + Material の form field / select。編集対象は `MAT_DIALOG_DATA` で受け取る
 - **見た目**: 画面を足す・見た目を変えるときは、コードを書く前に `frontend-design` スキルで案を立てる
-  （`add-screen` の手順 0 と 6）。アプリ全体の方針は `docs/仕様書.md` の「見た目の方針」に沿う
+  （`add-screen` の手順 0 と 3。見た目を変える依頼も `/shinnn-app:feature` から進める）。
+  アプリ全体の方針は `docs/仕様書.md` の「見た目の方針」に沿う
 
 ## API 呼び出し
 
