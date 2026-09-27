@@ -27,7 +27,7 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 - **無い**（テンプレートがまだ無いフォルダ）: 手順 0 だけを行い、起動し直すよう伝えて終える
 - **ある**: 手順 1〜6 を順に行う。ただし再実行で、リポジトリの `.claude/rules/.standards-version` が
   `${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/.standards-version` と違うときは、先に `/shinnn-app:update-rules` で
-  標準を取り込むよう伝えて終える（規約・権限の設定・git のフック・確認のスクリプト・ワークフロー・PR テンプレート・Dependabot の設定の更新は setup ではなく update-rules が扱う）
+  標準を取り込むよう伝えて終える（規約・CLAUDE.md 雛形・アプリ作り方ガイド・権限の設定・git のフック・コミット時の整形の設定・確認のスクリプト・ワークフロー・PR テンプレート・Dependabot の設定の更新は setup ではなく update-rules が扱う）
 
 各手順の結果を短くまとめてから次に進み、**利用者が決める項目は必ず質問する**。
 

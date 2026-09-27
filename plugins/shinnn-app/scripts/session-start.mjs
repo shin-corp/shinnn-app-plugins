@@ -191,7 +191,7 @@ if (distributed !== null && installed !== distributed) {
       '標準の更新があります',
       [
         `リポジトリの標準: ${installed ?? '不明'} / 配布されている標準: ${distributed}`,
-        '`/shinnn-app:update-rules` を実行すると、規約・権限の設定・git のフック・確認のスクリプト・ワークフロー・PR テンプレート・Dependabot の設定の差分を取り込んで PR にします。',
+        '`/shinnn-app:update-rules` を実行すると、規約・CLAUDE.md 雛形・アプリ作り方ガイド・権限の設定・git のフック・コミット時の整形の設定・確認のスクリプト・ワークフロー・PR テンプレート・Dependabot の設定の差分を取り込んで PR にします。',
       ].join('\n'),
     ),
   );
