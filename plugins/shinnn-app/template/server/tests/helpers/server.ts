@@ -41,7 +41,9 @@ export async function startServer(): Promise<TestServer> {
   const app = createApp({ db: handle.db });
 
   const server = await new Promise<ReturnType<typeof app.listen>>((resolve, reject) => {
-    const listening = app.listen(0, (error?: Error) => {
+    // アドレスを省くと :: で待ち受け、別のアプリが 127.0.0.1 だけで使っている番号も割り当てられることがある。
+    // 要求は 127.0.0.1 に送るので、そのアプリに届いて落ちる。送る先と同じアドレスで待ち受ける。
+    const listening = app.listen(0, '127.0.0.1', (error?: Error) => {
       if (error) {
         reject(error);
         return;

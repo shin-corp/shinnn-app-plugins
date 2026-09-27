@@ -31,7 +31,7 @@ Claude Code がこのリポジトリで作業するときの全体方針です�
 | DB           | PostgreSQL 16 + Drizzle ORM（テストは PGlite）                                      |
 | API 定義     | `shared` の zod 4 + `defineRoute()`                                                 |
 | 画面         | Angular（standalone / signals / zoneless）+ Angular Material + CDK + Tailwind CSS 4 |
-| テスト       | Vitest（`.test.ts`）。サーバーは `app.listen(0)` + fetch                            |
+| テスト       | Vitest（`.test.ts`）。サーバーは `app.listen(0, '127.0.0.1')` + fetch               |
 | パッケージ   | npm workspaces（client / server / shared）                                          |
 | 使わないもの | NestJS / NgRx / GraphQL / ORM の抽象化層の追加 / 独自 CSS                           |
 

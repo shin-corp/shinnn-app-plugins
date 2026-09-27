@@ -28,7 +28,7 @@ Express 5 + PostgreSQL 16（Drizzle ORM）の API サーバー。TypeScript の 
 3. `createApp()` が middleware → ルーター → 404 → error middleware の順に組み立てる
 4. `app.listen(PORT)`。`SIGTERM` / `SIGINT` で処理中の要求を終わらせてから止める
 
-`app.ts`（組み立て）と `index.ts`（待ち受け）は分ける。テストは `app.ts` だけを使い、`app.listen(0)` で空きポートに立てる。
+`app.ts`（組み立て）と `index.ts`（待ち受け）は分ける。テストは `app.ts` だけを使い、`app.listen(0, '127.0.0.1')` で空きポートに立てる。
 
 ## 環境変数
 

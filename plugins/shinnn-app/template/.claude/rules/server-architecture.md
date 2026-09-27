@@ -27,7 +27,7 @@ src/service/<機能>.service.ts        業務ルール。失敗は CommonExcepti
 src/db/                    Drizzle。SQL を書く唯一の場所
 ```
 
-`src/index.ts` は `app.listen()` を呼ぶだけです。テストは `app.ts` を import して `listen(0)` します。
+`src/index.ts` は `app.listen()` を呼ぶだけです。テストは `app.ts` を import して `listen(0, '127.0.0.1')` します。
 
 ## 新規ファイルの配置判断
 

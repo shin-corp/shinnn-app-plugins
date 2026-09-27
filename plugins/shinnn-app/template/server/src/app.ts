@@ -2,7 +2,7 @@
  * @file Express アプリの組み立て。
  *
  * ここでは待ち受けを始めない（`listen` は index.ts）。
- * テストは同じ組み立てのまま `app.listen(0)` で空きポートに立て、本番と同じ経路を HTTP で確かめる。
+ * テストは同じ組み立てのまま `app.listen(0, '127.0.0.1')` で空きポートに立て、本番と同じ経路を HTTP で確かめる。
  */
 
 import cors from 'cors';
