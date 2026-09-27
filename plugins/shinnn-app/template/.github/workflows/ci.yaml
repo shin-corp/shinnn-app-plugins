@@ -101,7 +101,8 @@ jobs:
       # コメントや整形だけの変更のようにテストを変えなくてよいときは、PR 本文の「テストを変えない理由: 〜」の行で通す。
       # 理由は PR に残り、レビューで確かめられる。本文を直すと走り直す（上の edited）。
       # HTML のコメント（<!-- -->）の中は見ない。PR テンプレートの説明の中に書いても、読む人には見えないため。
-      # 閉じていない <!-- の後ろも見ない（GitHub の画面では本文の終わりまで見えない）。
+      # 行の頭（箇条書き・番号・引用の記号の後ろを含む）で始まる閉じていない <!-- の後ろも見ない（GitHub の画面では
+      # 本文の終わりまで見えない）。行の途中やコードの中の <!-- は画面に見えるので、その後ろも読む。
       # 行の頭は、箇条書き（- * +。チェックボックス - [x] を含む）・番号付き（1. 1)）・引用（>）・太字（**テストを変えない理由**: /
       # **テストを変えない理由:**）・コード（`テストを変えない理由: 〜`）でも通す。
       # 見出し（#）の形は通さない。見出しだけ置いて理由を書き忘れても通ってしまうため。
@@ -116,7 +117,7 @@ jobs:
           if echo "$CHANGED" | grep -q '^shared/src/api/'; then
             if echo "$CHANGED" | grep -qE '(^server/tests/|[.]test[.]ts$)'; then
               echo "API 定義の変更に対するテストの変更を確認しました。"
-            elif printf '%s\n' "$PR_BODY" | perl -0pe 's/<!--.*?(-->|\z)//gs' | grep -Eq '^[[:space:]]*(>[[:space:]]*)*(([-*+]|[0-9]+[.)])[[:space:]]+)?(\[[ xX]\][[:space:]]+)?(\*\*|`)?テストを変えない理由(\*\*)?[[:space:]]*(:|：)(\*\*)?[[:space:]]*[^[:space:]*]'; then
+            elif printf '%s\n' "$PR_BODY" | perl -0pe 's/<!--.*?-->//gs; s/^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+|>[ \t]*)*<!--.*//ms' | grep -Eq '^[[:space:]]*(>[[:space:]]*)*(([-*+]|[0-9]+[.)])[[:space:]]+)?(\[[ xX]\][[:space:]]+)?(\*\*|`)?テストを変えない理由(\*\*)?[[:space:]]*(:|：)(\*\*)?[[:space:]]*[^[:space:]*]'; then
               echo "テストの変更はありませんが、PR 本文に「テストを変えない理由」があるので通します。"
             else
               echo "shared/src/api を変えたのに、テストが 1 つも変わっていません。" >&2
@@ -133,13 +134,14 @@ jobs:
       # Dependabot の PR は dependabot-issue.yaml が後から Closes #n を足すので、ここでは免除する。
       # 名前は引用符で囲む（囲まないと YAML が「 #n」以降をコメントとして落とす）。
       # HTML のコメント（<!-- -->）の中は見ない。コメントの中の Closes #n は、読む人には見えないため。
-      # 閉じていない <!-- の後ろも見ない。encloses #5 のように語の途中にあるものは数えない。
+      # 行の頭で始まる閉じていない <!-- の後ろも見ない（行の途中やコードの中の <!-- の後ろは読む）。
+      # encloses #5 のように語の途中にあるものは数えない。Closes: #n のようにコロンを付けた形も通す（GitHub も閉じる）。
       - name: 'PR 本文に Closes #n があること'
         if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          if printf '%s\n' "$PR_BODY" | perl -0pe 's/<!--.*?(-->|\z)//gs' | grep -Eiq '(^|[^[:alnum:]_])(close[sd]?|fix(e[sd])?|resolve[sd]?) +#[0-9]+'; then
+          if printf '%s\n' "$PR_BODY" | perl -0pe 's/<!--.*?-->//gs; s/^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+|>[ \t]*)*<!--.*//ms' | grep -Eiq '(^|[^[:alnum:]_])(close[sd]?|fix(e[sd])?|resolve[sd]?):? +#[0-9]+'; then
             echo "対応する Issue の記載を確認しました。"
           else
             echo "PR 本文に 'Closes #<Issue 番号>' がありません。" >&2

@@ -97,11 +97,23 @@ test('Closes #n: 閉じていないコメントの後ろにしか無ければ通
   assert.equal(result.status, 1);
 });
 
-test('Closes #n: 語の途中にあるもの（encloses #5 など）では通さず、括弧や箇条書きの後ろなら通す', () => {
+test('Closes #n: 箇条書きや引用の記号の後ろで始まる閉じていないコメントの後ろも読まない', () => {
+  for (const body of ['- <!-- 閉じ忘れた説明\nCloses #12\n', '> <!-- 閉じ忘れた説明\nCloses #12\n']) {
+    assert.equal(runBash(stepScript(closesStep), { env: { PR_BODY: body } }).status, 1, body);
+  }
+});
+
+test('Closes #n: 行の途中やコードの中の <!-- は画面に見えるので、その後ろは読む', () => {
+  for (const body of ['本文 <!-- 閉じていない\nCloses #12\n', 'コメントは `<!--` で始める\nCloses #12\n']) {
+    assert.equal(runBash(stepScript(closesStep), { env: { PR_BODY: body } }).status, 0, body);
+  }
+});
+
+test('Closes #n: 語の途中にあるもの（encloses #5 など）では通さず、括弧や箇条書きの後ろ・コロン付きなら通す', () => {
   for (const body of ['encloses #5\n', 'prefix #5\n']) {
     assert.equal(runBash(stepScript(closesStep), { env: { PR_BODY: body } }).status, 1, body);
   }
-  for (const body of ['（closes #7）\n', '- Fixes #3\n', 'resolved #9 と書く\n']) {
+  for (const body of ['（closes #7）\n', '- Fixes #3\n', 'resolved #9 と書く\n', 'Closes: #10\n', 'Fixes: #3\n']) {
     assert.equal(runBash(stepScript(closesStep), { env: { PR_BODY: body } }).status, 0, body);
   }
 });
@@ -114,7 +126,7 @@ test('Closes #n: コメントの外にあれば、コメントと並んでいて
 });
 
 test('API 定義の確認は、checkout で全部取った履歴の origin/<base> で比べ、履歴を浅くしない（後の gitleaks が全履歴を調べられる）', () => {
-  // 送り先: main に 60 コミット（以前の --depth=50 より多く）、作業ブランチに 1 コミット
+  // 送り先: main に 60 コミット（50 より多く）、作業ブランチに 1 コミット
   const origin = join(workRoot, 'origin');
   git(workRoot, 'init', '-q', '-b', 'main', origin);
 
@@ -166,6 +178,14 @@ function makeApiChangeClone() {
 }
 
 const apiStep = 'API 定義を変えたらテストも変えていること';
+
+test('テストを変えない理由: 行の途中の閉じていない <!-- の後ろにあっても通す（画面に見える）', () => {
+  const clone = makeApiChangeClone();
+  const body = '整形だけの変更です <!-- 閉じていない\nテストを変えない理由: コメントだけの変更\n';
+  const result = runBash(stepScript(apiStep), { cwd: clone, env: { BASE_REF: 'main', PR_BODY: body } });
+
+  assert.equal(result.status, 0, result.stderr);
+});
 
 test('テストを変えない理由: 行の頭が箇条書き・番号付き・太字・引用でも通す', () => {
   const clone = makeApiChangeClone();
