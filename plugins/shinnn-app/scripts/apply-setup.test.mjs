@@ -7,7 +7,7 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
@@ -120,7 +120,7 @@ function makeOldSetup(repo) {
   setup.$comment = '古い説明';
   setup.mandatory.push('progress-snapshot');
   setup.database.$comment = '古い説明';
-  setup.reviewer = '@shinnn-reviewer';
+  setup.reviewer = '@example-reviewer';
   setup.handoverIssue = 3;
   setup.optional['health-report'] = true;
   delete setup.optional['copilot-review'];
@@ -150,7 +150,7 @@ test('古い記録: 選択を変えずに実行してもテンプレートの形
   assert.deepEqual(setup.mandatory, template.mandatory);
   assert.deepEqual(Object.keys(setup.optional), OPTIONAL_KEYS);
   assert.equal(setup.optional['health-report'], true);
-  assert.equal(setup.reviewer, '@shinnn-reviewer');
+  assert.equal(setup.reviewer, '@example-reviewer');
   assert.equal(setup.handoverIssue, 3);
 
   // 揃えた後は、選択を変えなければ変更は無い
@@ -166,6 +166,41 @@ test('古い記録: 欠けていた今の選択項目も有効にできる', () 
 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(JSON.parse(readFileSync(join(repo, SETUP), 'utf8')).optional['copilot-review'], true);
+});
+
+test('古い記録: --dry-run では揃える内容を出すだけで、何も書き換えない', () => {
+  const repo = makeRepo();
+  makeOldSetup(repo);
+  const before = readFileSync(join(repo, SETUP), 'utf8');
+  const result = runApply(repo, ['--dry-run']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /テンプレートの形に揃える: standardsVersion: 削除（今の標準に無い。"0\.7\.0" だった）/);
+  assert.equal(readFileSync(join(repo, SETUP), 'utf8'), before);
+});
+
+test('キーの並びだけが違う記録: 揃えたことを出す（「変更はありません」にしない）', () => {
+  const repo = makeRepo();
+  const setup = templateSetup();
+  const { mergePolicy, ...rest } = setup;
+  writeFileSync(join(repo, SETUP), `${JSON.stringify({ ...rest, mergePolicy }, null, 2)}\n`);
+  const result = runApply(repo, []);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /キーの並びをテンプレートに揃える/);
+  assert.equal(readFileSync(join(repo, SETUP), 'utf8'), `${JSON.stringify(setup, null, 2)}\n`);
+});
+
+test('標準の版がプラグインと違うリポジトリでは止まり、何も書き換えない', () => {
+  const repo = makeRepo();
+  mkdirSync(join(repo, '.claude', 'rules'), { recursive: true });
+  writeFileSync(join(repo, '.claude', 'rules', '.standards-version'), '0.0.1\n');
+  const before = readFileSync(join(repo, SETUP), 'utf8');
+  const result = runApply(repo, ['--enable', 'health-report']);
+
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /先に \/shinnn-app:update-rules/);
+  assert.equal(readFileSync(join(repo, SETUP), 'utf8'), before);
 });
 
 test('--dry-run: 変更内容を出すだけで、何も書き換えない', () => {

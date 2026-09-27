@@ -25,7 +25,8 @@
  * 選択項目のキーは `.shinnn/setup.json` の optional にあるものだけを受け付ける
  * （キーを勝手に増やさない・減らさないという取り決めを機械で守る）。
  * 書き換える前に、記録をプラグインに同梱のテンプレートの `.shinnn/setup.json` の形に揃える（alignWithTemplate）。
- * 選択を変えずに実行しても、古い記録が残っていれば揃えて書き換える。
+ * 選択を変えずに実行しても、古い記録が残っていれば揃えて書き換える。リポジトリの標準の版（`.claude/rules/.standards-version`）が
+ * プラグインのものと違うときは、揃えずに止める（先に /shinnn-app:update-rules で標準を取り込む）。
  */
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -52,12 +53,16 @@ const MERGE_POLICIES = ['human', 'self-review'];
 /** プラグインに同梱のテンプレートの setup.json。リポジトリの記録をこの形に揃える。 */
 const TEMPLATE_SETUP_PATH = new URL('../template/.shinnn/setup.json', import.meta.url);
 
+/** プラグインに同梱のテンプレートの標準の版。 */
+const TEMPLATE_STANDARDS_PATH = new URL('../template/.claude/rules/.standards-version', import.meta.url);
+
 /** テンプレートの setup.json には無いが、setup が書き足すキー。 */
 const KEYS_ADDED_BY_SETUP = ['handoverIssue'];
 
 /**
  * 記録をテンプレートの形に揃える。古いテンプレートから作ったリポジトリには、今の標準に無いキー・古い説明・
- * 外した選択項目が残り、今の選択項目のキーが無いことがある。setup.json は deny で手では直せないので、ここで揃える。
+ * 外した選択項目が残り、今の選択項目のキーが無いことがある。Claude は deny で `.shinnn/` を編集できず、書き換えるのは
+ * このスクリプトだけなので、ここで揃える。
  *
  * - リポジトリで決めた値（担当者・DB の用意方法・選択項目の値など）は残す
  * - 説明（`$` で始まるキー）と必須項目（`mandatory`）は、テンプレートのものにする
@@ -74,9 +79,7 @@ function alignWithTemplate(current, template) {
 
   for (const [key, templateValue] of Object.entries(template)) {
     if (key.startsWith('$')) {
-      if (current[key] !== templateValue) {
-        notes.push(`${key}: 今の説明に差し替え`);
-      }
+      noteComment(current, key, templateValue, key, notes);
       aligned[key] = templateValue;
       continue;
     }
@@ -113,11 +116,26 @@ function alignWithTemplate(current, template) {
   }
   for (const key of Object.keys(current)) {
     if (!Object.hasOwn(template, key) && !KEYS_ADDED_BY_SETUP.includes(key)) {
-      notes.push(`${key}: 削除（今の標準に無い）`);
+      notes.push(`${key}: 削除（今の標準に無い。${JSON.stringify(current[key])} だった）`);
     }
+  }
+  // 値は同じでもキーの並びだけが違えば、書き換えることになるので知らせる
+  if (notes.length === 0 && JSON.stringify(current) !== JSON.stringify(aligned)) {
+    notes.push('キーの並びをテンプレートに揃える');
   }
 
   return { aligned, notes };
+}
+
+/** 説明（`$` で始まるキー）を、元に無ければ「追加」、違えば「差し替え」として書き留める */
+function noteComment(current, key, templateValue, path, notes) {
+  if (!Object.hasOwn(current, key)) {
+    notes.push(`${path}: 追加`);
+    return;
+  }
+  if (current[key] !== templateValue) {
+    notes.push(`${path}: 今の説明に差し替え`);
+  }
 }
 
 /**
@@ -129,9 +147,7 @@ function alignObject(current, template, path, notes) {
 
   for (const [key, templateValue] of Object.entries(template)) {
     if (key.startsWith('$')) {
-      if (current[key] !== templateValue) {
-        notes.push(`${path}.${key}: 今の説明に差し替え`);
-      }
+      noteComment(current, key, templateValue, `${path}.${key}`, notes);
       aligned[key] = templateValue;
       continue;
     }
@@ -229,6 +245,19 @@ if (!existsSync(setupPath)) {
     `${setupPath} がありません。`,
     'テンプレート shinnn-app-starter から作ったリポジトリのルートで実行する（--repo-dir でも指定できる）',
   );
+}
+
+// 揃える先は、このプラグインに同梱のテンプレート。リポジトリの標準の版が違えば、別の版の記録に揃えてしまうので止める
+const repoStandardsPath = join(root, '.claude', 'rules', '.standards-version');
+if (existsSync(repoStandardsPath)) {
+  const repoStandards = readFileSync(repoStandardsPath, 'utf8').trim();
+  const templateStandards = readFileSync(TEMPLATE_STANDARDS_PATH, 'utf8').trim();
+  if (repoStandards !== templateStandards) {
+    fail(
+      `リポジトリの標準の版 ${repoStandards} が、プラグインの標準の版 ${templateStandards} と違います。`,
+      '先に /shinnn-app:update-rules で標準を取り込んでから、setup を実行する',
+    );
+  }
 }
 
 const { aligned: setup, notes: alignNotes } = alignWithTemplate(
