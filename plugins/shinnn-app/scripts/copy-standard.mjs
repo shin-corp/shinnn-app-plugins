@@ -22,7 +22,7 @@
 // 標準の版（.standards-version）は最後に写す。途中で失敗したときに「取り込み済み」に見えないようにするため。
 //
 // .claude/ と .github/workflows/ は権限の設定の deny で守られていて、Claude の cp では書けない。
-// このスクリプトはテンプレートと同じ中身を写すだけで、変更は PR にしてシン株式会社がレビューする。
+// このスクリプトはテンプレートと同じ中身を写すだけで、変更は PR にし、マージの方針（human / self-review）に従ってマージする。
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
