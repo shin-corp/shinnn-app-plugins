@@ -24,6 +24,8 @@
  *
  * 選択項目のキーは `.shinnn/setup.json` の optional にあるものだけを受け付ける
  * （キーを勝手に増やさない・減らさないという取り決めを機械で守る）。
+ * 書き換える前に、記録をプラグインに同梱のテンプレートの `.shinnn/setup.json` の形に揃える（alignWithTemplate）。
+ * 選択を変えずに実行しても、古い記録が残っていれば揃えて書き換える。
  */
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -46,6 +48,108 @@ const DATABASE_MODES = ['database-url', 'local-postgres', 'docker', 'pglite', 'm
 
 /** 受け付けるマージの方針。human は人がマージ、self-review は /shinnn-app:pr がセルフレビューと CI の通過後にマージする。 */
 const MERGE_POLICIES = ['human', 'self-review'];
+
+/** プラグインに同梱のテンプレートの setup.json。リポジトリの記録をこの形に揃える。 */
+const TEMPLATE_SETUP_PATH = new URL('../template/.shinnn/setup.json', import.meta.url);
+
+/** テンプレートの setup.json には無いが、setup が書き足すキー。 */
+const KEYS_ADDED_BY_SETUP = ['handoverIssue'];
+
+/**
+ * 記録をテンプレートの形に揃える。古いテンプレートから作ったリポジトリには、今の標準に無いキー・古い説明・
+ * 外した選択項目が残り、今の選択項目のキーが無いことがある。setup.json は deny で手では直せないので、ここで揃える。
+ *
+ * - リポジトリで決めた値（担当者・DB の用意方法・選択項目の値など）は残す
+ * - 説明（`$` で始まるキー）と必須項目（`mandatory`）は、テンプレートのものにする
+ * - 選択項目（`optional`）はテンプレートのキーだけにし、無いキーはテンプレートの既定値で足す
+ * - テンプレートにも `KEYS_ADDED_BY_SETUP` にも無いキーは消す
+ *
+ * @param current - リポジトリの記録
+ * @param template - テンプレートの記録
+ * @returns 揃えた記録と、変えた内容の一覧
+ */
+function alignWithTemplate(current, template) {
+  const aligned = {};
+  const notes = [];
+
+  for (const [key, templateValue] of Object.entries(template)) {
+    if (key.startsWith('$')) {
+      if (current[key] !== templateValue) {
+        notes.push(`${key}: 今の説明に差し替え`);
+      }
+      aligned[key] = templateValue;
+      continue;
+    }
+    if (key === 'mandatory') {
+      const had = new Set(current.mandatory ?? []);
+      const wanted = new Set(templateValue);
+      const removed = [...had].filter((item) => !wanted.has(item));
+      const added = templateValue.filter((item) => !had.has(item));
+      if (removed.length > 0) {
+        notes.push(`mandatory: ${removed.join(', ')} を削除（今の標準に無い）`);
+      }
+      if (added.length > 0) {
+        notes.push(`mandatory: ${added.join(', ')} を追加`);
+      }
+      aligned.mandatory = [...templateValue];
+      continue;
+    }
+    if (key === 'optional' || key === 'database') {
+      aligned[key] = alignObject(current[key] ?? {}, templateValue, key, notes);
+      continue;
+    }
+    if (Object.hasOwn(current, key)) {
+      aligned[key] = current[key];
+    } else {
+      aligned[key] = templateValue;
+      notes.push(`${key}: 追加（${templateValue}）`);
+    }
+  }
+
+  for (const key of KEYS_ADDED_BY_SETUP) {
+    if (Object.hasOwn(current, key)) {
+      aligned[key] = current[key];
+    }
+  }
+  for (const key of Object.keys(current)) {
+    if (!Object.hasOwn(template, key) && !KEYS_ADDED_BY_SETUP.includes(key)) {
+      notes.push(`${key}: 削除（今の標準に無い）`);
+    }
+  }
+
+  return { aligned, notes };
+}
+
+/**
+ * `optional` や `database` のような 1 段下のオブジェクトを揃える。
+ * テンプレートのキーだけにし、値はリポジトリのものを残す（説明の `$` のキーはテンプレートのもの）。
+ */
+function alignObject(current, template, path, notes) {
+  const aligned = {};
+
+  for (const [key, templateValue] of Object.entries(template)) {
+    if (key.startsWith('$')) {
+      if (current[key] !== templateValue) {
+        notes.push(`${path}.${key}: 今の説明に差し替え`);
+      }
+      aligned[key] = templateValue;
+      continue;
+    }
+    if (Object.hasOwn(current, key)) {
+      aligned[key] = current[key];
+    } else {
+      aligned[key] = templateValue;
+      notes.push(`${path}.${key}: 追加（${templateValue}）`);
+    }
+  }
+  for (const key of Object.keys(current)) {
+    if (!Object.hasOwn(template, key)) {
+      notes.push(`${path}.${key}: 削除（今の標準に無い。${JSON.stringify(current[key])} だった）`);
+    }
+  }
+
+  return aligned;
+}
 
 /** 続けられない理由を出して終わる。 */
 function fail(message, how) {
@@ -127,8 +231,11 @@ if (!existsSync(setupPath)) {
   );
 }
 
-const setup = JSON.parse(readFileSync(setupPath, 'utf8'));
-const changes = [];
+const { aligned: setup, notes: alignNotes } = alignWithTemplate(
+  JSON.parse(readFileSync(setupPath, 'utf8')),
+  JSON.parse(readFileSync(TEMPLATE_SETUP_PATH, 'utf8')),
+);
+const changes = alignNotes.map((note) => `テンプレートの形に揃える: ${note}`);
 
 if (options.profile !== undefined) {
   if (!PROFILES.includes(options.profile)) {

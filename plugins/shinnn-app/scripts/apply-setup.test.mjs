@@ -7,7 +7,7 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
@@ -111,6 +111,61 @@ test('選択項目をすべて有効にすると雛形の .disabled がすべて
   assert.equal(disabled.status, 0, disabled.stderr);
   assert.equal(disabled.stderr, '');
   assert.deepEqual(disabledWorkflows(repo), templates);
+});
+
+/** 古いテンプレートから作ったリポジトリの記録にする（今の標準に無いキー・古い説明・外した項目が残り、今の選択項目が欠ける） */
+function makeOldSetup(repo) {
+  const setup = templateSetup();
+  setup.standardsVersion = '0.7.0';
+  setup.$comment = '古い説明';
+  setup.mandatory.push('progress-snapshot');
+  setup.database.$comment = '古い説明';
+  setup.reviewer = '@shinnn-reviewer';
+  setup.handoverIssue = 3;
+  setup.optional['health-report'] = true;
+  delete setup.optional['copilot-review'];
+  for (const key of REMOVED_KEYS) {
+    setup.optional[key] = false;
+  }
+  writeFileSync(join(repo, SETUP), `${JSON.stringify(setup, null, 2)}\n`);
+}
+
+test('古い記録: 選択を変えずに実行してもテンプレートの形に揃え、リポジトリで決めた値は残す', () => {
+  const repo = makeRepo();
+  makeOldSetup(repo);
+  const result = runApply(repo, []);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /変更はありません/);
+  assert.match(result.stdout, /standardsVersion: 削除/);
+  assert.match(result.stdout, /mandatory: progress-snapshot を削除/);
+  assert.match(result.stdout, /optional\.copilot-review: 追加（false）/);
+  assert.match(result.stdout, /optional\.playwright-e2e: 削除/);
+
+  const setup = JSON.parse(readFileSync(join(repo, SETUP), 'utf8'));
+  const template = templateSetup();
+  assert.equal(setup.standardsVersion, undefined);
+  assert.equal(setup.$comment, template.$comment);
+  assert.equal(setup.database.$comment, template.database.$comment);
+  assert.deepEqual(setup.mandatory, template.mandatory);
+  assert.deepEqual(Object.keys(setup.optional), OPTIONAL_KEYS);
+  assert.equal(setup.optional['health-report'], true);
+  assert.equal(setup.reviewer, '@shinnn-reviewer');
+  assert.equal(setup.handoverIssue, 3);
+
+  // 揃えた後は、選択を変えなければ変更は無い
+  const second = runApply(repo, []);
+  assert.equal(second.status, 0, second.stderr);
+  assert.match(second.stdout, /変更はありません/);
+});
+
+test('古い記録: 欠けていた今の選択項目も有効にできる', () => {
+  const repo = makeRepo();
+  makeOldSetup(repo);
+  const result = runApply(repo, ['--enable', 'copilot-review']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(readFileSync(join(repo, SETUP), 'utf8')).optional['copilot-review'], true);
 });
 
 test('--dry-run: 変更内容を出すだけで、何も書き換えない', () => {
