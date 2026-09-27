@@ -1,7 +1,7 @@
 /**
  * scripts/format-file.mjs（保存時の hook）の回帰テスト。`node --test scripts/` で実行する。
  *
- * npm を偽物に差し替え、hook が呼んだコマンドを記録して確かめる。
+ * hook が起動する npm を偽物（format-file.fake-npm.mjs）に差し替え、呼んだコマンドを記録して確かめる。
  * - 画面（client）の .ts には、eslint --fix の後に prettier --write を掛ける
  * - server と shared の .ts、client の .ts 以外には、prettier を掛けない（eslint --fix だけ）
  * - リポジトリのコミット時の設定（.lintstagedrc.json）が client の .ts に prettier を掛けていなければ、掛けない
@@ -10,17 +10,17 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { delimiter, dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { after, before, test } from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+/** npm を偽物にする下準備（node --import で読み込む） */
+const fakeNpm = pathToFileURL(fileURLToPath(new URL('./format-file.fake-npm.mjs', import.meta.url))).href;
 
 /** テストで使う一時ファイルをすべて置くディレクトリ */
 let workRoot;
-
-/** 偽物の npm を置くフォルダ */
-let binDir;
 
 /** ファイルを親ディレクトリごと作る */
 function writeFile(root, repoPath, content) {
@@ -31,26 +31,6 @@ function writeFile(root, repoPath, content) {
 
 before(() => {
   workRoot = mkdtempSync(join(tmpdir(), 'format-file-'));
-
-  // 偽物の npm: 受け取った引数を 1 行にして記録する。
-  // prettier は FAKE_PRETTIER_CHANGES があれば最後の引数のファイルに 1 行足し（書式が変わったことにする）、
-  // eslint は FAKE_ESLINT_STATUS の終了コードで終わる
-  binDir = join(workRoot, 'bin');
-  writeFile(
-    binDir,
-    'npm',
-    [
-      '#!/bin/sh',
-      'echo "$*" >> "$FAKE_NPM_LOG"',
-      'for last in "$@"; do :; done',
-      'case "$*" in',
-      '  *prettier*) if [ -n "$FAKE_PRETTIER_CHANGES" ]; then echo "// formatted" >> "$last"; fi; exit 0 ;;',
-      '  *eslint*) echo "fake eslint: $*"; exit "${FAKE_ESLINT_STATUS:-0}" ;;',
-      'esac',
-      '',
-    ].join('\n'),
-  );
-  chmodSync(join(binDir, 'npm'), 0o755);
 });
 
 after(() => {
@@ -81,14 +61,13 @@ function runFormatFile(root, repoPath, env = {}) {
   rmSync(log, { force: true });
   const script = fileURLToPath(new URL('./format-file.mjs', import.meta.url));
   const input = { tool_name: 'Edit', tool_input: { file_path: join(root, repoPath) }, cwd: root };
-  const result = spawnSync(process.execPath, [script], {
+  const result = spawnSync(process.execPath, ['--import', fakeNpm, script], {
     input: JSON.stringify(input),
     encoding: 'utf8',
     env: {
       ...process.env,
       CLAUDE_PROJECT_DIR: root,
       FAKE_NPM_LOG: log,
-      PATH: `${binDir}${delimiter}${process.env.PATH}`,
       ...env,
     },
   });
@@ -127,16 +106,21 @@ test('format-file: コミット時の設定が client の .ts に prettier を�
 });
 
 test('format-file: 指摘が残り、prettier で書式が変わったら、eslint を掛け直して整形後の結果を返す', () => {
-  const { calls, stdout } = runFormatFile(makeApp(), 'client/src/a.ts', {
+  const root = makeApp();
+  const { calls, stdout } = runFormatFile(root, 'client/src/a.ts', {
     FAKE_ESLINT_STATUS: '1',
     FAKE_PRETTIER_CHANGES: '1',
   });
 
   assert.equal(calls.length, 3, calls.join('\n'));
   assert.match(calls[1], /prettier --write/);
-  assert.match(calls[2], /^exec -w client -- eslint --format stylish \/.*client\/src\/a\.ts$/);
+  // 掛け直しは --fix を付けず、編集したファイルを渡す（パスの区切りは OS で違うので resolve で揃えて比べる）
+  const eslintAgain = 'exec -w client -- eslint --format stylish ';
+  assert.ok(calls[2].startsWith(eslintAgain), calls[2]);
+  assert.equal(resolve(calls[2].slice(eslintAgain.length)), resolve(root, 'client/src/a.ts'));
   // 返すのは掛け直した（--fix の無い）eslint の出力
-  assert.match(stdout, /fake eslint: exec -w client -- eslint --format stylish \//);
+  const context = JSON.parse(stdout).hookSpecificOutput.additionalContext;
+  assert.ok(context.includes(`fake eslint: ${calls[2]}`), context);
   assert.doesNotMatch(stdout, /eslint --format stylish --fix/);
 });
 
