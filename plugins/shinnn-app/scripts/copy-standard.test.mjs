@@ -45,6 +45,7 @@ function makeOldRepo({ hasServer = true, enabledWorkflows = [] } = {}) {
   writeRepoFile(repo, '.github/dependabot.yml', 'old\n');
   writeRepoFile(repo, 'scripts/project-only.mjs', 'project\n');
   writeRepoFile(repo, 'CLAUDE.md', 'project\n');
+  writeRepoFile(repo, '.shinnn/setup.json', 'project\n');
   for (const name of enabledWorkflows) {
     writeRepoFile(repo, `.github/workflows/${name}`, 'old\n');
   }
@@ -106,6 +107,8 @@ test('copy-standard: 規約・権限の設定・スクリプト・ワークフ�
   assert.equal(readFileSync(join(repo, '.claude/rules/project-only.md'), 'utf8'), 'project\n');
   assert.equal(readFileSync(join(repo, 'scripts/project-only.mjs'), 'utf8'), 'project\n');
   assert.equal(readFileSync(join(repo, 'CLAUDE.md'), 'utf8'), 'project\n');
+  // setup の記録は写さない（形を揃えるのは apply-setup.mjs --align-only）
+  assert.equal(readFileSync(join(repo, '.shinnn/setup.json'), 'utf8'), 'project\n');
 
   // 2 回目は変わるものが無い
   const second = runCopyStandard(repo);

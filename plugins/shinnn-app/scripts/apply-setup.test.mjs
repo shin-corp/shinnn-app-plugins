@@ -191,28 +191,56 @@ test('キーの並びだけが違う記録: 揃えたことを出す（「変更
   assert.equal(readFileSync(join(repo, SETUP), 'utf8'), `${JSON.stringify(setup, null, 2)}\n`);
 });
 
-test('標準を写した後（標準の版がプラグインと同じ）: 選択の引数なしで古い記録を揃える（update-rules の使い方）', () => {
-  const repo = makeRepo();
-  makeOldSetup(repo);
+/** リポジトリの標準の版を書く */
+function writeStandardsVersion(repo, version) {
   mkdirSync(join(repo, '.claude', 'rules'), { recursive: true });
-  cpSync(
-    join(templateDir, '.claude', 'rules', '.standards-version'),
-    join(repo, '.claude', 'rules', '.standards-version'),
-  );
-  const result = runApply(repo, []);
+  writeFileSync(join(repo, '.claude', 'rules', '.standards-version'), version);
+}
+
+test('--align-only（update-rules の使い方）: 標準を写した後の古い記録の形だけを揃え、ワークフローと CODEOWNERS は変えない', () => {
+  const repo = makeRepo();
+  // 記録は health-report を有効・担当者を決めた状態で、ワークフローと CODEOWNERS はそれに合っていない
+  makeOldSetup(repo);
+  writeStandardsVersion(repo, readFileSync(join(templateDir, '.claude', 'rules', '.standards-version'), 'utf8'));
+  const codeowners = readFileSync(join(repo, '.github', 'CODEOWNERS'), 'utf8');
+  const result = runApply(repo, ['--align-only']);
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /テンプレートの形に揃える: standardsVersion: 削除/);
+  assert.doesNotMatch(result.stdout, /workflow |CODEOWNERS/);
+  assert.deepEqual(disabledWorkflows(repo), disabledWorkflows(templateDir));
+  assert.equal(readFileSync(join(repo, '.github', 'CODEOWNERS'), 'utf8'), codeowners);
+
   const setup = JSON.parse(readFileSync(join(repo, SETUP), 'utf8'));
   assert.deepEqual(setup.mandatory, templateSetup().mandatory);
   assert.equal(setup.optional['health-report'], true);
   assert.equal(setup.reviewer, '@example-reviewer');
 });
 
+test('--align-only: 選択を変える引数と一緒には使えず、何も書き換えない', () => {
+  for (const args of [['--enable', 'health-report'], ['--reviewer', '@example-reviewer'], ['--complete']]) {
+    const repo = makeRepo();
+    const before = readFileSync(join(repo, SETUP), 'utf8');
+    const result = runApply(repo, ['--align-only', ...args]);
+
+    assert.equal(result.status, 1, args.join(' '));
+    assert.match(result.stderr, /--align-only は選択を変える引数/);
+    assert.equal(readFileSync(join(repo, SETUP), 'utf8'), before, args.join(' '));
+  }
+});
+
+test('--align-only: 標準の版が違えば止まり、標準を先に写すよう案内する', () => {
+  const repo = makeRepo();
+  writeStandardsVersion(repo, '0.0.1\n');
+  const result = runApply(repo, ['--align-only']);
+
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /先に copy-standard\.mjs で標準を写してから/);
+});
+
 test('標準の版がプラグインと違うリポジトリでは止まり、何も書き換えない', () => {
   const repo = makeRepo();
-  mkdirSync(join(repo, '.claude', 'rules'), { recursive: true });
-  writeFileSync(join(repo, '.claude', 'rules', '.standards-version'), '0.0.1\n');
+  writeStandardsVersion(repo, '0.0.1\n');
   const before = readFileSync(join(repo, SETUP), 'utf8');
   const result = runApply(repo, ['--enable', 'health-report']);
 

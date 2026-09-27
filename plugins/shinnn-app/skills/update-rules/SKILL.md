@@ -129,13 +129,14 @@ Dependabot の設定（`.github/dependabot.yml`）。
 - 標準のバージョンは `.claude/rules/.standards-version` の 1 か所だけにあり、上のコピーで新しいバージョンになる。
   ほかのファイルにバージョンを書き写さない（`.shinnn/setup.json` の `templateVersion` は展開したテンプレートの版で、標準のバージョンではない）
 - setup の記録（`.shinnn/setup.json`）を、今の標準の形に揃える。記録の説明・必須項目の一覧・キーの組は標準から来るので、
-  標準と一緒に古くなる。書き換えは setup と同じ適用のスクリプトで行い、選択の引数を付けずに実行する
-  （選んでいた値は残し、形だけを揃える。標準のバージョンが上のコピーで揃ってから実行する。違うままだとスクリプトが止まる）。
+  標準と一緒に古くなる。書き換えは setup と同じ適用のスクリプトに `--align-only` を付けて行う（選んでいた値・ワークフローの
+  有効と無効・`CODEOWNERS` は変えず、形だけを揃える）。標準のバージョンが上のコピーで揃ってから実行する
+  （揃っていないとスクリプトが止まるので、`copy-standard.mjs` をもう一度実行する）。
   このスクリプトの許可は無いので、実行の前に確認が出る。`--dry-run` の出力を見せてから許可してもらう
 
   ```
-  node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --dry-run
-  node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs
+  node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --align-only --dry-run
+  node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs --align-only
   ```
 
   「変更はありません」と出たら何もしない。「テンプレートの形に揃える」と出たら、その内容を PR 本文に書く

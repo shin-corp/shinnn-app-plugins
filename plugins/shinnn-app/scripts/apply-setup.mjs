@@ -3,9 +3,10 @@
  * /shinnn-app:setup の「適用」を実際に行う唯一のスクリプト。
  *
  * `.shinnn/` / `.github/workflows/` / `.github/CODEOWNERS` は settings.json の deny で守られている。
- * `.shinnn/`・`CODEOWNERS`・ワークフローの有効と無効を変えてよいのは setup だけなので、変更手段をこのスクリプト 1 つに集めて、
- * 何をどう変えたかが必ず出力に残るようにする（ワークフローの中身は、update-rules が copy-standard.mjs で写す）。
- * update-rules も、標準を写した後にこのスクリプトを選択の引数なしで実行し、記録の形だけを今の標準に揃える。
+ * 選択（`.shinnn/setup.json` の値）・`CODEOWNERS`・ワークフローの有効と無効を変えてよいのは setup だけ。
+ * `.shinnn/` を書き換える手段をこのスクリプト 1 つに集めて、何をどう変えたかが必ず出力に残るようにする
+ * （ワークフローの中身は、update-rules が copy-standard.mjs で写す）。update-rules は、標準を写した後に
+ * `--align-only` で実行し、記録の形だけを今の標準に揃える。
  *
  * 実行例:
  *   node <プラグイン>/scripts/apply-setup.mjs --profile full --reviewer @octocat
@@ -21,6 +22,8 @@
  *   --disable <キー,…>    選択項目を無効にする
  *   --handover-issue <n>  「引き継ぎメモ」Issue の番号
  *   --complete            setupCompletedAt に現在時刻を入れる
+ *   --align-only          記録の形だけをテンプレートに揃え、選択・ワークフロー・CODEOWNERS は変えない
+ *                         （update-rules が使う。選択を変える引数とは一緒に使えない）
  *   --dry-run             書き換えずに、何が変わるかだけを出す
  *
  * 選択項目のキーは `.shinnn/setup.json` の optional にあるものだけを受け付ける
@@ -192,6 +195,10 @@ function parseArgs(argv) {
       options.dryRun = true;
       continue;
     }
+    if (key === '--align-only') {
+      options.alignOnly = true;
+      continue;
+    }
 
     const value = argv[i + 1];
 
@@ -238,6 +245,23 @@ function parseArgs(argv) {
 }
 
 const options = parseArgs(process.argv.slice(2));
+
+/** 選択を変える引数。--align-only とは一緒に使えない */
+const SELECTION_ARGS = ['profile', 'reviewer', 'database', 'mergePolicy', 'handoverIssue', 'complete'];
+
+if (options.alignOnly === true) {
+  const selections = SELECTION_ARGS.filter((name) => options[name] !== undefined);
+  if (options.enable.length > 0 || options.disable.length > 0) {
+    selections.push('enable / disable');
+  }
+  if (selections.length > 0) {
+    fail(
+      `--align-only は選択を変える引数（${selections.join(', ')}）と一緒に使えません。`,
+      '選択を変えるときは /shinnn-app:setup を実行する',
+    );
+  }
+}
+
 const root = options.repoDir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const setupPath = join(root, '.shinnn', 'setup.json');
 
@@ -254,10 +278,12 @@ if (existsSync(repoStandardsPath)) {
   const repoStandards = readFileSync(repoStandardsPath, 'utf8').trim();
   const templateStandards = readFileSync(TEMPLATE_STANDARDS_PATH, 'utf8').trim();
   if (repoStandards !== templateStandards) {
-    fail(
-      `リポジトリの標準の版 ${repoStandards} が、プラグインの標準の版 ${templateStandards} と違います。`,
-      '先に /shinnn-app:update-rules で標準を取り込んでから、setup を実行する',
-    );
+    // update-rules の中では、標準を写す copy-standard.mjs が済んでいない
+    const how =
+      options.alignOnly === true
+        ? '先に copy-standard.mjs で標準を写してから実行する（/shinnn-app:update-rules の手順 4）'
+        : '先に /shinnn-app:update-rules で標準を取り込んでから、setup を実行する';
+    fail(`リポジトリの標準の版 ${repoStandards} が、プラグインの標準の版 ${templateStandards} と違います。`, how);
   }
 }
 
@@ -397,8 +423,11 @@ if (options.complete === true) {
   setup.setupCompletedAt = completedAt;
 }
 
-applyWorkflows();
-applyCodeowners();
+// 記録の形だけを揃えるときは、ワークフローと CODEOWNERS を記録に合わせ直さない（選択を変えるのは setup だけ）
+if (options.alignOnly !== true) {
+  applyWorkflows();
+  applyCodeowners();
+}
 
 if (options.dryRun !== true) {
   writeFileSync(setupPath, `${JSON.stringify(setup, null, 2)}\n`);
