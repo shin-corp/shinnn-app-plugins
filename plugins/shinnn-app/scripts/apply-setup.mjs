@@ -296,12 +296,10 @@ if (options.mergePolicy !== undefined) {
   if (!MERGE_POLICIES.includes(options.mergePolicy)) {
     fail(`マージの方針 ${options.mergePolicy} は選べません。`, `${MERGE_POLICIES.join(' / ')} のいずれかを指定する`);
   }
-  // 古い setup.json にはキーが無い。無いときは human として扱う
-  const current = setup.mergePolicy ?? 'human';
-  if (current !== options.mergePolicy) {
-    changes.push(`mergePolicy: ${current} → ${options.mergePolicy}`);
+  if (setup.mergePolicy !== options.mergePolicy) {
+    changes.push(`mergePolicy: ${setup.mergePolicy} → ${options.mergePolicy}`);
+    setup.mergePolicy = options.mergePolicy;
   }
-  setup.mergePolicy = options.mergePolicy;
 }
 
 if (options.handoverIssue !== undefined) {
@@ -368,7 +366,7 @@ function applyWorkflows() {
 function applyCodeowners() {
   const codeownersPath = join(root, '.github', 'CODEOWNERS');
 
-  if (setup.reviewer === undefined || !existsSync(codeownersPath)) {
+  if (!existsSync(codeownersPath)) {
     return;
   }
 
