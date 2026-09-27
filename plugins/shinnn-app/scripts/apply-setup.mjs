@@ -5,6 +5,7 @@
  * `.shinnn/` / `.github/workflows/` / `.github/CODEOWNERS` は settings.json の deny で守られている。
  * `.shinnn/`・`CODEOWNERS`・ワークフローの有効と無効を変えてよいのは setup だけなので、変更手段をこのスクリプト 1 つに集めて、
  * 何をどう変えたかが必ず出力に残るようにする（ワークフローの中身は、update-rules が copy-standard.mjs で写す）。
+ * update-rules も、標準を写した後にこのスクリプトを選択の引数なしで実行し、記録の形だけを今の標準に揃える。
  *
  * 実行例:
  *   node <プラグイン>/scripts/apply-setup.mjs --profile full --reviewer @octocat

@@ -191,6 +191,24 @@ test('キーの並びだけが違う記録: 揃えたことを出す（「変更
   assert.equal(readFileSync(join(repo, SETUP), 'utf8'), `${JSON.stringify(setup, null, 2)}\n`);
 });
 
+test('標準を写した後（標準の版がプラグインと同じ）: 選択の引数なしで古い記録を揃える（update-rules の使い方）', () => {
+  const repo = makeRepo();
+  makeOldSetup(repo);
+  mkdirSync(join(repo, '.claude', 'rules'), { recursive: true });
+  cpSync(
+    join(templateDir, '.claude', 'rules', '.standards-version'),
+    join(repo, '.claude', 'rules', '.standards-version'),
+  );
+  const result = runApply(repo, []);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /テンプレートの形に揃える: standardsVersion: 削除/);
+  const setup = JSON.parse(readFileSync(join(repo, SETUP), 'utf8'));
+  assert.deepEqual(setup.mandatory, templateSetup().mandatory);
+  assert.equal(setup.optional['health-report'], true);
+  assert.equal(setup.reviewer, '@example-reviewer');
+});
+
 test('標準の版がプラグインと違うリポジトリでは止まり、何も書き換えない', () => {
   const repo = makeRepo();
   mkdirSync(join(repo, '.claude', 'rules'), { recursive: true });

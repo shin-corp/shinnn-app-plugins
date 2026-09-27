@@ -11,6 +11,8 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 
 **`.shinnn/`・`CODEOWNERS`・ワークフローの有効と無効を書き換えてよいのは、このスキルだけ。**
 既存のアプリへ標準（規約・権限の設定・ワークフローの中身・PR テンプレートなど）を写すのは `/shinnn-app:update-rules`。
+update-rules は、標準を写した後に同じ適用のスクリプトを選択の引数なしで実行し、`.shinnn/setup.json` の形だけを今の標準に揃える
+（選択は変えない）。
 書き換えは Edit / Write ツールではなく、プラグイン同梱のスクリプトで行う。テンプレートの展開は
 `node ${CLAUDE_PLUGIN_ROOT}/scripts/fetch-template.mjs`（「0. テンプレートの展開」）、選択の適用は
 `node ${CLAUDE_PLUGIN_ROOT}/scripts/apply-setup.mjs`（引数は「5. 適用」）。
