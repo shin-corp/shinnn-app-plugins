@@ -2,10 +2,11 @@
  * テンプレートの .github/workflows/ci.yaml の規約チェック（policy）の回帰テスト。`node --test scripts/` で実行する。
  *
  * ワークフローの YAML から手順のシェルを取り出し、Actions と同じく bash で動かして結果を確かめる。
- * - 「PR 本文に Closes #n があること」は、HTML のコメント（<!-- -->）の中の Closes #n では通さない
+ * - 「PR 本文に Closes #n があること」は、HTML のコメント（<!-- -->。閉じていない <!-- の後ろを含む）の中の Closes #n と、
+ *   encloses #5 のように語の途中にあるものでは通さない
  * - 「API 定義を変えたらテストも変えていること」は、PR 本文の「テストを変えない理由: 〜」の行で通す。
- *   箇条書き・番号付き・太字・引用の形でも通し、コメントの中・見出し・理由が空の形では通さない
- * - 同じ手順の git fetch は、全部取った履歴を浅くしない
+ *   箇条書き・番号付き・太字・引用の形でも通し、コメントの中（閉じていない <!-- の後ろを含む）・見出し・理由が空の形では通さない
+ * - 同じ手順は checkout で全部取った履歴の origin/<base> で比べ、履歴を浅くしない
  *   （浅くなると、同じジョブの後の gitleaks が一部のコミットしか調べない）
  * プラグインの CI は依存を入れずに動くので yaml パッケージは使わず、YAML の文字列を行で読む。
  */
@@ -89,6 +90,22 @@ test('Closes #n: HTML のコメントの中にしか無ければ通さない', (
   assert.match(result.stderr, /Closes #<Issue 番号>/);
 });
 
+test('Closes #n: 閉じていないコメントの後ろにしか無ければ通さない（画面では本文の終わりまで見えない）', () => {
+  const body = '## 対応 Issue\n\n<!-- 閉じ忘れた説明\nCloses #12\n';
+  const result = runBash(stepScript(closesStep), { env: { PR_BODY: body } });
+
+  assert.equal(result.status, 1);
+});
+
+test('Closes #n: 語の途中にあるもの（encloses #5 など）では通さず、括弧や箇条書きの後ろなら通す', () => {
+  for (const body of ['encloses #5\n', 'prefix #5\n']) {
+    assert.equal(runBash(stepScript(closesStep), { env: { PR_BODY: body } }).status, 1, body);
+  }
+  for (const body of ['（closes #7）\n', '- Fixes #3\n', 'resolved #9 と書く\n']) {
+    assert.equal(runBash(stepScript(closesStep), { env: { PR_BODY: body } }).status, 0, body);
+  }
+});
+
 test('Closes #n: コメントの外にあれば、コメントと並んでいても通す', () => {
   const body = '<!-- 説明 -->\nResolves #7\n<!-- 説明 -->\n';
   const result = runBash(stepScript(closesStep), { env: { PR_BODY: body } });
@@ -96,7 +113,7 @@ test('Closes #n: コメントの外にあれば、コメントと並んでいて
   assert.equal(result.status, 0, result.stderr);
 });
 
-test('API 定義の確認の git fetch は、全部取った履歴を浅くしない（後の gitleaks が全履歴を調べられる）', () => {
+test('API 定義の確認は、checkout で全部取った履歴の origin/<base> で比べ、履歴を浅くしない（後の gitleaks が全履歴を調べられる）', () => {
   // 送り先: main に 60 コミット（以前の --depth=50 より多く）、作業ブランチに 1 コミット
   const origin = join(workRoot, 'origin');
   git(workRoot, 'init', '-q', '-b', 'main', origin);
@@ -182,6 +199,8 @@ test('テストを変えない理由: コメントの中・見出し・理由が
     '<!-- テストを変えない理由: コメントだけの変更 -->\n',
     // 複数行のコメントの中に 1 行で書いた形（行の頭だけを見る判定では通ってしまう）
     '<!-- 説明\nテストを変えない理由: コメントだけの変更\n-->\n',
+    // 閉じていないコメントの後ろ（GitHub の画面では本文の終わりまで見えない）
+    '<!-- 閉じ忘れた説明\nテストを変えない理由: コメントだけの変更\n',
     '## テストを変えない理由\n\nコメントだけの変更\n',
     '## テストを変えない理由: コメントだけの変更\n',
     'テストを変えない理由:\n',
