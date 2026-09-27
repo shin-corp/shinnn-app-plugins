@@ -42,6 +42,7 @@ function makeOldRepo({ hasServer = true, enabledWorkflows = [] } = {}) {
   writeRepoFile(repo, '.claude/rules/project-only.md', 'project\n');
   writeRepoFile(repo, '.claude/settings.json', '{}\n');
   writeRepoFile(repo, '.github/workflows/ci.yaml', 'old\n');
+  writeRepoFile(repo, '.github/dependabot.yml', 'old\n');
   writeRepoFile(repo, 'scripts/project-only.mjs', 'project\n');
   writeRepoFile(repo, 'CLAUDE.md', 'project\n');
   for (const name of enabledWorkflows) {
@@ -93,11 +94,13 @@ test('copy-standard: 規約・権限の設定・スクリプト・ワークフ�
     'scripts/check-ac-coverage.mjs',
     '.github/workflows/ci.yaml',
     '.github/PULL_REQUEST_TEMPLATE.md',
+    '.github/dependabot.yml',
   ]) {
     assert.ok(sameAsTemplate(repo, path), path);
   }
   assert.match(result.stdout, /^更新 \.github\/workflows\/ci\.yaml$/m);
   assert.match(result.stdout, /^追加 \.github\/PULL_REQUEST_TEMPLATE\.md$/m);
+  assert.match(result.stdout, /^更新 \.github\/dependabot\.yml$/m);
 
   // 案件で足したもの・CLAUDE.md は触らない。消すこともしない
   assert.equal(readFileSync(join(repo, '.claude/rules/project-only.md'), 'utf8'), 'project\n');
