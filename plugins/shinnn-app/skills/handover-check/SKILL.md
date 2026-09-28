@@ -16,7 +16,7 @@ CI の `policy` job と同じ観点で、手元でも見られるようにした
 |:--|:--|:--|
 | 1 | `main` の CI が緑 | `gh run list --branch main --limit 1` |
 | 2 | 受入条件 `AC-n` すべてに対応するテストがある | `node scripts/check-ac-coverage.mjs` |
-| 3 | 自動テストで確かめられないもの（規約が手元での確認を求めているもの）の記録が `docs/results/` にある | `.claude/rules/` で `docs/results/` への記録を求めている規約（`ai-integration.md` など）と、その対象がリポジトリにあるかを突き合わせる |
+| 3 | 自動テストで確かめられないもの（規約が手元での確認を求めているもの）の記録が `docs/results/` にある | `.claude/rules/` で `docs/results/` への記録を求めている規約（`ai-integration.md` など）と、その対象がリポジトリにあるかを突き合わせる。`ai-integration.md` は、AI を呼ぶ機能ごとに、その「評価」の置き場所（ケース）と記録の行に当たるファイルがあり、記録の判定が合格かを見る |
 | 4 | API 定義の全ルートにテストがある | `node scripts/check-api-coverage.mjs` |
 | 5 | 「引き継ぎメモ」Issue が埋まっていて、最終更新が最後のマージと同じ週 | `gh issue view <handoverIssue>` と `git log -1 --date=iso main` |
 | 6 | open Issue すべてに `status` ラベルと次の一手がある | `gh issue list --state open --json number,labels,title` |
@@ -42,8 +42,8 @@ CI の `policy` job と同じ観点で、手元でも見られるようにした
 引き継ぎ判定: 満たしている N / 17
 
 NG の項目
-- #3 AI の呼び出し（server/src/provider/）を手元で動かした記録が docs/results/ に無い
-  → 動かした手順と結果を docs/results/ に残す
+- #3 AI を呼ぶ機能 <機能> の評価（server/evals/<機能>/ と docs/results/<機能>-eval.md）が無い
+  → ai-integration.md の「評価」に沿ってケースを作って評価を回し、結果を docs/results/ に残す
 ```
 
 **NG を勝手に直さない。** 何が足りないかを示し、直すかどうかは人が決める。
