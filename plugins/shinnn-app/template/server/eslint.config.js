@@ -93,7 +93,7 @@ export default tseslint.config(
   {
     languageOptions: {
       parserOptions: {
-        // tests / seed / 設定ファイルも型情報つきで検査する。
+        // tests / seed / evals / 設定ファイルも型情報つきで検査する。
         project: ['./tsconfig.check.json'],
         tsconfigRootDir: import.meta.dirname,
       },
@@ -121,7 +121,7 @@ export default tseslint.config(
   },
   {
     // どの層にも共通の制限（層ごとの制限は下の設定で上書きするので、そちらにも paths を書く）。
-    files: ['src/**/*.ts', 'seed/**/*.ts'],
+    files: ['src/**/*.ts', 'seed/**/*.ts', 'evals/**/*.ts'],
     ignores: ['src/provider/**/*.ts'],
     rules: { '@typescript-eslint/no-restricted-imports': ['error', { paths: [forbidAgentSdk] }] },
   },
