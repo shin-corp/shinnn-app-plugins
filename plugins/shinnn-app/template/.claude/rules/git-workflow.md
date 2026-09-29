@@ -2,18 +2,21 @@
 
 Issue から PR までの手順です。**paths を持たないので常に読み込まれます。**
 
+「（検査: …）」は、その決まりを機械で確かめる仕組みです。付いていない決まりは、レビューだけで確かめます。
+
 ## 1 Issue = 1 ブランチ = 1 PR
 
 作業項目の正本は GitHub Issues です。手で更新する進捗ファイルは持ちません。
 
-| 段階     | やること                                                                    |
-| :------- | :-------------------------------------------------------------------------- |
-| 着手前   | `gh issue list` で open な Issue を見る。担当する Issue を決める            |
-| ブランチ | `git switch -c feature/<Issue 番号>-<slug>`（例: `feature/12-item-filter`） |
-| 実装     | `shared` → `server` → `client` → テストの順。同じ PR に入れる               |
-| PR       | 本文の 1 行目に `Closes #<Issue 番号>`。マージで Issue が自動的に閉じる     |
+| 段階     | やること                                                                                                                   |
+| :------- | :------------------------------------------------------------------------------------------------------------------------- |
+| 着手前   | `gh issue list` で open な Issue を見る。担当する Issue を決める                                                           |
+| ブランチ | `git switch -c feature/<Issue 番号>-<slug>`（例: `feature/12-item-filter`）                                                |
+| 実装     | `shared` → `server` → `client` → テストの順。同じ PR に入れる                                                              |
+| PR       | 本文の 1 行目に `Closes #<Issue 番号>` を書く（検査: CI。本文のどこかにあるかだけを見る）。マージで Issue が自動的に閉じる |
 
-ブランチ名の接頭辞は `feature/` と `fix/` の 2 つだけです。ベースブランチは `main`。
+- ブランチ名は `feature/<Issue 番号>-<slug>` にする。不具合の修正は `fix/<Issue 番号>-<slug>` にする。ほかの接頭辞を使わない
+- ベースブランチは `main` にする
 
 同じリポジトリで別のセッションが並行して作業しているなど、別の作業フォルダが要るときは Claude Code の worktree
 （作業ツリー。同じリポジトリを別のフォルダに取り出したもの）を使います。`claude --worktree <名前>` で起動するか、
@@ -22,9 +25,9 @@ Issue から PR までの手順です。**paths を持たないので常に読�
 （リポジトリの外を触るので、操作のたびに確認が出ます）。作った worktree では最初に `npm install` を実行します
 （依存と git のフックが入っていないため）。
 
-PR をマージするのは、既定では人です（`.shinnn/setup.json` の `mergePolicy` が `human`）。`/shinnn-app:setup` で `self-review` を選んだリポジトリでは、`/shinnn-app:pr` がセルフレビューの収束と CI の通過を確かめてから ready にしてマージします。どちらの場合も `main` へ直接コミットしません。
+PR をマージするのは、既定では人です（`.shinnn/setup.json` の `mergePolicy` が `human`）。`/shinnn-app:setup` で `self-review` を選んだリポジトリでは、`/shinnn-app:pr` がセルフレビューの収束と CI の通過を確かめてから ready にしてマージします。どちらの場合も `main` へ直接コミットしません（「やらないこと」）。
 
-Dependabot（依存更新の bot）が作る PR には、ワークフロー `dependabot-issue.yaml` が対応する Issue（`[依存] …`、ラベル `type:deps`）を自動で作って本文に `Closes #n` を足し、PR が閉じると Issue も閉じます。CI の `Closes #n` の確認は bot の PR では免除しています（本文を書き換える前に走るため）。人と Claude の PR は必ず Issue を先に作ります。
+Dependabot（依存更新の bot）が作る PR には、ワークフロー `dependabot-issue.yaml` が対応する Issue（`[依存] …`、ラベル `type:deps`）を自動で作って本文に `Closes #n` を足し、PR が閉じると Issue も閉じます。CI の `Closes #n` の確認は bot の PR では免除しています（本文を書き換える前に走るため）。人と Claude の PR は、Issue を先に作ってから出します。
 
 ## コミットメッセージ
 
@@ -35,10 +38,10 @@ Dependabot（依存更新の bot）が作る PR には、ワークフロー `dep
 - 「〜した」ではなく「〜の追加」「〜の修正」
 ```
 
-- `<対象>` は変更したパッケージ（`shared` / `server` / `client`）。文書だけなら `docs`、CI の設定なら `ci`
-- 受入条件に対応するコミットは要約に識別子を入れる（例: `[server]AC-2 在庫チェックの追加`）
-- **AI の帰属行（`Co-Authored-By` 等）を書かない**
-- 本文は日本語。1 行目は 50 文字程度まで。`Test plan` のような定型の節は付けない
+- `<対象>` は、変更したパッケージ（`shared` / `server` / `client`）にする。文書だけの変更は `docs`、CI の設定の変更は `ci` にする
+- 受入条件に対応するコミットは、要約に識別子を入れる（例: `[server]AC-2 在庫チェックの追加`）
+- **AI の帰属行（`Co-Authored-By` など）を書かない**
+- 本文は日本語で書く。1 行目は 50 文字以内にする。`Test plan` のような定型の節を付けない
 - 複数行のメッセージは、本文をファイルに書いて `git commit -F <ファイル>` で渡す
   （PowerShell の here-string `@'...'@` をそのまま Bash に渡すと、先頭に `@` が混ざる）
 
@@ -46,26 +49,28 @@ Dependabot（依存更新の bot）が作る PR には、ワークフロー `dep
 
 - **定義が先、参照が後。** `shared` の API 定義を先にコミットし、それを使う `server` / `client` を後に置く。
   途中のコミットで型エラーが出ない順序にする
-- **実装とテストは別コミット。** どちらが先でもよいが混ぜない
+- **実装とテストは別のコミットにする。** 順番は問わない
 - パッケージをまたぐ変更は、パッケージごとにコミットを分ける
-- 挙動を変えない整形・リネームは、機能変更と同じコミットに混ぜない
-- **例外: 参照側を同時に直さないと型エラーになる変更**は、`shared` と参照側（`server` / `client`）を
+- 挙動を変えない整形・リネームを、機能の変更と同じコミットに混ぜない
+- ただし、**参照側を同時に直さないと型エラーになる変更**は、`shared` と参照側（`server` / `client`）を
   1 コミットにまとめてよい。`shared` だけを先に出すと、そのコミットで参照側が型エラーになるため。
   例: 型を狭める（省略可 → 必須、値の範囲を狭める）、列挙に値を足す（網羅的な `switch` が型エラーになる）、
   API 定義の名前を変える。まとめた理由をコミットの本文に 1 行書く
 
 ## やらないこと
 
-- `git push --force` / `git reset --hard` / `git rebase` / `git clean`（すべて deny されている）
-- `git commit --no-verify` / `git push --no-verify` / `HUSKY=0`（husky のフックを飛ばす行為。deny されている）
-- `main` への直接コミットと push（`main` へは作業ブランチからの PR でだけ入れる）
-- 改行コードだけが変わった差分を作ること（LF に統一。`.gitattributes` を参照）
-- `server` と `shared` の `.ts` に `prettier --write` を掛けること。prettier で整えるのは、画面（`client`）の `.ts` と
+- `git push --force` / `git reset --hard` / `git rebase` / `git clean` を使わない（検査: 権限の設定）
+- husky のフックを飛ばさない（`git commit --no-verify` / `git push --no-verify` / `HUSKY=0`）（検査: 権限の設定）
+- `main` へ直接コミットも push もしない。`main` へは、作業ブランチからの PR でだけ入れる（検査: git のフック。
+  `main` への push だけを止める）
+- 改行コードだけが変わった差分を作らない（LF に統一。`.gitattributes` を参照）
+- `server` と `shared` の `.ts` に `prettier --write` を掛けない。prettier で整えるのは、画面（`client`）の `.ts` と
   json・md・yaml だけ。`server` と `shared` は、改行が増えてかえって読みにくくなることがあるので、prettier の書き方に
   そろえていない（掛けると、変更と関係ない行の改行の位置まで変わる。`eslint --fix` は改行や字下げを整えない）。
   `client` の `.ts` は保存時の hook とコミット時の lint-staged が整え、CI が確かめるので、手で掛けなくてよい
   （既存のアプリを一度にそろえる整形は、`/shinnn-app:update-rules` の手順で整形だけの PR にする）
-- 生成物の手編集（`package-lock.json` / `server/drizzle/` / メッセージキーの生成物）
+- 生成物（`package-lock.json` / `server/drizzle/` / メッセージキーの生成物）を手で編集しない（検査: 権限の設定。
+  `package-lock.json` と `server/drizzle/` だけを止める）
 
 ## なぜ
 

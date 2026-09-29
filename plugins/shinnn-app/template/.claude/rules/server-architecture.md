@@ -11,6 +11,8 @@ paths:
 サーバーは **`api/` → `service/` → `db/` の一方向**です。層を増やしません。
 書き方は [server-coding-conventions.md](server-coding-conventions.md)、DB は [db.md](db.md) を参照。
 
+「（検査: …）」は、その決まりを機械で確かめる仕組みです。付いていない決まりは、レビューだけで確かめます。
+
 ## リクエストの流れ
 
 ```
@@ -49,11 +51,11 @@ src/db/                    Drizzle。SQL を書く唯一の場所
 | 外部システムとの連携（SDK の呼び出し） | `server/src/provider/<システム>.provider.ts`（`.claude/rules/ai-integration.md`） |
 | テスト                                 | `server/tests/<機能>.test.ts`                                                     |
 
-- **`repositories/` `dto/` `mapper/` を新設しない。** この 3 層で足ります
-- 外部システム（AI の SDK・決済・メール送信など）との連携だけは `src/provider/` に置く。`service/` からだけ呼び、
-  `api/` から直接呼ばない。import の許可関係は ESLint に最初から入っている（`server/eslint.config.js`）
-- ファイル名は kebab-case。`common.ts` のような何でも入る受け皿を作らない
-- ファイルが長くなったら、分割の前に削れないかを検討する
+- **層を増やさない。** `repositories/`・`dto/`・`mapper/` などを新設しない
+- 外部システム（AI の SDK・決済・メール送信など）との連携は `src/provider/` に置く。`provider/` は `service/` からだけ
+  呼ぶ（検査: ESLint。`api/` からの import だけを止める）
+- ファイル名は kebab-case にする。`common.ts` のような何でも入る受け皿を作らない
+- ファイルを分割する前に、削れる処理が無いかを確かめる
 
 ## import の許可関係
 
@@ -70,14 +72,14 @@ seed/          → db/, config.ts
 tests/         → app.ts, tests/helpers/, @app/shared
 ```
 
-- **逆方向の import を作らない**（`db/` から `service/` を呼ばない、`service/` から `api/` を呼ばない）。
-  ESLint の `no-restricted-imports` で止める。`npm run check -w server` が失敗する
-- **`src/` では動的 import（`import()`）を使わない。** 静的に検査できないので `no-restricted-syntax` で止める。
-  例外は `db/client.ts` と `db/migrate.ts` だけ（開発とテストでしか使わない PGlite を本番の起動経路に載せないため）。
-  テスト（`tests/`）は対象外で、読み込む前に環境変数やモックを差し替えるとき（`vi.doMock` の後など）に使ってよい
+- **上の表に無い import を作らない。** そのうち逆方向の import（`db/` から `service/`、`service/` から `api/` など）は
+  ESLint の `no-restricted-imports` が止める（検査: ESLint。`npm run check -w server` が失敗する）
+- **`src/` では動的 import（`import()`）を使わない**（検査: ESLint）。ただし、`db/client.ts` と `db/migrate.ts` は
+  使ってよい（開発とテストでしか使わない PGlite を、本番の起動経路に載せないため）。テスト（`tests/`）では、読み込む
+  前に環境変数やモックを差し替えるとき（`vi.doMock` の後など）に使ってよい（検査の対象外）
 - **`client/` のソースを import しない**
-- **`@app/shared` に業務ロジックと DB 依存を置かない。** zod スキーマだけ
-- 循環が必要に見えたら、共通部分を型として `@app/shared` に切り出す
+- **`@app/shared` に業務ロジックと DB 依存を置かない。** 置くのは zod スキーマだけ（[api-contract.md](api-contract.md)）
+- 循環する import が要るように見えたら、共通の型を `@app/shared` に移す
 
 ## 層ごとの責務
 
@@ -88,15 +90,15 @@ tests/         → app.ts, tests/helpers/, @app/shared
 | service               | 業務ルール、複数クエリの調整、トランザクション        | `req` / `res` に触ること                      |
 | `db/`                 | テーブル定義と接続                                    | 業務判断                                      |
 
-**controller が 20 行を超えたら、業務判断が紛れ込んでいないか疑う。**
+**controller が 20 行を超えたら、業務判断が紛れ込んでいないかを確かめる。** 紛れ込んでいたら service に移す。
 
 ## エラー
 
-- 失敗は `CommonException { statusCode, messageKey, details? }` を throw する
-- **error middleware は `app.ts` に 1 か所だけ。** 4 引数（`(err, req, res, next)`）で定義する
-- Express 5 では async ハンドラの reject が自動で error middleware に渡る。
-  `try / catch` で握りつぶして 200 を返さない
-- レスポンスの形は `{ messageKey, message, details? }` に統一する
+- 失敗は `CommonException { statusCode, messageKey, details? }` で throw する
+- **error middleware は `app.ts` に 1 か所だけ置く。** 4 引数（`(err, req, res, next)`）で定義する
+- `try / catch` で例外を握りつぶして 200 を返さない（Express 5 では、async の handler の reject は自動で
+  error middleware に渡る）
+- エラーのレスポンスの形は `{ messageKey, message, details? }` にそろえる
 
 ## なぜ
 
@@ -108,5 +110,5 @@ tests/         → app.ts, tests/helpers/, @app/shared
 規約を知らなくても間違いに気づけます。動的 import を止めるのは、この import の向きの検査が動的 import を
 見られないためです。テストには向きの検査を掛けていないので、動的 import も止めません。
 
-error middleware を 1 か所にするのは、エラー応答の形をアプリ全体で 1 つに保つためです。
+error middleware を 1 か所にするのは、エラーのレスポンスの形をアプリ全体で 1 つに保つためです。
 画面側は `ApiError` 1 種類だけを扱えばよくなります。

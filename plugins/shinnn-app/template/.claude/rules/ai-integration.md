@@ -9,12 +9,16 @@ paths:
 層の位置づけは [server-architecture.md](server-architecture.md) を参照。ここでは Claude Agent SDK を例に書きますが、
 他の AI サービスや外部 API でも同じ考え方で扱います。
 
+「（検査: …）」は、その決まりを機械で確かめる仕組みです。付いていない決まりは、レビューだけで確かめます。
+
 ## 置き場所と呼び出し
 
-- SDK を import してよいのは `server/src/provider/<システム>.provider.ts` だけ。ESLint の `no-restricted-imports` で止める
-  （`server/eslint.config.js` に SDK のパッケージ名を書く）
-- `provider/` は通信だけを担う。プロンプトの組み立てや応答の解釈は `service/` に置き、`provider/` は「渡された文字列を送って結果を返す」に留める
-- `api/` から `provider/` を直接呼ばない。必ず `service/` を通す
+- SDK を import するのは `server/src/provider/<システム>.provider.ts` だけにする（検査: ESLint。
+  `server/eslint.config.js` に名前を書いた SDK だけを止める）。新しい SDK を入れたら、そのパッケージ名を
+  `server/eslint.config.js` の禁止に足す
+- `provider/` には通信だけを書く（渡された文字列を送って、結果を返す）。プロンプトの組み立てとモデルの出力の解釈は
+  `service/` に書く
+- `api/` から `provider/` を直接呼ばない。`service/` を通す（検査: ESLint）
 
 ## Claude Agent SDK を呼ぶときに必ず指定すること
 
@@ -24,25 +28,25 @@ paths:
 | `strictMcpConfig` | `true`                               | 手元の Claude Code ログインに紐づく claude.ai のコネクタ（Gmail・Notion など）を読み込まない。`tools: []` では外れない                                                                                                                                                                                                                                                                                                      |
 | `disallowedTools` | `['mcp__*']`                         | 上の保険。SDK の挙動が変わっても MCP のツールをモデルに見せない                                                                                                                                                                                                                                                                                                                                                             |
 | `settingSources`  | `[]`                                 | 設定ファイル（CLAUDE.md や `.claude/`）を読ませない                                                                                                                                                                                                                                                                                                                                                                         |
-| `maxTurns`        | `1`（文章を返すだけなら）            | ツールが無いので 1 往復で終わる。終わらない応答（`error_max_turns`）は失敗として扱う                                                                                                                                                                                                                                                                                                                                        |
+| `maxTurns`        | `1`（文章を返すだけなら）            | ツールが無いので 1 往復で終わる。1 往復で終わらない実行（`error_max_turns`）は失敗として扱う                                                                                                                                                                                                                                                                                                                                |
 | `persistSession`  | `false`                              | 会話を SDK 側に残さない                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `env`             | `process.env` を土台に組み立てたもの | SDK の `env` は子プロセスの環境を丸ごと置き換えるので `PATH` などを引き継ぐ。**端末の `ANTHROPIC_API_KEY` は渡さない**。このアプリでキーを使うときは専用の環境変数（`<アプリ名>_ANTHROPIC_API_KEY`。例 `MYAPP_ANTHROPIC_API_KEY`）を `config.ts` で読み、それだけを `ANTHROPIC_API_KEY` として入れる。どちらも無ければ手元の Claude Code のログインを使う（開発中の便宜。第三者に提供するサービスでは専用のキーを設定する） |
 | `abortController` | 上限時間で `abort()` する            | 上限時間（例 `GENERATION_TIMEOUT_MS`）を環境変数にし、超えたら中断して 502 を返す。生成は数分かかることがある                                                                                                                                                                                                                                                                                                               |
 
 ## 運用の必須事項
 
-- **同時実行数に上限を置く**（例 `MAX_CONCURRENT_GENERATIONS`）。超えた要求は 429 で断る。モデルの子プロセスと費用を抑えるため
+- **同時実行数に上限を置く**（例 `MAX_CONCURRENT_GENERATIONS`）。上限を超えたリクエストは 429 で断る
 - **利用者ごとの頻度制限**を掛ける（例 1 分 5 回）
-- **利用者の入力（説明文・生成物）をログに出さない**。ログに残すのはモデル名・所要時間・費用・失敗の種類だけ
-- **SDK が返した失敗の中身を利用者への応答に載せない**（`details` に理由の種類だけを入れ、本文はログに残す）
-- SDK の応答は `service/` で必ず解析・検証してから使う（HTML なら形式の検査、JSON ならスキーマ検証）
+- **利用者の入力（説明文・生成物）をログに出さない。** ログに残すのは、モデル名・所要時間・費用・失敗の種類だけにする
+- **SDK が返した失敗の中身を、利用者へのレスポンスに載せない。** `details` には理由の種類だけを入れ、中身はログに残す
+- SDK が返した出力は、`service/` で解析・検証してから使う（HTML なら形式の検査、JSON ならスキーマの検証）
 
 ## テスト
 
-- SDK の `query()` を `vi.hoisted` + `vi.mock` で差し替え、HTTP 経由で API を呼んで **SDK に渡した `options` を検証する**テストを 1 本以上置く
+- SDK の `query()` を `vi.hoisted` + `vi.mock` で差し替え、HTTP 経由で API を呼んで **SDK に渡した `options` を検証する**テストを 1 本以上書く
   （`tools` / `strictMcpConfig` / `disallowedTools` / `settingSources` / `maxTurns` / `persistSession` と、`env` に端末の `ANTHROPIC_API_KEY` が無いこと）
 - 専用のキーを設定した場合の `env` は、`config` を差し替える別ファイルのテストで確かめる（config はモジュールの読み込み時に決まるため）
-- SDK を呼ぶ経路そのもの（実際にモデルを呼ぶ）は自動テストの対象外。手元で 1 回動かし、`docs/results/` に記録する
+- 実際にモデルを呼ぶ経路は、自動テストで確かめない。手元で 1 回動かし、結果を `docs/results/` に記録する
 
 ## 記録
 

@@ -10,22 +10,24 @@ paths:
 
 **独自 CSS を書かない。Tailwind のユーティリティクラスと Angular Material のテーマ変数だけで作ります。**
 
+「（検査: …）」は、その決まりを機械で確かめる仕組みです。付いていない決まりは、レビューだけで確かめます。
+
 ## 基本
 
-- **`.css` / `.scss` ファイルを新規に作らない。** コンポーネントの `styles` / `styleUrls` を増やさない
-  （例外は生成したテーマ `client/src/theme.css` だけ。「テーマと書体」）
+- **`.css` / `.scss` ファイルを新規に作らない。** コンポーネントの `styles` / `styleUrls` を増やさない。
+  ただし、生成したテーマ `client/src/theme.css` は例外とする（「テーマと書体」）
 - `@apply` を使わない（クラスの実体がテンプレートから見えなくなる）
-- グローバルスタイルは Tailwind のエントリ 1 ファイル（`client/src/styles.css`）だけ。
+- グローバルスタイルは、Tailwind のエントリの 1 ファイル（`client/src/styles.css`）にだけ書く。
   機能ごとのクラスやセレクタをここに書き足さない（役割の名前の変数は「テーマと書体」）
-- 色・余白・フォントは Tailwind の設定にある段階値を使う。
-  任意値（`w-[137px]` / `text-[#1a2b3c]`）を書かない。必要なら Tailwind の `@theme` に段階値を足す
+- 色・余白・フォントは、Tailwind の設定にある段階値を使う。任意値（`w-[137px]` / `text-[#1a2b3c]`）を書かない。
+  段階値に無い値が要るときは、Tailwind の `@theme` に段階値を足す
 
 ## Material と Tailwind の共存
 
 - Material のテーマ（`--mat-sys-*` の変数。同梱のテーマか生成した `theme.css`）は、`styles.css` の `material` レイヤに
   読み込む。Material の部品自身の CSS はレイヤの外に入り、どのレイヤよりも強い
-- 色をそろえたいときは Material のシステム変数（`--mat-sys-*`）を Tailwind の `@theme` に流し込む。
-  同じ色を 2 か所に別々の値で書かない
+- Material と同じ色を Tailwind で使うときは、Material のシステム変数（`--mat-sys-*`）を Tailwind の `@theme` に
+  流し込む。同じ色を 2 か所に別々の値で書かない
 - **Material の部品の要素（`mat-dialog-content`・`th mat-header-cell`・`td mat-cell`、`*matNoDataRow` の行の `td`
   （部品が `mat-mdc-cell` を足す）など）に、部品が自分で決めている性質（`display`・余白・文字の揃えなど）の
   ユーティリティを付けない。** 付けても効かず、エラーにもならない。
@@ -33,7 +35,7 @@ paths:
   部品は直下の子の上下の `margin` を 0 にすることがあるので、間隔は `margin` ではなく親の `gap` か `p-*` で取る。
   部品が決めていない性質（幅など）は、部品の要素に付けても効く
 - **Material のスタイルを `::ng-deep` で上書きしない。** コンポーネントが公式に提供する入力
-  （`color` / `appearance` など）とテーマ変数だけで調整する。手段が無ければ見た目を諦め、
+  （`color` / `appearance` など）とテーマ変数だけで調整する。それで調整できない見た目は作らず、
   `docs/仕様書.md` の未決事項に上げる
 
 ## テーマと書体
@@ -45,8 +47,8 @@ paths:
   色の値はテーマの変数（`--mat-sys-*`）から取る。主色と別の系統の色が要るときは、`theme-color` の生成に
   第 3 の色（`--tertiary-color`）として加える
 - 配色は Material のテーマで決める。同梱のテーマ（`styles.css` が読み込む `azure-blue.css`）か、主色から
-  Material の `theme-color` で生成した `client/src/theme.css` のどちらか。`theme.css` は生成物なので手で書き換えず、
-  色を変えるときは生成し直す。読み込むレイヤは同梱のテーマと同じ `material`。書体を変えるとき、主色と別の系統の色が
+  Material の `theme-color` で生成した `client/src/theme.css` のどちらかを使う。`theme.css` は生成物なので手で
+  書き換えない。色を変えるときは生成し直す。読み込むレイヤは同梱のテーマと同じ `material`。書体を変えるとき、主色と別の系統の色が
   要るときは、`theme.css` を生成して使う（同梱のテーマは下の書体の変数を読まない。配色を変えないなら今の主色で生成する）
 - 書体は npm の `@fontsource` / `@fontsource-variable` のパッケージを入れて `styles.css` で読み込む。
   外部の配信（Google Fonts の `<link>` など）から読み込まない。書体の名前は `styles.css` の `html` の
@@ -58,9 +60,8 @@ paths:
 
 - 条件付きのクラスは `[class.xxx]` か `[ngClass]` で切り替える。
   **テンプレート内で文字列を連結してクラス名を組み立てない**（Tailwind のスキャンから漏れて消える）
-- 同じクラスの組み合わせが 3 か所以上に出たら、コンポーネントに切り出す（クラス文字列の定数化ではなく）
-- レスポンシブは Tailwind のブレークポイント接頭辞（`sm:` / `md:` / `lg:`）。
-  メディアクエリを手書きしない
+- 同じクラスの組み合わせが 3 か所以上に出たら、コンポーネントに切り出す。クラスの文字列を定数にして使い回さない
+- レスポンシブは、Tailwind のブレークポイント接頭辞（`sm:` / `md:` / `lg:`）で書く。メディアクエリを手書きしない
 
 ## なぜ
 
