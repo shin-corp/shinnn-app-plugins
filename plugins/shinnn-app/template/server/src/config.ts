@@ -1,7 +1,7 @@
 /**
  * @file 環境変数の解決。読み込み時に zod で検証し、型の誤りや空文字はここで落とす。
  *
- * 各所で `process.env` を直接読まない（読んでよいのは drizzle.config.ts だけ。あれはアプリの外で動く）。
+ * 各所で `process.env` を直接読まない（読んでよい場所は .claude/rules/server-coding-conventions.md の「環境変数」）。
  * 既定値を置けない値には `default()` を付けず、未設定なら起動を失敗させる。
  * 名前と意味の一覧は .env.example と docs/env.md にある。
  */

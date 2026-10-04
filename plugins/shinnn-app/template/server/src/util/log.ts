@@ -29,8 +29,8 @@ const rootLogger = pino({ level: config.LOG_LEVEL });
  *
  * @example
  * ```ts
- * const logger = new Log('items.service');
- * logger.info('item を作成しました', { id });
+ * const logger = new Log('server');
+ * logger.message(MessageKeys.APP_SERVER_STARTED, [config.PORT]);
  * ```
  */
 export class Log {
