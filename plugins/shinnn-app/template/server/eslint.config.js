@@ -7,7 +7,7 @@ import tseslint from 'typescript-eslint';
  *
  *   api  →  service  →  db
  *     ＼      ＼  ＼     ／
- *        util / exception   provider（外部システム。service からだけ呼ぶ）
+ *        util / exception   provider（外部システム。service と、評価の採点（evals）からだけ呼ぶ）
  *
  * - api は DB を直接触らない（値の import は禁止。DB のハンドルを service へ渡すための型だけ許す）
  * - api は provider も直接呼ばない（外部システムの呼び出しは service を通す）
@@ -65,7 +65,7 @@ export default tseslint.config(
   {
     // package.json に書いていないパッケージの import を止める（いわゆる幻の依存）。
     // ワークスペースでは他パッケージの依存も node_modules に並ぶため、書き忘れても動いてしまう。
-    // devDependencies を読んでよいのは、配布物に入らないテスト・種データ・設定・スクリプトと、
+    // devDependencies を読んでよいのは、配布物に入らないテスト・種データ・評価・設定・スクリプトと、
     // PGlite を必要になった時点だけ読み込む db/ の 2 ファイル（下の no-restricted-syntax と同じ範囲）。
     plugins: { 'import-x': importX },
     rules: {
@@ -76,6 +76,7 @@ export default tseslint.config(
             '**/*.test.ts',
             'tests/**',
             'seed/**',
+            'evals/**',
             'scripts/**',
             'eslint.config.js',
             'vitest.config.ts',
@@ -93,7 +94,7 @@ export default tseslint.config(
   {
     languageOptions: {
       parserOptions: {
-        // tests / seed / 設定ファイルも型情報つきで検査する。
+        // tests / seed / evals / 設定ファイルも型情報つきで検査する。
         project: ['./tsconfig.check.json'],
         tsconfigRootDir: import.meta.dirname,
       },
@@ -121,7 +122,7 @@ export default tseslint.config(
   },
   {
     // どの層にも共通の制限（層ごとの制限は下の設定で上書きするので、そちらにも paths を書く）。
-    files: ['src/**/*.ts', 'seed/**/*.ts'],
+    files: ['src/**/*.ts', 'seed/**/*.ts', 'evals/**/*.ts'],
     ignores: ['src/provider/**/*.ts'],
     rules: { '@typescript-eslint/no-restricted-imports': ['error', { paths: [forbidAgentSdk] }] },
   },

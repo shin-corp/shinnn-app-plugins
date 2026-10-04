@@ -3,6 +3,7 @@ paths:
   - 'server/src/**'
   - 'server/tests/**'
   - 'server/seed/**'
+  - 'server/evals/**'
   - 'server/drizzle/**'
 ---
 
@@ -31,27 +32,29 @@ src/db/                    Drizzle。SQL を書く唯一の場所
 
 ## 新規ファイルの配置判断
 
-| 書こうとしているもの                   | 置き場所                                                                          |
-| :------------------------------------- | :-------------------------------------------------------------------------------- |
-| API の入出力の形                       | `shared/src/api/<機能>.ts`（server 内に作らない）                                 |
-| ルート定義                             | `server/src/api/<機能>/index.ts`                                                  |
-| リクエストの受け渡し                   | `server/src/api/<機能>/<機能>.controller.ts`                                      |
-| 業務ルール・複数テーブルにまたがる処理 | `server/src/service/<機能>.service.ts`                                            |
-| テーブル定義                           | `server/src/db/schema/<テーブル>.ts`                                              |
-| クエリ・トランザクション               | `server/src/service/` から `db` を使って書く                                      |
-| マイグレーション                       | `server/drizzle/`（`drizzle-kit generate` の生成物。手で書かない）                |
-| 環境変数                               | `server/src/config.ts`（起動時に zod で検証。読むのはここだけ）                   |
-| エラーの型                             | `server/src/exception/common-exception.ts`                                        |
-| メッセージ文言                         | `server/resources/messages.json` → `npm run messages` で生成                      |
-| ログ                                   | `server/src/util/log.ts` の `Log` を使う（新設しない）                            |
-| HTTP の状態コード                      | `server/src/util/http-status.ts` の `HttpStatus`（数字を直接書かない）            |
-| 初期データ                             | `server/seed/`                                                                    |
-| 外部システムとの連携（SDK の呼び出し） | `server/src/provider/<システム>.provider.ts`（`.claude/rules/ai-integration.md`） |
-| テスト                                 | `server/tests/<機能>.test.ts`                                                     |
+| 書こうとしているもの                   | 置き場所                                                                                                           |
+| :------------------------------------- | :----------------------------------------------------------------------------------------------------------------- |
+| API の入出力の形                       | `shared/src/api/<機能>.ts`（server 内に作らない）                                                                  |
+| ルート定義                             | `server/src/api/<機能>/index.ts`                                                                                   |
+| リクエストの受け渡し                   | `server/src/api/<機能>/<機能>.controller.ts`                                                                       |
+| 業務ルール・複数テーブルにまたがる処理 | `server/src/service/<機能>.service.ts`                                                                             |
+| テーブル定義                           | `server/src/db/schema/<テーブル>.ts`                                                                               |
+| クエリ・トランザクション               | `server/src/service/` から `db` を使って書く                                                                       |
+| マイグレーション                       | `server/drizzle/`（`drizzle-kit generate` の生成物。手で書かない）                                                 |
+| 環境変数                               | `server/src/config.ts`（起動時に zod で検証。読むのはここだけ）                                                    |
+| エラーの型                             | `server/src/exception/common-exception.ts`                                                                         |
+| メッセージ文言                         | `server/resources/messages.json` → `npm run messages` で生成                                                       |
+| ログ                                   | `server/src/util/log.ts` の `Log` を使う（新設しない）                                                             |
+| HTTP の状態コード                      | `server/src/util/http-status.ts` の `HttpStatus`（数字を直接書かない）                                             |
+| 初期データ                             | `server/seed/`                                                                                                     |
+| 外部システムとの連携（SDK の呼び出し） | `server/src/provider/<システム>.provider.ts`（`.claude/rules/ai-integration.md`）                                  |
+| テスト                                 | `server/tests/<機能>.test.ts`                                                                                      |
+| AI の評価（ケースと、それを流す処理）  | `server/evals/`（ケースは `<機能>/cases.json`、流す処理は `run.ts`。`.claude/rules/ai-integration.md` の「評価」） |
 
 - **`repositories/` `dto/` `mapper/` を新設しない。** この 3 層で足ります
-- 外部システム（AI の SDK・決済・メール送信など）との連携だけは `src/provider/` に置く。`service/` からだけ呼び、
-  `api/` から直接呼ばない。import の許可関係は ESLint に最初から入っている（`server/eslint.config.js`）
+- 外部システム（AI の SDK・決済・メール送信など）との連携だけは `src/provider/` に置く。アプリのコードでは `service/` からだけ呼び、
+  `api/` から直接呼ばない（アプリの外の例外は、AI の評価の採点。`.claude/rules/ai-integration.md` の「評価」）。
+  import の許可関係は ESLint に最初から入っている（`server/eslint.config.js`）
 - ファイル名は kebab-case。`common.ts` のような何でも入る受け皿を作らない
 - ファイルが長くなったら、分割の前に削れないかを検討する
 
@@ -68,6 +71,7 @@ util/          → exception/ のみ
 exception/     → util/message/ のみ
 seed/          → db/, config.ts
 tests/         → app.ts, tests/helpers/, @app/shared
+evals/         → service/, provider/（採点の呼び出し）, config.ts, @app/shared
 ```
 
 - **逆方向の import を作らない**（`db/` から `service/` を呼ばない、`service/` から `api/` を呼ばない）。
