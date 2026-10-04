@@ -3,7 +3,7 @@ import importX from 'eslint-plugin-import-x';
 import tseslint from 'typescript-eslint';
 
 /**
- * 層をまたぐ import の許可関係をここで機械的に強制する（違反はビルド失敗として扱う）。
+ * 層をまたぐ import の許可関係をここで機械的に強制する（違反は `npm run check` の失敗として扱う）。
  *
  *   api  →  service  →  db
  *     ＼      ＼  ＼     ／

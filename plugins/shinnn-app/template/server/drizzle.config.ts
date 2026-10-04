@@ -1,7 +1,7 @@
 import { defineConfig } from 'drizzle-kit';
 
 /*
- * drizzle-kit はアプリの外（CLI）で動くため、ここだけは process.env を直接読む。
+ * drizzle-kit はアプリの外（CLI）で動くので、process.env を直接読む。
  * アプリ内で使う環境変数は src/config.ts に集約する。
  */
 const databaseUrl = process.env.DATABASE_URL ?? 'postgres://app:app@localhost:5432/app';
