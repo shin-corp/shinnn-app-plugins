@@ -27,7 +27,8 @@ description: 開発用のサーバー群（PostgreSQL・API サーバー・画�
 2. **マイグレーションの適用**: `npm run db:migrate -w server`。`pglite` のときは実行しない（API サーバーが起動のたびに適用する。
    API サーバーが開いている間は、同じ DB を別のプロセスから開けない）
 3. **API 定義**: `npm run build -w shared` のあと、`npm run dev -w shared`（`tsc --watch`。`shared/src` の変更で `shared/dist` を作り直す）
-4. **API サーバー**: `npm run dev -w server`（`node --watch` + tsx。`src/` と `shared/dist` の変更で自動再起動する）
+4. **API サーバー**: `npm run dev -w server`（`tsx watch`。import している `src/` と `shared/dist` のファイルが変わると自動で再起動する。
+   `.env` と `node_modules` の変更では再起動しない。`.env` を変えたときと `npm install` の後は、止めて起動し直す）
 5. **画面**: `npm run dev -w client`（`shared/dist` の変更でも作り直す）
 
 長く動き続けるプロセス（3〜5）は**バックグラウンドで起動する**。前面で実行すると応答が返らなくなる。
