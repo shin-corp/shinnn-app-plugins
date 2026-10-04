@@ -77,7 +77,7 @@ client/
 | コンポーネント | standalone のみ。**NgModule 禁止**                                                              |
 | 制御フロー     | `@if` / `@for` / `@switch`。**`*ngIf` / `*ngFor` 禁止**                                         |
 | 状態           | `signal()` / `computed()` / `input()` / `output()`。**`@Input()` / `@Output()` デコレータ禁止** |
-| 取得           | `api-client.ts` の `call()` + `resource()`。**手動 `subscribe` 禁止**。NgRx 禁止                |
+| 取得           | `api-client.ts` の `call()` + `resource()`。手動 `subscribe` は規約の例外だけ。NgRx 禁止        |
 | HTTP           | **`HttpClient` 禁止**（`call()` は fetch で動く）。`fetch` を画面から直接呼ばない               |
 | DI             | `inject()` 関数（コンストラクタインジェクションは使わない）                                     |
 | 変更検知       | 全コンポーネントに `ChangeDetectionStrategy.OnPush`                                             |

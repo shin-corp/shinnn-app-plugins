@@ -82,10 +82,11 @@ evals/         → service/, provider/（採点の呼び出し）, config.ts, @a
   `service/` から `api/`、`db/` から `api/`・`service/`、`provider/`・`util/`・`exception/` から `api/`・`service/`・`db/`。
   止まると `npm run check -w server` が失敗する）
 - **`src/` では動的 import（`import()`）を使わない**（検査: ESLint）。ただし、`db/client.ts` と `db/migrate.ts` は
-  使ってよい（開発とテストでしか使わない PGlite を、本番の起動経路に載せないため）。テスト（`tests/`）では、読み込む
-  前に環境変数やモックを差し替えるとき（`vi.doMock` の後など）に使ってよい（検査の対象外）
+  使ってよい
+- テスト（`tests/`）では、読み込む前に環境変数やモックを差し替えるとき（`vi.doMock` の後など）に動的 import を
+  使ってよい（検査の対象外）
 - **`client/` のソースを import しない**
-- **`@app/shared` に業務ロジックと DB 依存を置かない。** 置くのは zod スキーマだけ（[api-contract.md](api-contract.md)）
+- **`@app/shared` に業務ロジックと DB 依存を置かない**（置いてよいものは [api-contract.md](api-contract.md) の「新規ファイルの配置判断」）
 - 循環する import が要るように見えたら、共通の型を `@app/shared` に移す
 
 ## 層ごとの責務
@@ -101,10 +102,8 @@ evals/         → service/, provider/（採点の呼び出し）, config.ts, @a
 
 ## エラー
 
-- 失敗は `CommonException { statusCode, messageKey, details? }` で throw する
-- **error middleware は `app.ts` に 1 か所だけ置く。** 4 引数（`(err, req, res, next)`）で定義する
-- `try / catch` で例外を握りつぶして 200 を返さない（Express 5 では、async の handler の reject は自動で
-  error middleware に渡る）
+- **error middleware は `app.ts` に 1 か所だけ置く**
+- throw の形と例外の扱いは [server-coding-conventions.md](server-coding-conventions.md) の「エラー」
 - エラーのレスポンスの形は `{ messageKey, message, details? }` にそろえる
 
 ## なぜ
@@ -118,6 +117,8 @@ evals/         → service/, provider/（採点の呼び出し）, config.ts, @a
 
 動的 import を止めるのは、import の向きの検査をすり抜けさせないためです。向きの検査は、動的 import を見られません。
 テストには、向きの検査を掛けていません。そのため、テストでは動的 import も止めません。
+`db/client.ts` と `db/migrate.ts` で動的 import を使ってよいのは、開発とテストでしか使わない PGlite を、本番の
+起動経路に載せないためです。
 
 error middleware を 1 か所にするのは、エラーのレスポンスの形をアプリ全体で 1 つに保つためです。
 画面側は `ApiError` 1 種類だけを扱えばよくなります。

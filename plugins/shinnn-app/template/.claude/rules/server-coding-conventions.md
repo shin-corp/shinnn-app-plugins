@@ -28,7 +28,8 @@ Express 5 と TypeScript の書き方です。置き場所は [server-architectu
 2. `req.query` は読み取り専用なので、書き換えない。既定のパーサは `?a[b]=1` をネストしない
 3. ルートの書式は path-to-regexp v8 に従う。ワイルドカードは `/*splat`、省略可は `/:file{.:ext}` と書く。
    `/foo/*` や正規表現をそのまま書かない（起動時に例外になる）
-4. `res.status()` には 100〜999 の整数だけを渡す（それ以外は例外になる）。`res.status(err.statusCode ?? 500)` と書く
+4. `res.status()` には 100〜999 の整数だけを渡す（それ以外は例外になる）。状態コードは `toResponseStatus()`
+   （`src/util/http-status.ts`）を通して渡す
 5. `req.body` は、`express.json()` を通していないと `undefined` になる。middleware で `req.body` を分割代入する前に、
    値があるかを確かめる
 6. `res.send(status)` / `res.json(obj, status)` / `res.redirect(url, status)` / `req.param()` / `app.del()` は
@@ -38,8 +39,8 @@ Express 5 と TypeScript の書き方です。置き場所は [server-architectu
 
 ## 環境変数
 
-- **`process.env` を読むのは `src/config.ts` だけにする。** ただし、アプリの外で動く `drizzle.config.ts` と、子プロセスに
-  環境を引き継ぐ `provider/`（[ai-integration.md](ai-integration.md) の `env`）は読んでよい
+- **`process.env` を読むのは `src/config.ts` だけにする。** ただし、アプリの外で動く `drizzle.config.ts` と `scripts/`、
+  子プロセスに環境を引き継ぐ `provider/`（[ai-integration.md](ai-integration.md) の `env`）は読んでよい
 - `config.ts` は、起動時に zod で環境変数を検証する。値が足りなければ、**起動を止める**
 - `default()` は、どの環境でも決まった値を置ける環境変数（`PORT`・`LOG_LEVEL` など）にだけ付ける。接続先や秘密の値
   （`DATABASE_URL`・`JWT_SECRET` など）には付けない
@@ -63,11 +64,10 @@ Express 5 と TypeScript の書き方です。置き場所は [server-architectu
 
 - `any` を使わない（検査: ESLint）。避けられない箇所は `unknown` と型ガードで書く
 - **API の入出力の型は、`@app/shared` の zod スキーマから導く。手書きの型定義を作らない**
-- `as` キャストと non-null assertion（`!`）は、型ガードや zod の検証で型を絞れない場合（外から読んだ JSON、
-  ライブラリどうしの型の食い違いなど）にだけ使う
-- `enum` を使わず、`as const` のオブジェクトと同じ名前の型の形で書く（`HttpStatus` のように、名前は PascalCase）
-- 値を書き換えない定数（固定の文字列や数値）の名前は、大文字のスネークケース（`UNIQUE_VIOLATION`）にする。それ以外の
-  変数と定数（設定・テーブルの定義など）は camelCase にする
+- `as` キャストと non-null assertion（`!`）は、型ガードや zod の検証で型を絞れない場合にだけ使う。手本では、
+  ライブラリどうしの型の食い違い（`db/client.ts`）と、リポジトリの中のファイルを読んだ JSON（`messages.json`）に使っている
+- `enum` を使わず、`as const` のオブジェクトと、その値から導いた型の形で書く（`HttpStatus` と `HttpStatusCode` の
+  ように、名前は PascalCase）
 
 ## セキュリティの既定（外さない）
 

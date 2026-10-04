@@ -15,17 +15,17 @@ paths:
 
 1. `server/resources/messages.json` にエントリを追加する（`"<キー>": { "type": "INFO | WARN | ERROR | FATAL", "message": "文言" }`）
 2. `npm run messages` を実行する（`server/scripts/gen-message-keys.mjs` が動く）
-3. 生成された `server/src/util/message/message-keys.ts` を、編集せずにコミットする
+3. 生成された `server/src/util/message/message-keys.ts` をコミットする
 
-- **生成物（`message-keys.ts`）を手で編集しない。** 直したいときは `messages.json` を直して生成し直す
-- 生成物もコミットする
+- `message-keys.ts` を直したいときは、`messages.json` を直して生成し直す（生成物を手で編集しない決まりは、
+  [git-workflow.md](git-workflow.md) の「やらないこと」）
 - メッセージを消すときは、そのキーを使っている箇所を先に消す（消し忘れた箇所は、生成し直した後の型検査で見つかる）
 
 ## キーの付け方
 
 - キーは `APP_<領域>_<内容>` の形で、英大文字・数字・アンダースコアで書く（例: `APP_VALIDATION_FAILED`、
-  `APP_ITEM_NOT_FOUND`）（検査: `npm run messages`。英大文字・数字・アンダースコアかだけを見て、`APP_` で
-  始まるかは見ない）
+  `APP_ITEM_NOT_FOUND`）。`npm run messages` は、英大文字・数字・アンダースコア以外の文字を含むキーで止まる
+  （`APP_` で始まるかは見ない）
 - 機能に固有のキーは、`<領域>` に機能名を書く（item なら `APP_ITEM_`）
 - **コードでは、キーを文字列リテラルで書かない。** `MessageKeys.APP_ITEM_NOT_FOUND` の形で参照する
 - 1 つの状況に 1 つのキーを割り当てる。文言だけが違うキーを足さない。文言を変えたいときは `messages.json` の
@@ -46,6 +46,8 @@ paths:
 
 キーを生成物にするのは、存在しないキーを参照したときに**型エラーで止める**ためです。
 文字列リテラルのままだと、綴りを間違えても実行するまで気づけません。
+
+生成物をコミットするのは、クローンの直後に生成しなくても型検査を通すためです。
 
 内部情報を文言に入れないのは、攻撃の手がかりを利用者に見せないためです。文言は、利用者の画面にそのまま出ます。
 テーブル名や SQL が見えると、攻撃の手がかりになります。`details` もレスポンスに載ります。そのため、`details` にも

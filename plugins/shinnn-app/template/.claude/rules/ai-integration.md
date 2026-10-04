@@ -45,9 +45,10 @@ paths:
 
 ## テスト
 
-- SDK の `query()` を `vi.hoisted` + `vi.mock` で差し替え、HTTP 経由で API を呼んで **SDK に渡した `options` を検証する**テストを 1 本以上書く
-  （`tools` / `strictMcpConfig` / `disallowedTools` / `settingSources` / `maxTurns` / `persistSession` と、`env` に端末の `ANTHROPIC_API_KEY` が無いこと）
-- 専用のキーを設定した場合の `env` は、`config` を差し替える別ファイルのテストで確かめる（config はモジュールの読み込み時に決まるため）
+- **SDK に渡した `options` を検証する**テストを 1 本以上書く（`tools` / `strictMcpConfig` / `disallowedTools` /
+  `settingSources` / `maxTurns` / `persistSession` と、`env` に端末の `ANTHROPIC_API_KEY` が無いこと）。
+  このテストでは、SDK の `query()` を `vi.hoisted` + `vi.mock` で差し替えて、HTTP 経由で API を呼ぶ
+- 専用のキーを設定した場合の `env` は、`config` を差し替える別ファイルのテストで確かめる
 - 差し替えた SDK に形の崩れた出力を返させ、その出力を使わずに失敗（502）として扱うことを確かめるテストを置く
 - 実際にモデルを呼ぶ経路は、自動テスト（CI）で確かめない。下の「評価」で確かめる
 
@@ -76,7 +77,7 @@ AI を呼ぶ機能ごとに、代表的な入力と正しい答えの条件を�
 ## 記録
 
 - SDK を採用した理由と、上の指定の根拠を `docs/decisions/` に残す
-- 環境変数（専用のキー・上限時間・同時実行数）は `docs/env.md` と環境変数の見本に**名前だけ**書く。値は書かない
+- 専用のキー・上限時間・同時実行数の環境変数を足す（書き足す場所は [server-coding-conventions.md](server-coding-conventions.md) の「環境変数」）
 
 ## なぜ
 
@@ -99,6 +100,9 @@ AI の SDK を入れるかどうかをシン株式会社が判断する理由は
 端末の環境変数をそのまま子プロセスに渡します。端末に別の案件向けの `ANTHROPIC_API_KEY` があると、SDK はそのキーを
 使います。その結果、別の案件のキーで課金されます。このアプリ専用の変数だけを渡す形にすれば、開発者の端末に何が
 設定されていても、使うキーは変わりません。
+
+`config` は、モジュールの読み込み時に決まります。そのため、専用のキーを設定した場合の `env` は、`config` を
+差し替える別ファイルで確かめます。
 
 上限時間と同時実行数を必須にするのは、サーバーの子プロセスと費用が際限なく増えるのを防ぐためです。生成は 1 回に
 数分かかり、費用は数十円かかります。上限が無いと、利用者が操作するたびに、子プロセスと費用が積み上がります。

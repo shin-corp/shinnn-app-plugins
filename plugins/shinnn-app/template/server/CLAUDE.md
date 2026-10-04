@@ -49,7 +49,7 @@ Express 5 + PostgreSQL 16（Drizzle ORM）の API サーバー。TypeScript の 
 `DB_DRIVER=pglite` のデータは `server/.pglite/`（git 管理外）に残り、`index.ts` が起動のたびにマイグレーションを適用する。
 サーバーを動かしている間は、`db:migrate` や `seed` で同じ DB を開かない（別のプロセスから同時に開けない）。
 
-`process.env` を直接読んでよいのは `drizzle.config.ts` だけ（アプリの外で動くため）。
+`process.env` を直接読んでよい場所は、`.claude/rules/server-coding-conventions.md` の「環境変数」に従う。
 
 ## 構成と import の許可関係
 
@@ -102,6 +102,6 @@ error middleware は 4 引数で `app.ts` に 1 か所だけ置く。エラー�
 - `startServer()` で本番と同じ組み立てのサーバーを立て、native fetch で HTTP として確かめる。内部の関数を直接呼ばない
 - 要求先の URL は API 定義から組み立てる（`server.url(itemsApi.getItem, { id })`）。URL を手で書かない。
   手本はサンプルの `tests/items.test.ts`（サンプルの `items` を消した後は、既存の機能を手本にする）
-- `describe` は `正常系` / `異常系` / `エッジケース` に分け、テスト名の先頭に受入条件の番号（`AC-1` など）を書く
+- `describe` の分け方と、テスト名に受入条件の番号（`AC-1` など）を書く決まりは、`.claude/rules/testing.md` の「テスト名」
 - DB はテストファイルごとに PGlite を作って本番と同じマイグレーションを流し、テストごとに `reset()` でデータを空にする
 - 実装とテストが食い違ったときは、まず実装が正しいかを確かめる。仕様書に照らして実装が誤っていれば実装を直す

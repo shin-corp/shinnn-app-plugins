@@ -24,12 +24,12 @@ Issue から PR までの手順です。**paths を持たないので常に読�
 そこで動きます。そのため、許可の設定がそのまま効きます。
 
 `git worktree add` で隣のフォルダに worktree を作り、元のセッションから `cd` して作業する使い方はしないでください。
-この使い方では、リポジトリの外を触ります。そのため、操作のたびに確認が出ます。作った worktree では、最初に
-`npm install` を実行します（依存と git のフックが入っていないため）。
+この使い方では、リポジトリの外を触ります。そのため、操作のたびに確認が出ます。作った worktree には、
+依存と git のフックが入っていません。そのため、最初に `npm install` を実行します。
 
 PR をマージするのは、既定では人です（`.shinnn/setup.json` の `mergePolicy` が `human`）。`/shinnn-app:setup` で `self-review` を選んだリポジトリでは、`/shinnn-app:pr` が、セルフレビューの収束と CI の通過を確かめます。確かめたら、PR を ready にしてマージします。どちらの場合も `main` へ直接コミットしません（「やらないこと」）。
 
-Dependabot（依存更新の bot）が作る PR には、ワークフロー `dependabot-issue.yaml` が、対応する Issue（`[依存] …`、ラベル `type:deps`）を自動で作ります。ワークフローは、PR の本文に `Closes #n` を足します。PR が閉じると、Issue も閉じます。CI の `Closes #n` の確認は、bot の PR では免除しています。CI は、ワークフローが本文を書き換える前に走るためです。人と Claude の PR は、Issue を先に作ってから出します。
+Dependabot（依存更新の bot）が作る PR には、ワークフロー `dependabot-issue.yaml` が、対応する Issue（`[依存] …`、ラベル `type:deps`）を自動で作ります。ワークフローは、PR の本文に `Closes #n` を足します。PR が閉じると、Issue も閉じます。CI は、ワークフローが本文を書き換える前に走ります。そのため、CI の `Closes #n` の確認は、bot の PR では免除しています。人と Claude の PR は、Issue を先に作ってから出します。
 
 ## コミットメッセージ
 
@@ -43,7 +43,9 @@ Dependabot（依存更新の bot）が作る PR には、ワークフロー `dep
 - `<対象>` は、変更したパッケージ（`shared` / `server` / `client`）にする。文書だけの変更は `docs`、CI の設定の変更は `ci` にする
 - 受入条件に対応するコミットは、要約に識別子を入れる（例: `[server]AC-2 在庫チェックの追加`）
 - **AI の帰属行（`Co-Authored-By` など）を書かない**
-- 本文は日本語で書く。1 行目は 50 文字以内にする。`Test plan` のような定型の節を付けない
+- 本文は日本語で書く
+- 1 行目は 50 文字以内にする
+- `Test plan` のような定型の節を付けない
 - 複数行のメッセージは、本文をファイルに書いて `git commit -F <ファイル>` で渡す
   （PowerShell の here-string `@'...'@` をそのまま Bash に渡すと、先頭に `@` が混ざる）
 
@@ -55,22 +57,20 @@ Dependabot（依存更新の bot）が作る PR には、ワークフロー `dep
 - パッケージをまたぐ変更は、パッケージごとにコミットを分ける
 - 挙動を変えない整形・リネームを、機能の変更と同じコミットに混ぜない
 - ただし、**参照側を同時に直さないと型エラーになる変更**は、`shared` と参照側（`server` / `client`）を
-  1 コミットにまとめてよい。`shared` だけを先に出すと、そのコミットで参照側が型エラーになるため。
-  例: 型を狭める（省略可 → 必須、値の範囲を狭める）、列挙に値を足す（網羅的な `switch` が型エラーになる）、
+  1 コミットにまとめてよい。例: 型を狭める（省略可 → 必須、値の範囲を狭める）、列挙に値を足す（網羅的な `switch` が型エラーになる）、
   API 定義の名前を変える。まとめた理由をコミットの本文に 1 行書く
 
 ## やらないこと
 
 - `git push --force` / `git reset --hard` / `git rebase` / `git clean` を使わない（検査: 権限の設定）
-- husky のフックを飛ばさない（`git commit --no-verify` / `git push --no-verify` / `HUSKY=0`）（検査: 権限の設定）
+- husky のフックを飛ばさない（`git commit --no-verify` / `git push --no-verify` / `HUSKY=0`）（検査: 権限の設定。
+  `git push` の `--no-verify`、`HUSKY=0` で始まるコマンド、`git commit` の直後に書いた `--no-verify` / `-n` だけを止める）
 - `main` へ直接コミットも push もしない。`main` へは、作業ブランチからの PR でだけ入れる（検査: git のフック。
   `main` への push だけを止める）
-- 改行コードだけが変わった差分を作らない（LF に統一。`.gitattributes` を参照）
-- `server` と `shared` の `.ts` に `prettier --write` を掛けない。prettier で整えるのは、画面（`client`）の `.ts` と
-  json・md・yaml だけ。`server` と `shared` は、prettier の書き方にそろえていない（prettier で改行が増え、かえって
-  読みにくくなることがあるため）。掛けると、変更と関係ない行の改行の位置まで変わる（`eslint --fix` は、改行や字下げを
-  整えない）。`client` の `.ts` は、保存時の hook とコミット時の lint-staged が整え、CI が確かめる。そのため、手で
-  掛けなくてよい（既存のアプリを一度にそろえる整形は、`/shinnn-app:update-rules` の手順で、整形だけの PR にする）
+- `server` と `shared` の `.ts` に `prettier --write` を掛けない
+- prettier で整えるのは、画面（`client`）の `.ts` と json・md・yaml だけにする
+- `client` の `.ts` には、手で prettier を掛けなくてよい（保存時の hook とコミット時の lint-staged が整え、CI が確かめる）
+- 既存のアプリを一度にそろえる整形は、`/shinnn-app:update-rules` の手順で、整形だけの PR にする
 - 生成物（`package-lock.json` / `server/drizzle/` / メッセージキーの生成物）を手で編集しない（検査: 権限の設定。
   `package-lock.json` と `server/drizzle/` だけを止める）
 
@@ -83,6 +83,13 @@ Issue 番号を軸にするのは、半年後でも「なぜこのコードが�
 コミットを層ごとに分けるのは、レビューする人が 1 コミットずつ読めば理解できるようにするためです。
 API 定義と実装が同じコミットに混ざっていると、差分のどこが「決めたこと」でどこが「決めたことへの追従」か
 分からなくなります。
+
+参照側を同時に直さないと型エラーになる変更をまとめてよいのは、どのコミットでも型検査を通すためです。`shared` だけを
+先に出すと、そのコミットで参照側が型エラーになります。
+
+`server` と `shared` に prettier を掛けないのは、変更と関係ない行の改行を変えないためです。この 2 つは、prettier の
+書き方にそろえていません。prettier の書き方では改行が増え、かえって読みにくくなることがあります。`eslint --fix` は、
+改行や字下げを整えません。
 
 force push と `--no-verify` を禁じるのは、非エンジニアが復旧できない壊れ方を防ぐためです。履歴や検査がいったん
 壊れると、非エンジニアには元に戻せません。履歴を書き換えずに前へ進む（打ち消しコミットを積む）方が、常に安全です。
