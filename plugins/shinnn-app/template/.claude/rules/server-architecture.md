@@ -42,8 +42,8 @@ src/db/                    Drizzle。SQL を書く唯一の場所
 | 業務ルール・複数テーブルにまたがる処理 | `server/src/service/<機能>.service.ts`                                                                             |
 | テーブル定義                           | `server/src/db/schema/<テーブル>.ts`                                                                               |
 | クエリ・トランザクション               | `server/src/service/` から `db` を使って書く                                                                       |
-| マイグレーション                       | `server/drizzle/`（`drizzle-kit generate` の生成物。手で書かない）                                                 |
-| 環境変数                               | `server/src/config.ts`（起動時に zod で検証。読むのはここだけ）                                                    |
+| マイグレーション                       | `server/drizzle/`（`drizzle-kit generate` の生成物）                                                               |
+| 環境変数                               | `server/src/config.ts`（起動時に zod で検証。読んでよい場所は server-coding-conventions.md の「環境変数」）        |
 | エラーの型                             | `server/src/exception/common-exception.ts`                                                                         |
 | メッセージ文言                         | `server/resources/messages.json` → `npm run messages` で生成                                                       |
 | ログ                                   | `server/src/util/log.ts` の `Log` を使う（新設しない）                                                             |
@@ -71,7 +71,7 @@ api/<機能>/    → service/, util/（route, auth）, exception/, db/（型の�
 service/       → db/, provider/, exception/, util/, config.ts, @app/shared
 provider/      → config.ts, exception/, util/（log）, 外部システムの SDK
 db/            → config.ts, exception/, util/（log, message）, @app/shared（型のみ）
-util/          → config.ts, exception/
+util/          → config.ts, exception/, @app/shared（型のみ）
 exception/     → util/message/
 seed/          → db/, config.ts, util/
 tests/         → app.ts, tests/helpers/, config.ts, db/, @app/shared
@@ -113,7 +113,7 @@ evals/         → service/, provider/（採点の呼び出し）, config.ts, @a
 だけのコード」の区別が付きません。
 
 一方向の import を lint で強制するのは、規約を知らない人でも間違いに気づけるようにするためです。「気をつける」だけでは、
-規約は守られません。ビルドが失敗すれば、規約を知らなくても間違いに気づけます。
+規約は守られません。`npm run check` が失敗すれば、規約を知らなくても間違いに気づけます。
 
 動的 import を止めるのは、import の向きの検査をすり抜けさせないためです。向きの検査は、動的 import を見られません。
 テストには、向きの検査を掛けていません。そのため、テストでは動的 import も止めません。

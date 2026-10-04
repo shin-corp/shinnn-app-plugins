@@ -20,6 +20,7 @@ Express 5 と TypeScript の書き方です。置き場所は [server-architectu
   `APP_VALIDATION_FAILED`、`details` に zod の指摘）を返す
 - **API 定義に無いルートを作らない。** 作りたくなったら、先に `shared/src/api/` に定義を足す
   （CI の API 定義の検査は、API 定義にあるルートだけを数える。API 定義に無いルートは、テストが無くても CI が通る）
+- ただし、稼働確認の `/health` は、API 定義と `route()` を使わずに `app.ts` に置いてよい
 
 ## Express 5 の注意（移行で変わった点）
 
@@ -28,8 +29,9 @@ Express 5 と TypeScript の書き方です。置き場所は [server-architectu
 2. `req.query` は読み取り専用なので、書き換えない。既定のパーサは `?a[b]=1` をネストしない
 3. ルートの書式は path-to-regexp v8 に従う。ワイルドカードは `/*splat`、省略可は `/:file{.:ext}` と書く。
    `/foo/*` や正規表現をそのまま書かない（起動時に例外になる）
-4. `res.status()` には 100〜999 の整数だけを渡す（それ以外は例外になる）。状態コードは `toResponseStatus()`
-   （`src/util/http-status.ts`）を通して渡す
+4. `res.status()` には 100〜999 の整数だけを渡す（それ以外は例外になる）。例外から取り出した
+   状態コードのように型の決まらない値は、`toResponseStatus()`（`src/util/http-status.ts`）を通して渡す。`HttpStatus` の
+   定数は、そのまま渡してよい
 5. `req.body` は、`express.json()` を通していないと `undefined` になる。middleware で `req.body` を分割代入する前に、
    値があるかを確かめる
 6. `res.send(status)` / `res.json(obj, status)` / `res.redirect(url, status)` / `req.param()` / `app.del()` は
@@ -57,6 +59,8 @@ Express 5 と TypeScript の書き方です。置き場所は [server-architectu
 - `throw new CommonException(HttpStatus.NOT_FOUND, MessageKeys.APP_ITEM_NOT_FOUND, { params: [id] })` の形で throw する
 - **状態コードを数字で書かない。** `src/util/http-status.ts` の `HttpStatus` の定数を使う
 - **`messageKey` を文字列リテラルで書かない。** `MessageKeys` の定数を使う（[messages.md](messages.md)）
+- `CommonException` の `details` に、内部の情報（テーブル名・SQL・スタックトレース・ファイルパス）を入れない。
+  調査に必要な情報はログに入れる
 - catch した例外を握りつぶさない。呼び出し元に投げ直すか、`Log.error` を残してから throw する
 - error middleware の、予期しない例外を 500 と汎用のメッセージに変える処理を外さない
 
@@ -65,7 +69,9 @@ Express 5 と TypeScript の書き方です。置き場所は [server-architectu
 - `any` を使わない（検査: ESLint）。避けられない箇所は `unknown` と型ガードで書く
 - **API の入出力の型は、`@app/shared` の zod スキーマから導く。手書きの型定義を作らない**
 - `as` キャストと non-null assertion（`!`）は、型ガードや zod の検証で型を絞れない場合にだけ使う。手本では、
-  ライブラリどうしの型の食い違い（`db/client.ts`）と、リポジトリの中のファイルを読んだ JSON（`messages.json`）に使っている
+  ライブラリどうしの型の食い違い（`db/client.ts`・`db/migrate.ts`）、型引数で決まる型（`util/validate.ts`）、リポジトリの
+  中のファイルを読んだ JSON（`messages.json`）に使っている
+- ただし、テストでは、API 定義で形が決まっているレスポンスの本文（`res.json()`）に、検証せずに `as` で型を付けてよい
 - `enum` を使わず、`as const` のオブジェクトと、その値から導いた型の形で書く（`HttpStatus` と `HttpStatusCode` の
   ように、名前は PascalCase）
 
@@ -105,8 +111,17 @@ Express 5 と TypeScript の書き方です。置き場所は [server-architectu
 という意味になります。一意性を全体で判定しないのも、同じ理由です。全体で判定すると、409 から、他人のデータがある
 ことが分かります。
 
-`req.body` の直接参照を禁じるのは、検証を通していない値が DB まで届く経路を無くすためです。`route()` を必ず通す
+`req.body` の直接参照を禁じるのは、検証を通していない値が DB まで届く経路を無くすためです。`route()` を通す
 ようにすれば、検証を書き忘れたエンドポイントは作れません。
+
+`/health` を API 定義に入れないのは、監視から認証なしで呼べるようにするためです。API 定義のルートは `/api` の下に
+置かれ、認証と rate limit が掛かります。
+
+`details` に内部の情報を入れないのは、攻撃の手がかりを利用者に見せないためです。`details` は、文言と一緒に
+レスポンスで画面へ返ります。
+
+サーバーのテストが受け取るレスポンスの本文は、API 定義で形が決まっています。そのため、テストでは検証せずに型を
+付けてよいとしています。
 
 `process.env` を 1 か所に集めるのは、設定漏れを**起動時**に見つけるためです。読む箇所が散らばっていると、設定漏れに
 気づくのは、特定の画面を開いて `undefined` が出たときになります。接続先や秘密の値に `default()` を付けないのも、

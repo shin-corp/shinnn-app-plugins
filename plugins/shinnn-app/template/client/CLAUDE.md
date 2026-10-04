@@ -65,24 +65,24 @@ client/
 
 - `services/` `repositories/` `stores/` `core/` `infrastructures/` を**作らない**。client は「画面 + API クライアント」だけ
 - `shared/` に置くのは **2 画面以上で使うもの**だけ（同梱の `data-table` は例外）
-- 機能どうしを直接 import しない。共有したくなったら `shared/` へ上げる（ESLint がビルドを止める）
+- 機能どうしを直接 import しない。共有したくなったら `shared/` へ上げる（ESLint が `npm run check` を止める）
 - `@app/shared` の入口は `'@app/shared'` と `'@app/shared/api'` だけ。深い import をしない
 - server の実装を import しない（画面のバンドルに巻き込まれる）
 - 1 ファイル 150 行を超えたら、分割より先に削ることを検討する
 
 ## Angular 規約
 
-| 対象           | 決まり                                                                                          |
-| :------------- | :---------------------------------------------------------------------------------------------- |
-| コンポーネント | standalone のみ。**NgModule 禁止**                                                              |
-| 制御フロー     | `@if` / `@for` / `@switch`。**`*ngIf` / `*ngFor` 禁止**                                         |
-| 状態           | `signal()` / `computed()` / `input()` / `output()`。**`@Input()` / `@Output()` デコレータ禁止** |
-| 取得           | `api-client.ts` の `call()` + `resource()`。手動 `subscribe` は規約の例外だけ。NgRx 禁止        |
-| HTTP           | **`HttpClient` 禁止**（`call()` は fetch で動く）。`fetch` を画面から直接呼ばない               |
-| DI             | `inject()` 関数（コンストラクタインジェクションは使わない）                                     |
-| 変更検知       | 全コンポーネントに `ChangeDetectionStrategy.OnPush`                                             |
-| 型             | `any` を使わない。**手書きの API 型定義禁止**（`shared` の zod が正）                           |
-| 子への受け渡し | `input()` か `MAT_DIALOG_DATA`。子が親の状態を直接読み書きしない                                |
+| 対象           | 決まり                                                                                                                                     |
+| :------------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
+| コンポーネント | standalone のみ。**NgModule 禁止**                                                                                                         |
+| 制御フロー     | `@if` / `@for` / `@switch`。**`*ngIf` / `*ngFor` 禁止**                                                                                    |
+| 状態           | `signal()` / `computed()` / `input()` / `output()`。**`@Input()` / `@Output()` デコレータ禁止**                                            |
+| 取得           | `api-client.ts` の `call()` + `resource()`。手動 `subscribe` は規約 `client-coding-conventions.md` の「API 呼び出し」の例外だけ。NgRx 禁止 |
+| HTTP           | **`HttpClient` 禁止**（`call()` は fetch で動く）。`fetch` を画面から直接呼ばない                                                          |
+| DI             | `inject()` 関数（コンストラクタインジェクションは使わない）                                                                                |
+| 変更検知       | 全コンポーネントに `ChangeDetectionStrategy.OnPush`                                                                                        |
+| 型             | `any` を使わない。**手書きの API 型定義禁止**（`shared` の zod が正）                                                                      |
+| 子への受け渡し | `input()` か `MAT_DIALOG_DATA`。子が親の状態を直接読み書きしない                                                                           |
 
 - `@for` の追跡は `track item.id` / `track $index` を直書きする。`trackBy` ヘルパーは作らない
 - 派生値は `computed()`。`effect()` + `set()` で導出値を作らない（`effect()` は通知など副作用だけ）

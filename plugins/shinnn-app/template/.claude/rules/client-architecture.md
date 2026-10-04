@@ -57,7 +57,8 @@ main.ts           → app/app.component.ts, app/app.config.ts
 ```
 
 - **画面をまたいで import しない**（`features/items` から `features/orders` を参照しない）（検査: ESLint。
-  `../<機能>/…` の形と、パスに `features/` を含む形の import だけを止める）。
+  `features/` と `app/shared/` の中で、`../<名前>/…` の形と、パスに `features/` を含む形の import だけを止める。
+  同じ機能のサブフォルダから隣のフォルダへの `../<名前>/…` と、`app/shared/` の部品どうしの import も止まる）。
   共通化したくなったら `app/shared/` へ移す
 - **`server/` のソースを import しない**（検査: ESLint。`@app/server` からの import だけを止める）。共有するのは
   `@app/shared` の zod スキーマだけ

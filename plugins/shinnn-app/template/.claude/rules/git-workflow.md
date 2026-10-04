@@ -8,12 +8,12 @@ Issue から PR までの手順です。**paths を持たないので常に読�
 
 作業項目の正本は GitHub Issues です。手で更新する進捗ファイルは持ちません。
 
-| 段階     | やること                                                                                                                   |
-| :------- | :------------------------------------------------------------------------------------------------------------------------- |
-| 着手前   | `gh issue list` で open な Issue を見る。担当する Issue を決める                                                           |
-| ブランチ | `git switch -c feature/<Issue 番号>-<slug>`（例: `feature/12-item-filter`）                                                |
-| 実装     | `shared` → `server` → `client` → テストの順。同じ PR に入れる                                                              |
-| PR       | 本文の 1 行目に `Closes #<Issue 番号>` を書く（検査: CI。本文のどこかにあるかだけを見る）。マージで Issue が自動的に閉じる |
+| 段階     | やること                                                                                                                          |
+| :------- | :-------------------------------------------------------------------------------------------------------------------------------- |
+| 着手前   | `gh issue list` で open な Issue を見る。担当する Issue を決める                                                                  |
+| ブランチ | `git switch -c feature/<Issue 番号>-<slug>`（例: `feature/12-item-filter`）                                                       |
+| 実装     | `shared` → `server` → `client` → テストの順。同じ PR に入れる                                                                     |
+| PR       | 本文の「対応 Issue」に `Closes #<Issue 番号>` を書く（検査: CI。本文のどこかにあるかだけを見る）。マージで Issue が自動的に閉じる |
 
 - ブランチ名は `feature/<Issue 番号>-<slug>` にする。不具合の修正は `fix/<Issue 番号>-<slug>` にする。ほかの接頭辞を使わない
 - ベースブランチは `main` にする
@@ -71,7 +71,7 @@ Dependabot（依存更新の bot）が作る PR には、ワークフロー `dep
 - prettier で整えるのは、画面（`client`）の `.ts` と json・md・yaml だけにする
 - `client` の `.ts` には、手で prettier を掛けなくてよい（保存時の hook とコミット時の lint-staged が整え、CI が確かめる）
 - 既存のアプリを一度にそろえる整形は、`/shinnn-app:update-rules` の手順で、整形だけの PR にする
-- 生成物（`package-lock.json` / `server/drizzle/` / メッセージキーの生成物）を手で編集しない（検査: 権限の設定。
+- 生成物（`package-lock.json` / `server/drizzle/` / メッセージキーの生成物 / `client/src/theme.css`）を手で編集しない（検査: 権限の設定。
   `package-lock.json` と `server/drizzle/` だけを止める）
 
 ## なぜ

@@ -65,7 +65,7 @@ api/<機能>/{index.ts, <機能>.controller.ts}  →  service/  →  db/
 - `repositories/` などの層は増やさない（`provider/` は外部システムとの連携専用に 1 つだけ置ける。`.claude/rules/ai-integration.md`）。
   1 ファイルが 150 行を超えたら、分割より先に減らせないか考える
 
-この関係は `eslint.config.js` の `no-restricted-imports` で強制していて、破るとビルドが失敗する。
+この関係は `eslint.config.js` の `no-restricted-imports` で強制していて、破ると `npm run check` が失敗する。
 
 ## エンドポイントを追加する
 
@@ -100,7 +100,7 @@ error middleware は 4 引数で `app.ts` に 1 か所だけ置く。エラー�
 
 - ファイル名は `<機能>.test.ts`（`.spec.ts` は CI で失敗する）
 - `startServer()` で本番と同じ組み立てのサーバーを立て、native fetch で HTTP として確かめる。内部の関数を直接呼ばない
-- 要求先の URL は API 定義から組み立てる（`server.url(itemsApi.getItem, { id })`）。URL を手で書かない。
+- リクエスト先の URL の組み立て方は、`.claude/rules/testing.md` の「サーバーのテスト」に従う。
   手本はサンプルの `tests/items.test.ts`（サンプルの `items` を消した後は、既存の機能を手本にする）
 - `describe` の分け方と、テスト名に受入条件の番号（`AC-1` など）を書く決まりは、`.claude/rules/testing.md` の「テスト名」
 - DB はテストファイルごとに PGlite を作って本番と同じマイグレーションを流し、テストごとに `reset()` でデータを空にする
