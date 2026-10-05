@@ -94,7 +94,8 @@ client/
 - 見た目は **Tailwind のユーティリティ + Material の部品**で作る。`styles.css` にクラス定義を書き足さない
 - `styles.css` がカスケードレイヤの順を `tailwind-base → material → tailwind-utilities` に固定している。
   Material の部品自身の CSS はレイヤの外に入るので、部品の要素に付けたユーティリティは、部品が決めている性質
-  （並べ方・余白・揃え）には適用されない。並べ方や余白は部品の中の `div` に付ける（`.claude/rules/client-styling.md`）
+  （並べ方・余白・揃え）には適用されない。並べ方・内側の余白・揃えと間隔の付け方は、`.claude/rules/client-styling.md` の
+  「Material と Tailwind の共存」に従う
 - 配色は Material のシステム変数（`--mat-sys-*`）。`@theme` で Tailwind の色（`text-primary` など）に割り当ててある。
   新しい色を直値で書かない
 - 配色と書体は `styles.css` の 1 か所で決める（特定の画面だけで使う色や書体も、役割の名前で `@theme` に足す）。
