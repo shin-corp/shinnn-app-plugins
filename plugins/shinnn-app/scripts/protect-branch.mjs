@@ -447,7 +447,7 @@ function alreadyRuled(rules, target, expected) {
 
 /** gh を起動できなかったときの結果 */
 function cannotRun(result) {
-  return failed('gh を実行できない', `gh を実行できませんでした（${firstLine(result.stderr) || '応答なし'}）。`);
+  return failed('gh を実行できない', `gh を実行できませんでした（${firstLine(result.stderr) || 'エラーの出力なし'}）。`);
 }
 
 function main() {
