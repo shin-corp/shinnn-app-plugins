@@ -14,11 +14,11 @@
  *   missing:    true なら gh が無い（起動できない）
  *   loggedIn:   false なら、本物と同じくログインを求めて終了コード 4 で終わる
  *   repo:       { nameWithOwner, viewerPermission }。null なら remote が無いときと同じく失敗する
- *   protection: 従来の方式の保護の GET の応答。{ status: 200, body } か { status: 404 / 403 など, message }。
+ *   protection: 従来の方式の保護の GET のレスポンス。{ status: 200, body } か { status: 404 / 403 など, message }。
  *               既定は 404（Branch not protected）
- *   rules:      ルールセットのルールの GET（repos/{o}/{r}/rules/branches/{b}）の応答。{ status: 200, body: [ルール] } か
+ *   rules:      ルールセットのルールの GET（repos/{o}/{r}/rules/branches/{b}）のレスポンス。{ status: 200, body: [ルール] } か
  *               { status: 403 など, message }。既定は空の配列（ルールが無い）
- *   put:        PUT の応答。{ status: 200 } か { status: 403 / 422 など, message }
+ *   put:        PUT のレスポンス。{ status: 200 } か { status: 403 / 422 など, message }
  */
 import * as childProcess from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
@@ -40,7 +40,7 @@ function result(status, stdout = '', stderr = '') {
   return { pid: 0, output: [null, stdout, stderr], stdout, stderr, status, signal: null };
 }
 
-/** 本物の gh api が HTTP のエラーで終わるときの結果。応答の本文を標準出力に、要約を標準エラーに出す */
+/** 本物の gh api が HTTP のエラーで終わるときの結果。レスポンスの本文を標準出力に、要約を標準エラーに出す */
 function httpError(status, message) {
   const body = JSON.stringify({
     message,
@@ -50,7 +50,7 @@ function httpError(status, message) {
   return result(1, body, `gh: ${message} (HTTP ${status})\n`);
 }
 
-/** 応答の定義（{ status, body } か { status, message }）を結果にする */
+/** レスポンスの定義（{ status, body } か { status, message }）を結果にする */
 function respond(response) {
   if (response.status === 200) {
     return result(0, JSON.stringify(response.body ?? {}));

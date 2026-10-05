@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ItemFormComponent, type ItemFormData } from './item-form.component';
 
-/** 保存の API の応答を差し替える。 */
+/** 保存の API のレスポンスを差し替える。 */
 function stubResponse(body: unknown, status: number): void {
   vi.stubGlobal(
     'fetch',

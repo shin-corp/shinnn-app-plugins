@@ -12,7 +12,7 @@ import { validateRouteInput } from './validate.js';
 import { HttpStatus } from './http-status.js';
 
 /**
- * ハンドラに渡す要求・応答。認証を通った利用者の取り出し（`currentUser(req)`）や
+ * ハンドラに渡すリクエスト・レスポンス。認証を通った利用者の取り出し（`currentUser(req)`）や
  * ヘッダの読み書きなど、入出力以外が必要なときだけ使う。
  */
 export interface RouteContext {
@@ -20,14 +20,14 @@ export interface RouteContext {
   readonly res: express.Response;
 }
 
-/** API 定義に対応する処理。検証済みの入力を受け取り、応答の中身を返す。 */
+/** API 定義に対応する処理。検証済みの入力を受け取り、レスポンスの中身を返す。 */
 export type RouteHandler<D extends AnyRouteDef> = (
   input: RouteHandlerInput<D>,
   ctx: RouteContext,
 ) => Promise<RouteOutput<D>>;
 
 /**
- * 応答の本文を返さない API 定義かどうか。
+ * レスポンスの本文を返さない API 定義かどうか。
  *
  * `response` が `z.undefined()` のときに 204 を返すための判定。
  * zod のクラスで判定すると、依存の解決のされ方によって別インスタンスになり得るため、

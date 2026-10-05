@@ -1,7 +1,7 @@
 /**
- * @file 認証。Bearer トークン（JWT）を検証して要求に利用者を紐づける。
+ * @file 認証。Bearer トークン（JWT）を検証してリクエストに利用者を紐づける。
  *
- * JWT は「署名付きの通行証」。ログイン時に発行し、以降の要求では Authorization ヘッダで送る。
+ * JWT は「署名付きの通行証」。ログイン時に発行し、以降のリクエストでは Authorization ヘッダで送る。
  * Cookie でセッションを持たないため、CSRF 対策の middleware は入れていない（理由は server/CLAUDE.md）。
  */
 
@@ -36,7 +36,7 @@ const secretKey = new TextEncoder().encode(config.JWT_SECRET);
 /**
  * Authorization ヘッダから Bearer トークンを取り出す。
  *
- * @param req - 要求
+ * @param req - リクエスト
  * @returns トークン。取り出せなければ undefined
  */
 function extractBearerToken(req: express.Request): string | undefined {
@@ -97,7 +97,7 @@ export function isAuthenticated(): express.RequestHandler {
  * `isAuthenticated()` を付け忘れたルートで呼ぶと利用者が入っていないので、401 で止める
  * （持ち主の無い条件で問い合わせて、全員のデータを返してしまうのを防ぐ）。
  *
- * @param req - 要求
+ * @param req - リクエスト
  * @returns 認証を通った利用者
  * @throws 利用者が入っていないとき 401 の CommonException
  */

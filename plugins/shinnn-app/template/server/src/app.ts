@@ -22,10 +22,10 @@ const logger = new Log('app');
 /** リクエスト本文の上限。大きな本文でメモリを埋める攻撃を防ぐ。 */
 const jsonBodyLimit = '1mb';
 
-/** 同じ送信元からの要求を数える時間の幅[ms]。 */
+/** 同じ送信元からのリクエストを数える時間の幅[ms]。 */
 const rateLimitWindowMs = 60_000;
 
-/** 上の時間内に受け付ける要求の数。 */
+/** 上の時間内に受け付けるリクエストの数。 */
 const rateLimitMax = 300;
 
 /** API の URL の共通部分。認証も rate limit もこの配下に掛ける。 */
@@ -62,14 +62,14 @@ function toBodyParserException(err: unknown): CommonException | undefined {
 }
 
 /**
- * エラー応答（4 引数の error middleware）。
+ * エラーのレスポンスを返す（4 引数の error middleware）。
  *
- * 例外を応答へ変換する場所はここ 1 か所だけにする。
+ * 例外をレスポンスへ変換する場所はここ 1 か所だけにする。
  * Express 5 は async ハンドラの reject も自動でここへ渡すため、各ハンドラで try / catch しない。
  *
  * @param err - 受け取ったエラー
- * @param _req - 要求
- * @param res - 応答
+ * @param _req - リクエスト
+ * @param res - レスポンス
  * @param next - 次処理ハンドラ
  */
 function errorHandler(
@@ -79,7 +79,7 @@ function errorHandler(
   next: express.NextFunction,
 ): void {
   if (res.headersSent) {
-    // 応答の途中で失敗した場合は Express 既定の処理（接続を切る）に任せる。
+    // レスポンスの途中で失敗した場合は Express 既定の処理（接続を切る）に任せる。
     next(err);
     return;
   }
@@ -128,7 +128,7 @@ export function createApp({ db }: CreateAppOptions): express.Express {
       limit: rateLimitMax,
       standardHeaders: 'draft-8',
       legacyHeaders: false,
-      // 応答の形を他のエラーと揃えるため、既定の応答ではなく共通例外を通す。
+      // レスポンスの形を他のエラーと揃えるため、既定のレスポンスではなく共通例外を通す。
       handler: (_req, _res, next) => {
         next(new CommonException(HttpStatus.TOO_MANY_REQUESTS, MessageKeys.APP_RATE_LIMIT_EXCEEDED));
       },

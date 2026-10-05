@@ -34,7 +34,7 @@ const templateCi = readFileSync(join(templateDir, CI), 'utf8');
 /** テンプレートの ci.yaml のジョブ名。ブランチ保護の必須のチェックになる */
 const TEMPLATE_CHECKS = ['型検査と lint', 'テスト', '規約チェック'];
 
-/** 保護が無いときの GET の応答 */
+/** 保護が無いときの GET のレスポンス */
 const NOT_PROTECTED = { status: 404, message: 'Branch not protected' };
 
 /** main に効いているルールセットのルールを調べる GET のパス */
@@ -295,7 +295,7 @@ test('既に保護があり、必須のチェックが ci.yaml のジョブ名�
   assert.deepEqual(apiCalls(result.calls, 'PUT'), []);
 });
 
-/** リポジトリと組織のルールセットのルールが main に効いている状態（GitHub の応答と同じ形） */
+/** リポジトリと組織のルールセットのルールが main に効いている状態（GitHub のレスポンスと同じ形） */
 function activeRules() {
   const repository = { ruleset_source_type: 'Repository', ruleset_source: 'owner/app', ruleset_id: 42 };
   return [
@@ -376,7 +376,7 @@ test('ルールセットのルールを調べられない（500）: 終了コー
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /効いているルールを調べられませんでした（HTTP 500: Server Error）/);
-  assert.equal(result.summary, 'ブランチ保護: 設定できなかった（GitHub の応答が想定外）');
+  assert.equal(result.summary, 'ブランチ保護: 設定できなかった（GitHub のレスポンスが想定外）');
   assert.deepEqual(apiCalls(result.calls, 'PUT'), []);
 });
 
@@ -385,7 +385,7 @@ test('プランで使えない（GET が 403）: 「使えない」と示して�
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /ブランチ保護は使えません（private の無料プラン）。CI と週次レビューで担保します。/);
-  assert.match(result.stdout, /GitHub の応答: Upgrade to GitHub Pro/);
+  assert.match(result.stdout, /GitHub のレスポンス: Upgrade to GitHub Pro/);
   assert.equal(result.summary, 'ブランチ保護: 使えない（private の無料プラン）');
   assert.deepEqual(apiCalls(result.calls, 'PUT'), []);
 });
@@ -486,7 +486,7 @@ test('プランで使えない（PUT が 403）: 「使えない」と示して�
 
 // ---- 失敗 ----
 
-test('PUT がほかの理由で失敗する（422）: GitHub の応答を示して終了コード 1 で終える', () => {
+test('PUT がほかの理由で失敗する（422）: GitHub のレスポンスを示して終了コード 1 で終える', () => {
   const result = runProtect({ protection: NOT_PROTECTED, put: { status: 422, message: 'Validation Failed' } });
 
   assert.equal(result.status, 1);

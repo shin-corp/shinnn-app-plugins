@@ -31,12 +31,12 @@ function parseOrThrow(schema: z.ZodType, value: unknown): unknown {
 }
 
 /**
- * API 定義に沿って要求の入力を検証する。
+ * API 定義に沿ってリクエストの入力を検証する。
  *
  * API 定義で指定していない部分（body を持たない GET など）は検証も代入もしない。
  *
  * @param def - API 定義
- * @param req - 要求
+ * @param req - リクエスト
  * @returns 検証後の入力
  * @throws 検証に失敗したとき 400 の CommonException
  */

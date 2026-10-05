@@ -2,7 +2,7 @@
  * @file 例外：共通。
  *
  * アプリが意図して返すエラーはすべてこの例外で表す。
- * どこで throw しても error middleware が 1 か所で受け取り、同じ形の JSON で応答する。
+ * どこで throw しても error middleware が 1 か所で受け取り、同じ形の JSON でレスポンスを返す。
  */
 
 import { getMessage, getMessageConfig, type MessageKey, type MessageType } from '../util/message/index.js';
@@ -17,7 +17,7 @@ export interface CommonExceptionOptions {
   readonly cause?: unknown;
 }
 
-/** エラー応答の JSON。client の `call()` はこの形を前提に ApiError を組み立てる。 */
+/** エラーのレスポンスの JSON。client の `call()` はこの形を前提に ApiError を組み立てる。 */
 export interface ErrorResponseBody {
   readonly messageKey: MessageKey;
   readonly message: string;
@@ -55,9 +55,9 @@ export class CommonException extends Error {
   }
 
   /**
-   * エラー応答の本文へ変換する。
+   * エラーのレスポンスの本文へ変換する。
    *
-   * @returns 応答の JSON
+   * @returns レスポンスの JSON
    */
   toResponseBody(): ErrorResponseBody {
     if (this.details === undefined) {

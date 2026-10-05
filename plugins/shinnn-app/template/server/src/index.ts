@@ -36,7 +36,7 @@ const server = app.listen(config.PORT, (error?: Error) => {
 });
 
 /**
- * 終了要求を受けたときに、処理中の要求を終わらせてから止める。
+ * 終了要求を受けたときに、処理中のリクエストを終わらせてから止める。
  */
 function shutdown(): void {
   logger.message(MessageKeys.APP_SERVER_SHUTTING_DOWN);

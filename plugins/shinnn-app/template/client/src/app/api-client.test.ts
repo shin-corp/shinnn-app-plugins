@@ -1,4 +1,4 @@
-/** @file api-client の検証。fetch を差し替えて、組み立てた要求と応答の扱いを確かめる。 */
+/** @file api-client の検証。fetch を差し替えて、組み立てたリクエストとレスポンスの扱いを確かめる。 */
 
 import { itemsApi } from '@app/shared/api';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -12,7 +12,7 @@ function stubFetch(response: Response): ReturnType<typeof vi.fn> {
   return fetchMock;
 }
 
-/** JSON を返す応答を作る。 */
+/** JSON を返すレスポンスを作る。 */
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 }
@@ -27,7 +27,7 @@ describe('call', () => {
   });
 
   describe('正常系', () => {
-    it('クエリ付きの GET を組み立て、応答の JSON を返す', async () => {
+    it('クエリ付きの GET を組み立て、レスポンスの JSON を返す', async () => {
       const fetchMock = stubFetch(jsonResponse({ items: [], total: 0 }));
 
       const result = await call(itemsApi.listItems, { query: { limit: 5, offset: 10 } });
@@ -77,7 +77,7 @@ describe('call', () => {
       expect(new Headers(init.headers).has('Authorization')).toBe(false);
     });
 
-    it('204 の応答では undefined を返す', async () => {
+    it('204 のレスポンスでは undefined を返す', async () => {
       stubFetch(new Response(null, { status: 204 }));
 
       await expect(call(itemsApi.deleteItem, { params: { id: 'a' } })).resolves.toBeUndefined();
@@ -85,7 +85,7 @@ describe('call', () => {
   });
 
   describe('異常系', () => {
-    it('エラー応答を ApiError にして投げる', async () => {
+    it('エラーのレスポンスを ApiError にして投げる', async () => {
       stubFetch(
         jsonResponse({ messageKey: 'APP_ITEM_NOT_FOUND', message: 'item が見つかりません', details: { id: 'a' } }, 404),
       );
@@ -99,7 +99,7 @@ describe('call', () => {
       expect(apiError.details).toEqual({ id: 'a' });
     });
 
-    it('JSON でないエラー応答でも ApiError にする', async () => {
+    it('JSON でないエラーのレスポンスでも ApiError にする', async () => {
       stubFetch(new Response('<html>Bad Gateway</html>', { status: 502 }));
 
       const error = (await call(itemsApi.listItems, { query: {} }).catch((caught: unknown) => caught)) as ApiError;
