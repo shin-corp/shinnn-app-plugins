@@ -126,7 +126,7 @@ const list = await call(itemsApi.listItems, { query: { limit: 20 } });
 ```
 
 - URL を個別に組み立てない。`call()` が API 定義の `path` から組み立てる
-- 認証トークンとして、`localStorage` の `token` を Bearer で付ける（無ければ付けない）。
+- `call()` が、`localStorage` の `token` を Bearer で付ける（無ければ付けない）。
   ログイン画面はテンプレートに含めていないので、**開発中は `npm run token -w server` で発行した値を
   `localStorage.setItem('token', '<発行された値>')` で入れる**（手順は README.md）
 - 2xx 以外は `ApiError`（`status` / `messageKey` / `message` / `details`）が投げられる。
