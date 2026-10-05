@@ -42,7 +42,7 @@ router を新設したら、`server/src/app.ts` の `app.use(...)` に足す（�
 ## 6. docs とメッセージ
 
 - 新しい環境変数は、`.claude/rules/server-coding-conventions.md` の「環境変数」のとおりに書き足す
-- 仕様に関わる変更なら、その内容が `docs/仕様書.md` に入っているかを確かめる。無いか食い違うときは、書き換えずに人へ報告する（`/shinnn-app:feature` の「2. 仕様書に反映する」）
+- 仕様に関わる変更なら、その内容が `docs/仕様書.md` に入っているかを確かめる。入っていないか食い違うときは、仕様書を書き換えずに人へ報告する（`/shinnn-app:feature` の「2. 仕様書に反映する」）
 - 新しいメッセージは `.claude/rules/messages.md` の「編集の手順」で足す
 
 ## PR

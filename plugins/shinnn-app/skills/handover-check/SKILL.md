@@ -15,7 +15,7 @@ CI の `policy` job と同じ観点で、手元でも見られるようにした
 | # | 項目 | 確認方法 |
 |:--|:--|:--|
 | 1 | `main` の CI が緑 | `gh run list --branch main --limit 1` |
-| 2 | 受入条件 `AC-n` すべてに対応するテストがあり、番号が重なっていない | `node scripts/check-ac-coverage.mjs` |
+| 2 | 受入条件 `AC-n` すべてに、対応するテストがあり、番号が重なっていない | `node scripts/check-ac-coverage.mjs` |
 | 3 | 自動テストで確かめられないもの（規約が手元での確認を求めているもの）の記録が `docs/results/` にある | `.claude/rules/` で `docs/results/` への記録を求めている規約（`ai-integration.md` など）と、その対象がリポジトリにあるかを突き合わせる。`ai-integration.md` については、AI を呼ぶ機能ごとに、その「評価」の置き場所（ケース）と記録の行に当たるファイルがあるかと、記録の判定が合格かを見る |
 | 4 | API 定義の全ルートにテストがある | `node scripts/check-api-coverage.mjs` |
 | 5 | 「引き継ぎメモ」Issue が埋まっていて、最終更新が最後のマージと同じ週 | `gh issue view <handoverIssue>` と `git log -1 --date=iso main` |
