@@ -17,7 +17,7 @@ export interface TestServer {
   /** `${baseUrl}/health` のように使う。末尾に `/` は付かない。 */
   readonly baseUrl: string;
   /**
-   * API 定義から要求先の URL を組み立てる。
+   * API 定義からリクエスト先の URL を組み立てる。
    *
    * URL を手で書かず定義を参照することで、パスを変えたときにテストも一緒に動く。
    * クエリ文字列は戻り値に足す（例: `${server.url(itemsApi.listItems)}?limit=1`）。
@@ -42,7 +42,7 @@ export async function startServer(): Promise<TestServer> {
 
   const server = await new Promise<ReturnType<typeof app.listen>>((resolve, reject) => {
     // アドレスを省くと :: で待ち受け、別のアプリが 127.0.0.1 だけで使っている番号も割り当てられることがある。
-    // 要求は 127.0.0.1 に送るので、そのアプリに届いて落ちる。送る先と同じアドレスで待ち受ける。
+    // リクエストは 127.0.0.1 に送るので、そのアプリに届いて落ちる。送る先と同じアドレスで待ち受ける。
     const listening = app.listen(0, '127.0.0.1', (error?: Error) => {
       if (error) {
         reject(error);

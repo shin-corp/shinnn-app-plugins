@@ -13,7 +13,7 @@ import { buildPath, type AnyRouteDef, type PathParams, type RouteInput, type Rou
 /** 認証トークンの保存先（localStorage のキー）。 */
 const TOKEN_STORAGE_KEY = 'token';
 
-/** サーバーがエラーを返したときの応答本文。 */
+/** サーバーがエラーを返したときのレスポンスの本文。 */
 interface ErrorBody {
   messageKey: string;
   message: string;
@@ -75,7 +75,7 @@ function readToken(): string | null {
   }
 }
 
-/** エラー応答の本文を読む。JSON でないときは HTTP の状態だけで組み立てる。 */
+/** エラーのレスポンスの本文を読む。JSON でないときは HTTP の状態だけで組み立てる。 */
 async function readErrorBody(response: Response): Promise<ErrorBody> {
   try {
     const body = (await response.json()) as Partial<ErrorBody>;
@@ -83,7 +83,7 @@ async function readErrorBody(response: Response): Promise<ErrorBody> {
       return { messageKey: body.messageKey, message: body.message, details: body.details };
     }
   } catch {
-    // JSON として読めない応答（プロキシのエラーページなど）は下の既定値にする。
+    // JSON として読めないレスポンス（プロキシのエラーページなど）は下の既定値にする。
   }
   return { messageKey: 'APP_UNEXPECTED_ERROR', message: `サーバーがエラーを返しました（${response.status}）` };
 }

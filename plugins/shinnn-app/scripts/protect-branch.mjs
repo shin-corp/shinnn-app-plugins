@@ -17,7 +17,7 @@
  * - ルールセット（新しい方式のブランチ保護。リポジトリか組織の設定）のルールが、既にそのブランチに 1 つでも効いている。
  *   従来の保護を足すと 2 つの設定が重なって分かりにくくなるので足さず、効いているルールの種類と必須のチェックを示す
  * - プランか権限のために使えない（例: 無料プランの private のリポジトリ）。CI と週次レビューで担保する
- * ci.yaml のジョブ名を読めない、GitHub が想定外の応答を返した、などは終了コード 1。
+ * ci.yaml のジョブ名を読めない、GitHub が想定外のレスポンスを返した、などは終了コード 1。
  *
  * 最後の行に 1 行の要約（例「ブランチ保護: 設定した（必須のチェック 3 つ）」）を出す。
  * README の「有効な機能」表と決定記録にそのまま書ける形にしてある。
@@ -266,7 +266,7 @@ function notApplied(reason, message, how) {
 function unavailable(reason, response) {
   console.log(`[shinnn-app:setup] ブランチ保護は使えません（${reason}）。CI と週次レビューで担保します。`);
   if (response) {
-    console.log(`  GitHub の応答: ${response}`);
+    console.log(`  GitHub のレスポンス: ${response}`);
   }
   return { code: 0, summary: `${SUMMARY}: 使えない（${reason}）` };
 }
@@ -290,8 +290,8 @@ function gh(root, args, input) {
 }
 
 /**
- * gh api の失敗を、HTTP の状態コードと GitHub の応答の message に分ける。
- * gh は、GitHub の応答の本文を標準出力に、`gh: <message> (HTTP <状態コード>)` を標準エラーに出す。
+ * gh api の失敗を、HTTP の状態コードと GitHub のレスポンスの message に分ける。
+ * gh は、GitHub のレスポンスの本文を標準出力に、`gh: <message> (HTTP <状態コード>)` を標準エラーに出す。
  */
 function apiError(result) {
   let body = null;
@@ -302,7 +302,7 @@ function apiError(result) {
   }
   const status = Number(body?.status) || Number(/\(HTTP (\d{3})\)/.exec(result.stderr)?.[1]) || null;
   const message = typeof body?.message === 'string' ? body.message : firstLine(result.stderr);
-  return { status, message: message || '応答がありません' };
+  return { status, message: message || 'レスポンスがありません' };
 }
 
 /**
@@ -425,7 +425,7 @@ function describeRuleset(rule) {
 /**
  * ルールセットのルールが既に効いているときに、ルールの種類と必須のチェックを示して終える。
  *
- * @param rules GET repos/{owner}/{repo}/rules/branches/{branch} の応答（1 件以上）
+ * @param rules GET repos/{owner}/{repo}/rules/branches/{branch} のレスポンス（1 件以上）
  */
 function alreadyRuled(rules, target, expected) {
   const types = [...new Set(rules.map((rule) => rule.type))];
@@ -524,7 +524,7 @@ function main() {
 
   const readError = apiError(current);
 
-  // 保護が無いという 404 だけが、設定に進んでよい応答
+  // 保護が無いという 404 だけが、設定に進んでよいレスポンス
   if (readError.status !== 404 || readError.message !== NOT_PROTECTED) {
     const readUnavailable = unavailableOutcome(readError, repo);
 
@@ -539,7 +539,7 @@ function main() {
       );
     }
     return failed(
-      'GitHub の応答が想定外',
+      'GitHub のレスポンスが想定外',
       `${target} の保護を調べられませんでした（HTTP ${readError.status ?? '不明'}: ${readError.message}）。`,
     );
   }
@@ -557,7 +557,7 @@ function main() {
     return (
       unavailableOutcome(rulesError, repo) ??
       failed(
-        'GitHub の応答が想定外',
+        'GitHub のレスポンスが想定外',
         `${target} に効いているルールを調べられませんでした（HTTP ${rulesError.status ?? '不明'}: ${rulesError.message}）。`,
       )
     );
@@ -571,7 +571,7 @@ function main() {
   }
   if (!Array.isArray(activeRules)) {
     return failed(
-      'GitHub の応答が想定外',
+      'GitHub のレスポンスが想定外',
       `${target} に効いているルールの一覧を読めませんでした（${firstLine(rules.stdout)}）。`,
     );
   }

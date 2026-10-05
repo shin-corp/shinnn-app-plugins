@@ -22,7 +22,7 @@ export type HttpStatusCode = (typeof HttpStatus)[keyof typeof HttpStatus];
  * `res.status()` に渡せる値へ丸める。
  *
  * Express 5 の `res.status()` は 100〜999 の整数以外で例外を投げる。
- * 想定外の値を持つエラーが来ても応答を返せるようにする。
+ * 想定外の値を持つエラーが来てもレスポンスを返せるようにする。
  *
  * @param statusCode - 丸める前のステータスコード
  * @returns 100〜999 の整数

@@ -1,8 +1,8 @@
 /**
  * @file item API のテスト。新しい機能のテストはこのファイルを手本にする。
  *
- *  - 本番と同じ組み立てのサーバーへ native fetch で要求する（内部の関数を直接呼ばない）
- *  - 要求先の URL は API 定義から組み立てる（`server.url(itemsApi.getItem, { id })`）
+ *  - 本番と同じ組み立てのサーバーへ native fetch でリクエストを送る（内部の関数を直接呼ばない）
+ *  - リクエスト先の URL は API 定義から組み立てる（`server.url(itemsApi.getItem, { id })`）
  *  - describe は 正常系 / 異常系 / エッジケース で分ける
  *  - テスト名の先頭に docs/仕様書.md の受入条件の番号（AC-n）を書く
  *  - サーバーと DB はファイルごとに 1 回作り、テストごとにデータを空にするので、実行順に結果が左右されない
@@ -348,7 +348,7 @@ describe('エッジケース', () => {
     expect(res.status).toBe(400);
   });
 
-  it('AC-2 description を省略すると応答に含まれない', async () => {
+  it('AC-2 description を省略するとレスポンスに含まれない', async () => {
     const created = await createItem({ name: '説明なし' });
 
     expect(created).not.toHaveProperty('description');

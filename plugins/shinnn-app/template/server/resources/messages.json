@@ -21,7 +21,7 @@
   },
   "APP_REQUEST_FAILED": {
     "type": "ERROR",
-    "message": "要求の処理に失敗しました。%1 %2"
+    "message": "リクエストの処理に失敗しました。%1 %2"
   },
   "APP_VALIDATION_FAILED": {
     "type": "WARN",
@@ -45,7 +45,7 @@
   },
   "APP_RATE_LIMIT_EXCEEDED": {
     "type": "WARN",
-    "message": "要求が多すぎます。しばらく待ってからやり直してください。"
+    "message": "リクエストが多すぎます。しばらく待ってからやり直してください。"
   },
   "APP_INTERNAL_ERROR": {
     "type": "ERROR",

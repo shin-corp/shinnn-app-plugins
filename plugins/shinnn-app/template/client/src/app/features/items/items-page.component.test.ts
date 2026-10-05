@@ -28,7 +28,7 @@ const items: Item[] = [
   },
 ];
 
-/** 一覧 API の応答を差し替える。 */
+/** 一覧 API のレスポンスを差し替える。 */
 function stubListResponse(body: unknown, status = 200): void {
   vi.stubGlobal(
     'fetch',
@@ -38,7 +38,7 @@ function stubListResponse(body: unknown, status = 200): void {
   );
 }
 
-/** 一覧 API が応答を返さないままにする（読み込み中の状態を作る）。 */
+/** 一覧 API がレスポンスを返さないままにする（読み込み中の状態を作る）。 */
 function stubPendingResponse(): void {
   vi.stubGlobal(
     'fetch',

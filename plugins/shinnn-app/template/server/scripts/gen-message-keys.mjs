@@ -32,7 +32,7 @@ const contents = `/**
  * 生成元は resources/messages.json。追加・変更したら \`npm run messages -w server\` を実行する。
  */
 
-/** メッセージキー。値はエラー応答の messageKey としてそのまま画面へ返る。 */
+/** メッセージキー。値はエラーのレスポンスの messageKey としてそのまま画面へ返る。 */
 export const MessageKeys = {
 ${entries}
 } as const;

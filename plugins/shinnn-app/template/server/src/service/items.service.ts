@@ -86,7 +86,7 @@ function isUniqueViolation(err: unknown): boolean {
  * 同じ持ち主の item に同じ name が既にあれば 409 で失敗させる。
  *
  * これは分かりやすいエラーを返すための事前確認で、同時実行の担保ではない
- * （確認と登録の間に別の要求が割り込める）。最終的な担保は DB の一意制約が行う。
+ * （確認と登録の間に別のリクエストが割り込める）。最終的な担保は DB の一意制約が行う。
  *
  * @param db - DB のハンドル（重複確認と登録を同じトランザクションで行うため呼び出し側から渡す）
  * @param ownerId - 持ち主
@@ -148,7 +148,7 @@ export async function getItem(db: AppDbExecutor, ownerId: string, id: string): P
  *
  * 事前確認は分かりやすいエラーのために行い、同時に同じ name を登録しようとした場合は
  * 一意制約に任せて登録を見送る（`onConflictDoNothing`）。行が返らなければ重複なので 409 にする。
- * こうしないと、確認をすり抜けた後発の要求が一意制約違反の例外で 500 になる。
+ * こうしないと、確認をすり抜けた後発のリクエストが一意制約違反の例外で 500 になる。
  *
  * @param db - DB のハンドル
  * @param ownerId - 持ち主（作成した利用者）

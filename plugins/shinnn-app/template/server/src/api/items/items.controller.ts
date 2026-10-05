@@ -38,7 +38,7 @@ export function createItemsController(db: AppDatabase): ItemsController {
     updateItem: (input, { req }) => itemsService.updateItem(db, currentUser(req).id, input.params.id, input.body),
     deleteItem: async (input, { req }) => {
       await itemsService.deleteItem(db, currentUser(req).id, input.params.id);
-      // 204 で本文を返さないため、応答の中身は undefined になる。
+      // 204 で本文を返さないため、レスポンスの中身は undefined になる。
       return undefined;
     },
   };
