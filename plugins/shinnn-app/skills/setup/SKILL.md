@@ -125,7 +125,7 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
 |:--|:--|
 | root の `CLAUDE.md` / `.claude/rules/` / `settings.json` の deny | 構成と規約が同じでないと、シン株式会社が引き継げない |
 | import 制約 lint | 層をまたぐ参照を人の注意ではなく機械で止める |
-| husky の pre-commit | 壊れたコードが履歴に入らないようにする |
+| husky の pre-commit | コミットするファイルの lint のエラーと書式の崩れを、その場で止める（型エラーとテストの失敗は CI が止める） |
 | husky の pre-push | 誤って `main` に push したときに断る安全網（確実に止めるのは手順 5 の 12 のブランチ保護） |
 | CI の check / test / policy | 品質の判断を人の気分に依存させない |
 | Issue テンプレートとラベル | 進捗を Issues で管理するので、形が揃っていないと読めない |
