@@ -189,18 +189,18 @@ PR 本文の冒頭（`Closes` の次）と、マージした後（人がマー�
 入れるのは各自の手元。画面の見た目の案を立てる `/shinnn-app:add-screen` が使う）。配布元に無いと出て失敗したら、
 `claude plugin marketplace add anthropics/claude-plugins-official` を実行してから入れ直す。
 
-`.github/workflows/progress-snapshot.yaml` を消したときは、マージした後に、それが残っていたために設定できなかったブランチ保護を
+`.github/workflows/progress-snapshot.yaml` を消したときは、マージした後に、それが残っていたために設定していなかったブランチ保護を
 設定できる。
 
 1. `node ${CLAUDE_PLUGIN_ROOT}/scripts/protect-branch.mjs --dry-run` で設定する内容を見せて確認を取り、
    `--dry-run` を外して実行する（`/shinnn-app:setup` の手順 5 の 12 と同じ）
 2. 最後の行に出る 1 行の要約（`ブランチ保護: …` で始まる）で、`README.md` の「有効な機能」表のブランチ保護の行を書き換え、
    `docs/decisions/` の setup の記録（`<番号>-setup.md`）に書き足す。Issue → ブランチ → PR で入れる。
-   スクリプトが終了コード 1 で終わったとき（設定できなかった）の扱いは、`/shinnn-app:setup` の「失敗したとき」の、
-   ブランチ保護のスクリプトが終了コード 1 で終わる項目と同じ
+   スクリプトが終了コード 1 で終わったとき（設定できなかった）は、`/shinnn-app:setup` の「失敗したとき」にある、
+   ブランチ保護のスクリプトが終了コード 1 で終わる項目に従う
 
-マージを人が行い、その場で 1・2 を行えないときは、PR 本文と「引き継ぎメモ」Issue に「マージの後にブランチ保護を設定する
-（`/shinnn-app:update-rules` の手順 5 の終わり）」と残す。
+マージを人が行い、その場で 1・2 を行えないときは、PR 本文と「引き継ぎメモ」Issue の「引き継ぎの注意」に
+「マージの後に setup を再実行して、ブランチ保護を設定する」と残す。
 
 ## 6. 適用しない選択
 
