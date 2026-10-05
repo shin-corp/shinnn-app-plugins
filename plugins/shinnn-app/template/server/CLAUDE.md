@@ -1,7 +1,7 @@
 # server（@app/server）
 
 Express 5 + PostgreSQL 16（Drizzle ORM）の API サーバー。TypeScript の ESM で書く。
-画面（client）とやり取りするデータの形は `shared` の API 定義が正本で、ここには書かない。
+画面（client）とやり取りするデータの形は `shared` の API 定義が正で、ここには書かない。
 
 ## よく使うコマンド
 
@@ -17,7 +17,7 @@ Express 5 + PostgreSQL 16（Drizzle ORM）の API サーバー。TypeScript の 
 | `npm run token -w server`       | 開発中に画面へ持たせる JWT を 1 つ発行        |
 
 `dev` / `db:migrate` / `seed` は `--env-file-if-exists=.env` で起動するので、`server/.env`（`.env.example` をコピーしたもの）が
-あれば自動で読み込む。無い場合でも、既定値だけで足りる値なら起動する。
+あれば自動で読み込む。無い場合でも、必要な値が既定値だけで足りるなら起動する。
 
 `check` は先に `@app/shared` のビルドが要る（`npm run build` か `npm run build -w shared`）。
 
@@ -26,7 +26,7 @@ Express 5 + PostgreSQL 16（Drizzle ORM）の API サーバー。TypeScript の 
 1. `src/index.ts` が `config.ts` を読む（環境変数を zod で検証。ここで落ちたら値が足りない）
 2. `createDb()` で DB のハンドルを作る（接続は最初の問い合わせまで張らない）
 3. `createApp()` が middleware → ルーター → 404 → error middleware の順に組み立てる
-4. `app.listen(PORT)`。`SIGTERM` / `SIGINT` で処理中の要求を終わらせてから止める
+4. `app.listen(PORT)`。`SIGTERM` / `SIGINT` で処理中のリクエストを終わらせてから止める
 
 `app.ts`（組み立て）と `index.ts`（待ち受け）は分ける。テストは `app.ts` だけを使い、`app.listen(0, '127.0.0.1')` で空きポートに立てる。
 
@@ -46,7 +46,7 @@ Express 5 + PostgreSQL 16（Drizzle ORM）の API サーバー。TypeScript の 
 | `LOG_LEVEL`    | ログの下限レベル                                                     |
 | `DB_DRIVER`    | `pg`（既定）か `pglite`。pglite は PostgreSQL 無しで動かすためのもの |
 
-`DB_DRIVER=pglite` のデータは `server/.pglite/`（git 管理外）に残り、`index.ts` が起動のたびにマイグレーションを適用する。
+`DB_DRIVER=pglite` のデータは `server/.pglite/`（git 管理外）に残る。pglite のときは、`index.ts` が起動のたびにマイグレーションを適用する。
 サーバーを動かしている間は、`db:migrate` や `seed` で同じ DB を開かない（別のプロセスから同時に開けない）。
 
 `process.env` を直接読んでよい場所は、`.claude/rules/server-coding-conventions.md` の「環境変数」に従う。
@@ -82,15 +82,15 @@ api/<機能>/{index.ts, <機能>.controller.ts}  →  service/  →  db/
 7. `express.urlencoded` の `extended` の既定は false
 8. `app.listen(port, cb)` の `cb` にはエラー（ポートの重複など）が渡る
 
-error middleware は 4 引数で `app.ts` に 1 か所だけ置く。エラー応答は `{ messageKey, message, details? }` の形で返す。
+error middleware は 4 引数で `app.ts` に 1 か所だけ置く。エラーのレスポンスは `{ messageKey, message, details? }` の形で返す。
 
 ## セキュリティ既定
 
 - `helmet` でセキュリティ関連のヘッダを付ける。`X-Powered-By` は出さない
 - CORS は `CORS_ORIGIN` を明示する（`*` は使わない）。Cookie を使わないので `credentials` は許可しない
-- `express.json({ limit })` で本文の大きさに上限を置き、`/api` 配下に rate limit を掛ける
-- **認証（ログインしているか）と認可（そのデータを扱ってよいか）は別。** 利用者ごとのデータは持ち主の列を置き、
-  service のすべての問い合わせを持ち主で絞る。他人のデータは 404 を返す（`.claude/rules/server-coding-conventions.md`）
+- `express.json({ limit })` でリクエストの本文の大きさに上限を置き、`/api` 配下に rate limit を掛ける
+- **認証（ログインしているか）と認可（そのデータを扱ってよいか）は別。** 利用者ごとのデータには持ち主の列を置き、
+  service のすべての問い合わせを持ち主で絞る。他人のデータには 404 を返す（`.claude/rules/server-coding-conventions.md`）
 - 認証は `isAuthenticated()`（Bearer トークン）。署名アルゴリズム（`alg`）・受け取り手（`aud`）・有効期限（`exp`）を明示して検証する（`exp` は `requiredClaims` で必須にする。無いトークンを通さないため）
 - **CSRF 対策の middleware は入れていない**。認証情報を Cookie で持たず、毎回 `Authorization` ヘッダで送るため、他サイトからの自動送信では認証が通らない。Cookie セッションを導入するなら、その時にトークン型の対策を足す
 - 静的ファイルは配信しない（画面は別に配信する）
@@ -103,5 +103,5 @@ error middleware は 4 引数で `app.ts` に 1 か所だけ置く。エラー�
 - リクエスト先の URL の組み立て方は、`.claude/rules/testing.md` の「サーバーのテスト」に従う。
   手本はサンプルの `tests/items.test.ts`（サンプルの `items` を消した後は、既存の機能を手本にする）
 - `describe` の分け方と、テスト名に受入条件の番号（`AC-1` など）を書く決まりは、`.claude/rules/testing.md` の「テスト名」
-- DB はテストファイルごとに PGlite を作って本番と同じマイグレーションを流し、テストごとに `reset()` でデータを空にする
+- DB はテストファイルごとに PGlite を作って、本番と同じマイグレーションを流す。データはテストごとに `reset()` で空にする
 - 実装とテストが食い違ったときは、まず実装が正しいかを確かめる。仕様書に照らして実装が誤っていれば実装を直す

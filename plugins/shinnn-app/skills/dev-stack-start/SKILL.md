@@ -59,4 +59,4 @@ description: 開発用のサーバー群（PostgreSQL・API サーバー・画�
 | DB に接続できない | PostgreSQL が起動していない / 接続先が違う | 起動を確認し、`.env` の接続先を人に確認してもらう。`.env` を直したら API サーバーを止めて起動し直す |
 | 起動後の最初の書き込みだけが失敗し、2 回目は通る（Windows） | `server/package.json` の `dev` が `node --watch` で始まっている。`node --watch` は、読み込んだファイルの最終アクセス日時が書き換わると再起動する | `dev` を `tsx watch --env-file-if-exists=.env src/index.ts` に置き換えることを利用者に提案する |
 | テーブルが無い | マイグレーション未適用 | `/shinnn-app:db-migrate` |
-| 画面から API に届かない | proxy の設定 | `client` の proxy 設定の転送先と API のポートを突き合わせる |
+| 画面から API に届かない | proxy の設定 | `client` の proxy 設定の転送先と API のポートを見比べる |

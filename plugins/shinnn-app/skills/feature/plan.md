@@ -39,7 +39,7 @@
    - タイトルは `[機能] <できるようになること>`、ラベルは `type:feature` と、依存が無ければ `status:next`、あれば `status:blocked`
    - 受入条件の番号は、計画の Issue 同士でも重ならないように通しで振る
 3. 親 Issue の本文を、下の形で書き直す。**この「作る順番」が計画の正**
-4. 子 Issue を親 Issue の sub-issue として紐づける。GitHub の画面で進み具合が見えるようにするためで、失敗しても止めない
+4. 子 Issue を親 Issue の sub-issue として紐づける。紐づけるのは、GitHub の画面で進み具合が見えるようにするため。紐づけに失敗しても止めない
 
    ```
    id=$(gh api repos/{owner}/{repo}/issues/<子の番号> --jq .id)

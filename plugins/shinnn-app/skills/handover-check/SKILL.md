@@ -16,7 +16,7 @@ CI の `policy` job と同じ観点で、手元でも見られるようにした
 |:--|:--|:--|
 | 1 | `main` の CI が緑 | `gh run list --branch main --limit 1` |
 | 2 | 受入条件 `AC-n` すべてに対応するテストがある | `node scripts/check-ac-coverage.mjs` |
-| 3 | 自動テストで確かめられないもの（規約が手元での確認を求めているもの）の記録が `docs/results/` にある | `.claude/rules/` で `docs/results/` への記録を求めている規約（`ai-integration.md` など）と、その対象がリポジトリにあるかを突き合わせる。`ai-integration.md` は、AI を呼ぶ機能ごとに、その「評価」の置き場所（ケース）と記録の行に当たるファイルがあり、記録の判定が合格かを見る |
+| 3 | 自動テストで確かめられないもの（規約が手元での確認を求めているもの）の記録が `docs/results/` にある | `.claude/rules/` で `docs/results/` への記録を求めている規約（`ai-integration.md` など）と、その対象がリポジトリにあるかを突き合わせる。`ai-integration.md` については、AI を呼ぶ機能ごとに、その「評価」の置き場所（ケース）と記録の行に当たるファイルがあるかと、記録の判定が合格かを見る |
 | 4 | API 定義の全ルートにテストがある | `node scripts/check-api-coverage.mjs` |
 | 5 | 「引き継ぎメモ」Issue が埋まっていて、最終更新が最後のマージと同じ週 | `gh issue view <handoverIssue>` と `git log -1 --date=iso main` |
 | 6 | open Issue すべてに `status` ラベルと次の一手がある | `gh issue list --state open --json number,labels,title` |
@@ -26,7 +26,7 @@ CI の `policy` job と同じ観点で、手元でも見られるようにした
 | 10 | すべての TODO に Issue 番号が付いている | `src/` の `TODO` を検索し、`#n` の無いものを列挙 |
 | 11 | `src/` に `console.log` と `any` が無い | `npm run lint` が緑であること |
 | 12 | 標準バージョンが最新 | `.claude/rules/.standards-version` が `${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/.standards-version`（配布されている標準のバージョン）と同じ。プラグインの `version` とは別の値なので比べない |
-| 13 | README に 起動 / テスト / デプロイ が 3 コマンドで書かれている | README を読む |
+| 13 | README に起動 / テスト / デプロイが 3 コマンドで書かれている | README を読む |
 | 14 | 1 MB 超のファイルと実データが git に入っていない | `git ls-files` のサイズ確認 |
 | 15 | シン株式会社の担当者のアカウントが maintain 権限を持っている | `gh api repos/{owner}/{repo}/collaborators` |
 | 16 | 必須項目が宣言も実体も残っている（ファイル・deny・規約） | `node scripts/check-mandatory.mjs` |

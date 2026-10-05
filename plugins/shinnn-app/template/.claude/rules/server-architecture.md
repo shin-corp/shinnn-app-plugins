@@ -9,7 +9,7 @@ paths:
 
 # アーキテクチャ規約（server）
 
-サーバーは **`api/` → `service/` → `db/` の一方向**です。層を増やしません。
+サーバーの層は **`api/` → `service/` → `db/` の一方向**です。層を増やしません。
 書き方は [server-coding-conventions.md](server-coding-conventions.md)、DB は [db.md](db.md) を参照。
 
 「（検査: …）」には、その決まりを機械で確かめる仕組みを書いています。付いていない決まりは、レビューだけで確かめます。

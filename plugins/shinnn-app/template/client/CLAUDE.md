@@ -35,9 +35,9 @@ Claude Code が `client/` 配下で作業する際の指針。
 | `npm run test -w client`  | Vitest（`src/**/*.test.ts`）                                        |
 
 `dev` の前に `server/` が localhost:3000 で起動している必要がある（`proxy.conf.json`）。
-`@app/shared` を先に建てる必要がある（`npm run build -w shared`。ルートの `npm run build` なら順に建つ）。
+`@app/shared` を先にビルドする必要がある（`npm run build -w shared`。ルートの `npm run build` なら順にビルドする）。
 ルートの `npm run dev` は `shared` も監視してビルドし直す。`@app/shared` は開発サーバーの事前バンドル（依存を最初に 1 回だけ
-まとめてキャッシュする仕組み）から外してある（`angular.json` の `prebundle.exclude`）。外さないと、`shared` を建て直しても
+まとめてキャッシュする仕組み）から外してある（`angular.json` の `prebundle.exclude`）。外さないと、`shared` をビルドし直しても
 画面は古い API 定義のまま動く。
 
 ## ディレクトリ構成
@@ -85,7 +85,7 @@ client/
 | 子への受け渡し | `input()` か `MAT_DIALOG_DATA`。子が親の状態を直接読み書きしない                                                                           |
 
 - `@for` の追跡は `track item.id` / `track $index` を直書きする。`trackBy` ヘルパーは作らない
-- 派生値は `computed()`。`effect()` + `set()` で導出値を作らない（`effect()` は通知など副作用だけ）
+- 派生値は `computed()`。`effect()` + `set()` で派生値を作らない（`effect()` は通知など副作用だけ）
 - ファイル名は kebab-case。ページコンポーネントは `export default class`（遅延読み込み用）
 - コメント・JSDoc は日本語
 
@@ -94,8 +94,8 @@ client/
 - 見た目は **Tailwind のユーティリティ + Material の部品**で作る。`styles.css` にクラス定義を書き足さない
 - `styles.css` がカスケードレイヤの順を `tailwind-base → material → tailwind-utilities` に固定している。
   Material の部品自身の CSS はレイヤの外に入るので、部品の要素に付けたユーティリティは、部品が決めている性質
-  （並べ方・余白・揃え）には効かない。並べ方や余白は部品の中の `div` に付ける（`.claude/rules/client-styling.md`）
-- 配色は Material のシステム変数（`--mat-sys-*`）。`@theme` で Tailwind の色（`text-primary` など）に流し込んである。
+  （並べ方・余白・揃え）には適用されない。並べ方や余白は部品の中の `div` に付ける（`.claude/rules/client-styling.md`）
+- 配色は Material のシステム変数（`--mat-sys-*`）。`@theme` で Tailwind の色（`text-primary` など）に割り当ててある。
   新しい色を直値で書かない
 - 配色と書体は `styles.css` の 1 か所で決める（画面だけで使うものも、役割の名前で `@theme` に足す）。
   方針は `docs/仕様書.md` の「見た目の方針」、入れ方の決まりは `.claude/rules/client-styling.md` の「テーマと書体」
@@ -126,12 +126,12 @@ const list = await call(itemsApi.listItems, { query: { limit: 20 } });
 ```
 
 - URL を個別に組み立てない。`call()` が API 定義の `path` から組み立てる
-- 認証トークンは `localStorage` の `token` を Bearer で付ける（無ければ付けない）。
+- 認証トークンとして、`localStorage` の `token` を Bearer で付ける（無ければ付けない）。
   ログイン画面はテンプレートに含めていないので、**開発中は `npm run token -w server` で発行した値を
   `localStorage.setItem('token', '<発行された値>')` で入れる**（手順は README.md）
 - 2xx 以外は `ApiError`（`status` / `messageKey` / `message` / `details`）が投げられる。
   画面は `describeError()` で文言にするか、`messageKey` を見て出し分ける
-- 型が `any` に落ちたら、API 定義の `response` が未指定であることを疑う
+- 型が `any` になったら、API 定義の `response` が未指定でないかを確かめる
 
 ## コーディング規約
 

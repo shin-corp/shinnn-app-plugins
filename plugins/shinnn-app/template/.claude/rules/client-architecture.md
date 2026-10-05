@@ -44,7 +44,7 @@ client/src/app/features/<機能>/   画面（signal で状態を持つ）
 
 ## import の許可関係
 
-次の表は、手本のコードの主な依存の向きです。
+次の表には、手本のコードの主な依存の向きを書いています。
 
 ```
 features/<機能>/  → api-client.ts, @app/shared（zod スキーマと型）,
