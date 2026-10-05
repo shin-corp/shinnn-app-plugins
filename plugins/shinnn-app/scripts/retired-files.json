@@ -5,7 +5,7 @@
   },
   {
     "path": "docs/progress.md",
-    "reason": "進捗の正本は GitHub の Issue・PR・CI で、写しのファイルは置かない"
+    "reason": "進捗は GitHub の Issue・PR・CI で管理し、写しのファイルは置かない"
   },
   {
     "path": ".github/workflows/e2e-nightly.yaml",
