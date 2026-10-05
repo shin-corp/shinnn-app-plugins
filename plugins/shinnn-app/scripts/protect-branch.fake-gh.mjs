@@ -13,14 +13,17 @@
  * FAKE_GH_STATE の形:
  *   missing:    true なら gh が無い（起動できない）
  *   loggedIn:   false なら、本物と同じくログインを求めて終了コード 4 で終わる
- *   repo:       { nameWithOwner, viewerPermission }。null なら remote が無いときと同じく失敗する
+ *   repo:       `gh repo view` の結果。{ nameWithOwner, viewerPermission }。null なら remote が無いときと同じく失敗する
  *   protection: 従来の方式の保護の GET のレスポンス。{ status: 200, body } か { status: 404 / 403 など, message }。
  *               既定は 404（Branch not protected）
  *   rules:      ルールセットのルールの GET（repos/{o}/{r}/rules/branches/{b}）のレスポンス。{ status: 200, body: [ルール] } か
  *               { status: 403 など, message }。既定は空の配列（ルールが無い）
  *   put:        PUT のレスポンス。{ status: 200 } か { status: 403 / 422 など, message }
- * protection・rules・put には、GitHub のレスポンスの代わりに次の 2 つも書ける。
- *   { timeout: true }:            gh が時間内に終わらず、spawnSync が止めたときと同じ結果を返す
+ * repo・protection・rules・put には、次の形も書ける。
+ *   { timeout: true }: gh が時間内に終わらず、spawnSync が止めたときと同じ結果を返す。
+ *                      ただし、呼ぶ側が spawnSync に数値の timeout を渡していなければ、例外を投げてテストを落とす
+ *                      （timeout が無いと、本物の spawnSync は gh が終わるまで待ち続ける）
+ * protection・rules・put には、次の形も書ける。
  *   { exitCode, stdout, stderr }: gh の終了コードと出力をそのまま返す（stdout と stderr の既定は空）
  */
 import * as childProcess from 'node:child_process';
@@ -53,8 +56,20 @@ function httpError(status, message) {
   return result(1, body, `gh: ${message} (HTTP ${status})\n`);
 }
 
-/** spawnSync が timeout の時間を過ぎて gh を止めたときの結果 */
-function timedOut() {
+/**
+ * spawnSync が timeout の時間を過ぎて gh を止めたときの結果。
+ * 呼ぶ側が数値の timeout を渡していなければ、例外を投げる（本物の spawnSync は gh を止めない）。
+ *
+ * @param options 呼ぶ側が spawnSync に渡したオプション
+ */
+function timedOut(options) {
+  if (typeof options.timeout !== 'number') {
+    throw new Error(
+      'fake gh: spawnSync に数値の timeout が渡されていないので、時間切れを答えられません。' +
+        '本物の gh なら、終わるまで待ち続けます。',
+    );
+  }
+
   const error = Object.assign(new Error('spawnSync gh ETIMEDOUT'), {
     code: 'ETIMEDOUT',
     syscall: 'spawnSync gh',
@@ -63,10 +78,14 @@ function timedOut() {
   return { ...result(null), signal: 'SIGTERM', error };
 }
 
-/** レスポンスの定義（冒頭の FAKE_GH_STATE の protection・rules・put の形）を結果にする */
-function respond(response) {
+/**
+ * レスポンスの定義（冒頭の FAKE_GH_STATE の protection・rules・put の形）を結果にする。
+ *
+ * @param options 呼ぶ側が spawnSync に渡したオプション
+ */
+function respond(response, options) {
   if (response.timeout === true) {
-    return timedOut();
+    return timedOut(options);
   }
   if (response.exitCode !== undefined) {
     return result(response.exitCode, response.stdout ?? '', response.stderr ?? '');
@@ -77,8 +96,12 @@ function respond(response) {
   return httpError(response.status, response.message);
 }
 
-/** gh の引数に答える */
-function fakeGh(state, args) {
+/**
+ * gh の引数に答える。
+ *
+ * @param options 呼ぶ側が spawnSync に渡したオプション
+ */
+function fakeGh(state, args, options) {
   if (args[0] === '--version') {
     return result(0, 'gh version 0.0.0 (fake)\n');
   }
@@ -94,6 +117,9 @@ function fakeGh(state, args) {
     if (state.repo === null) {
       return result(1, '', 'no git remotes found\n');
     }
+    if (state.repo?.timeout === true) {
+      return timedOut(options);
+    }
     return result(0, JSON.stringify(state.repo ?? { nameWithOwner: 'owner/app', viewerPermission: 'ADMIN' }));
   }
   if (args[0] === 'api') {
@@ -101,13 +127,13 @@ function fakeGh(state, args) {
     const method = methodIndex === -1 ? 'GET' : args[methodIndex + 1];
     const path = args.find((arg) => arg.startsWith('repos/')) ?? '';
     if (method === 'GET' && /\/rules\/branches\//.test(path)) {
-      return respond(state.rules ?? { status: 200, body: [] });
+      return respond(state.rules ?? { status: 200, body: [] }, options);
     }
     if (method === 'GET' && /\/protection$/.test(path)) {
-      return respond(state.protection ?? { status: 404, message: 'Branch not protected' });
+      return respond(state.protection ?? { status: 404, message: 'Branch not protected' }, options);
     }
     if (method === 'PUT') {
-      return respond(state.put ?? { status: 200, body: {} });
+      return respond(state.put ?? { status: 200, body: {} }, options);
     }
   }
   return result(1, '', `fake gh: 対応していないコマンドです（${args.join(' ')}）\n`);
@@ -130,5 +156,5 @@ export function spawnSync(command, args = [], options = {}) {
     });
     return { ...result(null), error };
   }
-  return fakeGh(state, args);
+  return fakeGh(state, args, options);
 }

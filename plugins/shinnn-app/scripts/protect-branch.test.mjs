@@ -5,6 +5,7 @@
  * - 設定しない場合（gh が無い・ログインしていない・対象が分からない・main に直接コミットするワークフローがある・
  *   既に保護かルールセットのルールがある・プランや権限のために使えない）は、終了コード 0 で終え、PUT しない
  * - 保護が無ければ、ci.yaml のジョブ名を必須のチェックにした本文を PUT する
+ * - gh が時間内に終わらないときや、GitHub が想定外のレスポンスを返したときは、終了コード 1 で終え、その先へ進まない
  * - 最後の行が 1 行の要約になっている
  * 必須のチェックの名前は、テンプレートの ci.yaml を一時フォルダに写して読ませる。GitHub には何も送らない。
  */
@@ -550,6 +551,19 @@ test('gh api が何も出さずに失敗する: HTTP の状態コードが不明
   assert.match(result.stderr, /（HTTP 不明: レスポンスがありません）/);
   assert.equal(result.summary, 'ブランチ保護: 設定できなかった（GitHub のレスポンスが想定外）');
   assert.deepEqual(apiCalls(result.calls, 'PUT'), []);
+});
+
+test('gh repo view が時間内に終わらない: リポジトリを作る案内をせず、終了コード 1 で終え、API を呼ばない', () => {
+  const result = runProtect({ repo: { timeout: true } });
+
+  assert.equal(result.status, 1, output(result));
+  assert.match(result.stderr, /gh を実行できませんでした（起動できないか、\d+ 秒以内に終わらなかった）/);
+  assert.equal(result.summary, 'ブランチ保護: 設定できなかった（gh を実行できない）');
+  assert.doesNotMatch(output(result), /対象のリポジトリが分からない|GitHub にリポジトリを作り/);
+  assert.deepEqual(
+    result.calls.filter(({ args }) => args[0] === 'api'),
+    [],
+  );
 });
 
 test('gh api が時間内に終わらない（保護の GET・ルールセットの GET・PUT のどれでも）: 終了コード 1 で終え、その先へ進まない', () => {

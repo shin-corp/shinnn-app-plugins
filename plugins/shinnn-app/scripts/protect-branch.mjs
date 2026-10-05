@@ -17,7 +17,7 @@
  * - ルールセット（新しい方式のブランチ保護。リポジトリか組織の設定）のルールが、既にそのブランチに 1 つでも効いている。
  *   従来の保護を足すと 2 つの設定が重なって分かりにくくなるので足さず、効いているルールの種類と必須のチェックを示す
  * - プランか権限のために使えない（例: 無料プランの private のリポジトリ）。CI と週次レビューで担保する
- * ci.yaml のジョブ名を読めない、GitHub が想定外のレスポンスを返した、などは終了コード 1。
+ * ci.yaml のジョブ名を読めない、gh が時間内に終わらない、GitHub が想定外のレスポンスを返した、などは終了コード 1。
  *
  * 最後の行に 1 行の要約（例「ブランチ保護: 設定した（必須のチェック 3 つ）」）を出す。
  * README の「有効な機能」表と決定記録にそのまま書ける形にしてある。
@@ -336,10 +336,16 @@ function unavailableOutcome(error, repo) {
   return null;
 }
 
-/** 対象のリポジトリ（owner/name）と、実行している人の権限。決められなければ problem に理由 */
+/**
+ * 対象のリポジトリ（owner/name）と、実行している人の権限。決められなければ problem に理由。
+ * gh を起動できなかったか時間内に終わらなかったときは、problem を 'cannotRun' にし、result に gh の結果を入れる。
+ */
 function resolveRepo(root) {
   const result = gh(root, ['repo', 'view', '--json', 'nameWithOwner,viewerPermission']);
 
+  if (result.failedToStart) {
+    return { problem: 'cannotRun', result };
+  }
   if (result.status === GH_EXIT_AUTH_REQUIRED || /gh auth login/.test(result.stderr)) {
     return { problem: 'login' };
   }
@@ -469,6 +475,9 @@ function main() {
 
   const repo = resolveRepo(root);
 
+  if (repo.problem === 'cannotRun') {
+    return cannotRun(repo.result);
+  }
   if (repo.problem === 'login') {
     return notApplied('gh にログインしていない', 'gh にログインしていません。', '`gh auth login` の後に実行し直す');
   }

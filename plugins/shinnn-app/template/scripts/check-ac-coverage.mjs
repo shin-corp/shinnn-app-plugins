@@ -2,8 +2,9 @@
 // 仕様書の受入条件（AC-n）ごとに、テストが 1 つ以上あるかを検査する。
 //
 // 実行例:
-//   node scripts/check-ac-coverage.mjs            検査する（欠けていれば異常終了）
-//   node scripts/check-ac-coverage.mjs --report   結果を Markdown の表で出す（終了コードは常に 0）
+//   node scripts/check-ac-coverage.mjs            検査する（テストの無い受入条件か、番号の重なりがあれば異常終了）
+//   node scripts/check-ac-coverage.mjs --report   結果を Markdown の表で出す（終了コードは常に 0）。
+//                                                 番号の重なりは、表の後に 1 行で示す
 //
 // 判定の仕方:
 //   docs/仕様書.md に出てくる AC-n を集め、テストファイル（*.test.ts）の中に
@@ -84,8 +85,8 @@ if (!isReportMode && duplicatedIds.length > 0) {
   console.error('仕様書の受入条件に、同じ番号の行が 2 つ以上あります。');
   console.error('');
   console.error(`  何が: ${duplicatedIds.join(' / ')}`);
-  console.error('  なぜ: AC-n はリポジトリ全体の通し番号です。番号が重なると、片方の条件のテストだけで');
-  console.error('        もう片方も確かめたことになり、テストの無い条件が CI を通ってしまいます。');
+  console.error('  なぜ: AC-n はリポジトリ全体の通し番号です。番号が重なると、片方の条件のテストだけで、');
+  console.error('        もう片方も確かめたことになります。そのため、テストの無い条件が CI を通ってしまいます。');
   console.error('  どう直す: 後から足した方の番号を、仕様書と open な Issue で使われている最大の番号の続きに');
   console.error('            振り直します。テスト名と Issue の本文も、同じ番号に直してください。');
   console.error('  規約: .claude/rules/testing.md');
@@ -112,6 +113,12 @@ if (isReportMode) {
 
   for (const [id, files] of coverage) {
     console.log(`| ${id} | ${files.length === 0 ? '（なし）' : files.join('<br>')} |`);
+  }
+
+  // 表は番号ごとに 1 行なので、重なりは表の後に示す。表の直後の行は表の続きとして読まれるので、空行を挟む
+  if (duplicatedIds.length > 0) {
+    console.log('');
+    console.log(`仕様書の受入条件に、同じ番号の行が 2 つ以上あります: ${duplicatedIds.join(' / ')}`);
   }
 
   process.exit(0);
