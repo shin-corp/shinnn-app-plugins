@@ -445,9 +445,10 @@ function alreadyRuled(rules, target, expected) {
   return { code: 0, summary: `${SUMMARY}: 既にある（ルールセット）` };
 }
 
-/** gh を起動できなかったときの結果 */
+/** gh を起動できなかったか、GH_TIMEOUT_MS 以内に終わらなかったときの結果 */
 function cannotRun(result) {
-  return failed('gh を実行できない', `gh を実行できませんでした（${firstLine(result.stderr) || 'エラーの出力なし'}）。`);
+  const reason = firstLine(result.stderr) || `起動できないか、${GH_TIMEOUT_MS / 1000} 秒以内に終わらなかった`;
+  return failed('gh を実行できない', `gh を実行できませんでした（${reason}）。`);
 }
 
 function main() {
