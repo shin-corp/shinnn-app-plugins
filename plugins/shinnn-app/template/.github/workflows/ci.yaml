@@ -87,7 +87,7 @@ jobs:
       - name: テストのファイル名（.spec.ts を禁止）
         run: node scripts/check-test-naming.mjs
 
-      - name: 受入条件 AC-n ごとにテストがあること
+      - name: 受入条件 AC-n ごとにテストがあり、番号が重ならないこと
         run: node scripts/check-ac-coverage.mjs
 
       - name: API 定義の全ルートにテストがあること

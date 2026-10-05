@@ -23,7 +23,7 @@ PR を出す前に、CI と同じ内容を手元で通す。**ここが緑にな
 |:--|:--|:--|
 | 1 | `npm run check` | shared のビルド → 各パッケージのビルド・型検査・lint。`--max-warnings 0` なので警告も落ちる |
 | 2 | `npm test` | テスト。DB を使うテストは既定で PGlite（実 PostgreSQL は不要） |
-| 3 | `node scripts/check-ac-coverage.mjs` | `docs/仕様書.md` の受入条件 `AC-n` すべてに、対応するテストがあるか |
+| 3 | `node scripts/check-ac-coverage.mjs` | `docs/仕様書.md` の受入条件 `AC-n` すべてに、対応するテストがあるか。受入条件の番号が重なっていないか |
 | 4 | `node scripts/check-api-coverage.mjs` | `shared/src/api` の全ルートにテストがあるか |
 | 5 | `node scripts/check-test-naming.mjs` | テストのファイル名が `.test.ts` か（`.spec.ts` は CI で落ちる） |
 | 6 | `node scripts/check-mandatory.mjs` | 必須項目（ファイル・deny・規約）の実体が残っているか |
@@ -55,7 +55,8 @@ PR を出す前に、CI と同じ内容を手元で通す。**ここが緑にな
 | `Cannot find module '@app/shared'` | `shared` が未ビルド | 先に `npm run build -w shared` |
 | lint の指摘 | 規約違反 | 自動修正できるものは先に `eslint --fix` で直す。残りは下の表の規約に従って直す。**ルールの設定を緩めて通さない**（規約違反を規約の側で消しているだけになる）。意図が分からなければ `/shinnn-app:why <ルール名>` |
 | テストが落ちる | 実装かテストのどちらかが違う | **実装が正か、テストが正かを先に決める。** 判断は `.claude/rules/testing.md` の「何をテストするか」の表に従う。テストを通すためだけの分岐を入れたくなったら、実装が間違っている合図 |
-| テストは通るのに `check-ac-coverage` が落ちる | 受入条件を足したがテストを書いていない | AC-n をテスト名に含めたテストを足す |
+| `check-ac-coverage` が「テストの無い受入条件があります」で落ちる | 受入条件を足したがテストを書いていない | AC-n をテスト名に含めたテストを足す |
+| `check-ac-coverage` が「同じ番号の行が 2 つ以上あります」で落ちる | 受入条件の番号が重なった（フォームで立てた Issue の番号をそのまま写した、など） | 後から足した方を、使われている最大の番号の続きに振り直す（`/shinnn-app:feature` の「2. 仕様書に反映する」）。テスト名と Issue の本文も直す |
 | `check-api-coverage` が落ちる | API 定義を足したがテストが無い | 正常系 1 つと異常系 1 つを足す |
 | DB のテストだけ落ちる | マイグレーション未適用 | `/shinnn-app:db-migrate` を実行する |
 
