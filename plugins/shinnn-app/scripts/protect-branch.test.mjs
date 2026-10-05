@@ -500,6 +500,7 @@ test('PUT が回数の制限で 403 になる: 「使えない」とはせず、
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /HTTP 403: API rate limit exceeded/);
+  assert.equal(result.summary, 'ブランチ保護: 設定できなかった（HTTP 403）');
 });
 
 test('ci.yaml を読めない: 理由を示して終了コード 1 で終え、保護を調べも設定もしない', () => {
@@ -519,6 +520,7 @@ test('ブランチが GitHub に無い（404 Branch not found）: 終了コー�
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /main を push した後に実行し直す/);
+  assert.equal(result.summary, 'ブランチ保護: 設定できなかった（main が GitHub に無い）');
   assert.deepEqual(apiCalls(result.calls, 'PUT'), []);
 });
 
@@ -589,5 +591,6 @@ test('知らない引数: 終了コード 1 で終え、GitHub に問い合わ�
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /知らない引数です: --force/);
+  assert.equal(result.summary, 'ブランチ保護: 設定できなかった（引数の誤り）');
   assert.deepEqual(result.calls, []);
 });
