@@ -97,7 +97,7 @@ client/
   （並べ方・余白・揃え）には適用されない。並べ方や余白は部品の中の `div` に付ける（`.claude/rules/client-styling.md`）
 - 配色は Material のシステム変数（`--mat-sys-*`）。`@theme` で Tailwind の色（`text-primary` など）に割り当ててある。
   新しい色を直値で書かない
-- 配色と書体は `styles.css` の 1 か所で決める（画面だけで使うものも、役割の名前で `@theme` に足す）。
+- 配色と書体は `styles.css` の 1 か所で決める（特定の画面だけで使うものも、役割の名前で `@theme` に足す）。
   方針は `docs/仕様書.md` の「見た目の方針」、入れ方の決まりは `.claude/rules/client-styling.md` の「テーマと書体」
 
 ## 画面の決まり
