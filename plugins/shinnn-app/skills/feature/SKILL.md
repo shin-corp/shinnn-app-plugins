@@ -85,7 +85,7 @@ gh issue edit <Issue 番号> --remove-label status:next --add-label status:doing
 
 | 順 | 場所 | やること |
 |:--|:--|:--|
-| 1 | `shared/src/api/` | API 定義。**ここが唯一の正** |
+| 1 | `shared/src/api/` | API 定義。**データの形の唯一の正** |
 | 2 | `server/src/db/schema/` | テーブルを足すなら先にスキーマ（`/shinnn-app:db-migrate`） |
 | 3 | `server/src/service/` | 業務処理 |
 | 4 | `server/src/api/<機能>/` | router と controller |
