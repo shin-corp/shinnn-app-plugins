@@ -521,6 +521,55 @@ test('ブランチが GitHub に無い（404 Branch not found）: 終了コー�
   assert.deepEqual(apiCalls(result.calls, 'PUT'), []);
 });
 
+test('従来の方式の保護を調べられない（500）: 終了コード 1 で終え、ルールセットを調べず PUT もしない', () => {
+  const result = runProtect({ protection: { status: 500, message: 'Server Error' } });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /main の保護を調べられませんでした（HTTP 500: Server Error）/);
+  assert.equal(result.summary, 'ブランチ保護: 設定できなかった（GitHub のレスポンスが想定外）');
+  assert.deepEqual(
+    apiCalls(result.calls, 'GET').map(({ args }) => args[1]),
+    ['repos/owner/app/branches/main/protection'],
+  );
+  assert.deepEqual(apiCalls(result.calls, 'PUT'), []);
+});
+
+test('ルールセットのルールの一覧が配列でない: 届いた本文を示して終了コード 1 で終え、PUT しない', () => {
+  const result = runProtect({ protection: NOT_PROTECTED, rules: { status: 200, body: { type: 'deletion' } } });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /効いているルールの一覧を読めませんでした（\{"type":"deletion"\}）/);
+  assert.equal(result.summary, 'ブランチ保護: 設定できなかった（GitHub のレスポンスが想定外）');
+  assert.deepEqual(apiCalls(result.calls, 'PUT'), []);
+});
+
+test('gh api が何も出さずに失敗する: HTTP の状態コードが不明で、レスポンスが無いことを示して終了コード 1 で終える', () => {
+  const result = runProtect({ protection: { exitCode: 1 } });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /（HTTP 不明: レスポンスがありません）/);
+  assert.equal(result.summary, 'ブランチ保護: 設定できなかった（GitHub のレスポンスが想定外）');
+  assert.deepEqual(apiCalls(result.calls, 'PUT'), []);
+});
+
+test('gh api が時間内に終わらない（保護の GET・ルールセットの GET・PUT のどれでも）: 終了コード 1 で終え、その先へ進まない', () => {
+  const cases = [
+    { state: { protection: { timeout: true } }, apiCallCount: 1 },
+    { state: { protection: NOT_PROTECTED, rules: { timeout: true } }, apiCallCount: 2 },
+    { state: { protection: NOT_PROTECTED, put: { timeout: true } }, apiCallCount: 3 },
+  ];
+
+  for (const { state, apiCallCount } of cases) {
+    const result = runProtect(state);
+    const label = JSON.stringify(state);
+
+    assert.equal(result.status, 1, label);
+    assert.match(result.stderr, /gh を実行できませんでした（起動できないか、\d+ 秒以内に終わらなかった）/, label);
+    assert.equal(result.summary, 'ブランチ保護: 設定できなかった（gh を実行できない）', label);
+    assert.equal(result.calls.filter(({ args }) => args[0] === 'api').length, apiCallCount, label);
+  }
+});
+
 test('知らない引数: 終了コード 1 で終え、GitHub に問い合わせない', () => {
   const result = runProtect({ protection: NOT_PROTECTED }, { args: ['--force'] });
 

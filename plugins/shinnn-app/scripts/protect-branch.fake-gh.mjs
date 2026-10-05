@@ -19,6 +19,9 @@
  *   rules:      ルールセットのルールの GET（repos/{o}/{r}/rules/branches/{b}）のレスポンス。{ status: 200, body: [ルール] } か
  *               { status: 403 など, message }。既定は空の配列（ルールが無い）
  *   put:        PUT のレスポンス。{ status: 200 } か { status: 403 / 422 など, message }
+ * protection・rules・put には、GitHub のレスポンスの代わりに次の 2 つも書ける。
+ *   { timeout: true }:            gh が時間内に終わらず、spawnSync が止めたときと同じ結果を返す
+ *   { exitCode, stdout, stderr }: gh の終了コードと出力をそのまま返す（stdout と stderr の既定は空）
  */
 import * as childProcess from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
@@ -50,8 +53,24 @@ function httpError(status, message) {
   return result(1, body, `gh: ${message} (HTTP ${status})\n`);
 }
 
-/** レスポンスの定義（{ status, body } か { status, message }）を結果にする */
+/** spawnSync が timeout の時間を過ぎて gh を止めたときの結果 */
+function timedOut() {
+  const error = Object.assign(new Error('spawnSync gh ETIMEDOUT'), {
+    code: 'ETIMEDOUT',
+    syscall: 'spawnSync gh',
+    path: 'gh',
+  });
+  return { ...result(null), signal: 'SIGTERM', error };
+}
+
+/** レスポンスの定義（冒頭の FAKE_GH_STATE の protection・rules・put の形）を結果にする */
 function respond(response) {
+  if (response.timeout === true) {
+    return timedOut();
+  }
+  if (response.exitCode !== undefined) {
+    return result(response.exitCode, response.stdout ?? '', response.stderr ?? '');
+  }
   if (response.status === 200) {
     return result(0, JSON.stringify(response.body ?? {}));
   }
