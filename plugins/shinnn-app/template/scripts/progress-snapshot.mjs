@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // open な Issue と PR、直近の CI の一覧を Markdown で標準出力に出す。ファイルには書かない。
-// 進捗は GitHub の Issue・PR・CI で管理し、これはその時点の一覧。月次の健全性レポートが Issue の本文に使う。
+// 進捗は GitHub の Issue・PR・CI で管理する。このスクリプトが出すのは、その時点の一覧。
+// 月次の健全性レポートが、この一覧を Issue の本文に使う。
 //
 // 実行例:
 //   node scripts/progress-snapshot.mjs

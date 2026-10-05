@@ -47,9 +47,9 @@ import が通ってしまいます（幻の依存）。pnpm はこれを構造�
 | lock ファイルと違う依存が入る          | CI は `npm ci` を使う（`package-lock.json` と食い違ったらインストールの時点で落ちる） |
 
 `no-extraneous-dependencies` は、そのファイルが属するパッケージの `package.json` に
-書かれていない import を lint エラーにします。`devDependencies` を読んでよいファイルは、
-配布物に入らないもの（テスト・種データ・評価・設定・スクリプト）と、server で PGlite を必要になった時点だけ
-読み込む `src/db/` の 2 ファイルに絞っています。
+書かれていない import を lint エラーにします。`devDependencies` を読んでよいのは、どのパッケージでもテストと
+設定ファイルだけです。server では、種データ・評価（`server/evals/`）・スクリプトと、PGlite を必要になったときにだけ
+読み込む `src/db/` の 2 ファイルも読んでよいことにしています。
 
 ## 同じライブラリはワークスペース全体で同じ版にそろえる
 
