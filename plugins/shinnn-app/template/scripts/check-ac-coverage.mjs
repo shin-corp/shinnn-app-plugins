@@ -8,6 +8,7 @@
 // 判定の仕方:
 //   docs/仕様書.md に出てくる AC-n を集め、テストファイル（*.test.ts）の中に
 //   同じ AC-n を含む文字列があるかを見る。テスト名の先頭に識別子を書く規約が前提。
+//   あわせて、受入条件の表（`| AC-n |` で始まる行）に、同じ番号の行が 2 つ以上ないかを見る。
 // CI の policy job から呼ばれる。
 
 import { readdir, readFile } from 'node:fs/promises';
@@ -61,6 +62,34 @@ const acceptanceIds = [...new Set(specification.match(acceptancePattern) ?? [])]
 if (acceptanceIds.length === 0) {
   console.log('docs/仕様書.md に受入条件（AC-n）がまだありません。検査を飛ばします。');
   process.exit(0);
+}
+
+// 受入条件の表の行（`| AC-n |` で始まる行）で、同じ番号の行が 2 つ以上あるものを集める。
+// 番号が重なると、片方の条件のテストだけで両方を確かめたことになる。
+const definitionCounts = new Map();
+
+for (const [, id] of specification.matchAll(/^\|\s*(AC-\d+)\s*\|/gm)) {
+  definitionCounts.set(id, (definitionCounts.get(id) ?? 0) + 1);
+}
+
+const duplicatedIds = [];
+
+for (const [id, count] of definitionCounts) {
+  if (count > 1) {
+    duplicatedIds.push(id);
+  }
+}
+
+if (!isReportMode && duplicatedIds.length > 0) {
+  console.error('仕様書の受入条件に、同じ番号の行が 2 つ以上あります。');
+  console.error('');
+  console.error(`  何が: ${duplicatedIds.join(' / ')}`);
+  console.error('  なぜ: AC-n はリポジトリ全体の通し番号です。番号が重なると、片方の条件のテストだけで');
+  console.error('        もう片方も確かめたことになり、テストの無い条件が CI を通ってしまいます。');
+  console.error('  どう直す: 後から足した方の番号を、仕様書と open な Issue で使われている最大の番号の続きに');
+  console.error('            振り直します。テスト名と Issue の本文も、同じ番号に直してください。');
+  console.error('  規約: .claude/rules/testing.md');
+  process.exit(1);
 }
 
 const testFiles = await listTestFiles(repositoryRoot);
