@@ -9,6 +9,7 @@
     "noUnusedParameters": true,
     "noUncheckedIndexedAccess": true,
     "declaration": true,
+    "declarationMap": true,
     "sourceMap": true,
     "outDir": "dist",
     "rootDir": "src",
