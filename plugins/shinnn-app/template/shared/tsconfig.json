@@ -9,6 +9,7 @@
     "noUnusedParameters": true,
     "noUncheckedIndexedAccess": true,
     "declaration": true,
+    // client・server から定義へ移動したときに、dist の .d.ts ではなく src の .ts を開く。
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "dist",
