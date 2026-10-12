@@ -15,6 +15,9 @@ description: プラグインが配布するルール（規約の rules・CLAUDE.
 | `.claude/rules/.standards-version` | 今のリポジトリが持っている標準のバージョン |
 | `${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/.standards-version` | 配布されている標準のバージョン |
 
+リポジトリに `.claude/rules/.standards-version` が無ければ、テンプレートから作ったリポジトリではない。
+標準は写さず、`/shinnn-app:setup` の手順 0 の 1 の案内（この道具を使わずに作ったアプリは、新しいアプリとして作り直す）を伝えて終わる。
+
 同じなら「更新はありません」と報告して終わる。**同じなのにファイルが違う場合**は、
 リポジトリ側が手で書き換えられている。その差分を示し、どちらを採るか人に確認する。
 
