@@ -38,7 +38,7 @@
 
 ## npm で気を付けること（幻の依存）
 
-npm は依存を 1 か所にまとめて置くため、`package.json` に書いていないパッケージでも
+npm は依存の多くをルートの `node_modules` にまとめて置くため、`package.json` に書いていないパッケージでも
 import が通ってしまいます（幻の依存）。pnpm はこれを構造的に防ぎますが、npm では次の 2 つで補います。
 
 | 起きうること                           | 防ぎ方                                                                                |
@@ -65,17 +65,21 @@ Vitest の版は `@angular/build` の peer の範囲から選びます。Vitest 
 
 ## テストの画面の環境（jsdom）はルートで宣言する
 
-`client` のテストは、ブラウザの代わりに jsdom（画面の部品を Node.js の中で動かすライブラリ）を使います。
-jsdom を使うのは `client` のテストだけです。それでも、宣言は `client` ではなく、ルートの `package.json` の
-`devDependencies` に置きます。jsdom の版を上げるときも、ルートの `package.json` を直します。
+`client` のテストは、ブラウザの代わりに jsdom を使います。jsdom は、ブラウザの画面の仕組み（DOM）を
+Node.js の中で再現するライブラリです。jsdom を使うのは `client` のテストだけです。それでも、宣言は `client` ではなく、
+ルートの `package.json` の `devDependencies` に置きます。jsdom の版を上げるときも、ルートの `package.json` を直します。
+`client` のテストのコードからは、jsdom を直接 import しません。import すると、lint が `client` の `package.json` への
+宣言を求めます。
 
-jsdom を読み込むのは Vitest です。Vitest は 3 つのパッケージが同じ版を使うので、ルートの `node_modules` に
-1 つだけ置かれます。Node.js は、読み込むファイルのあるフォルダから上へたどって `node_modules` を探します。
-`client/node_modules` は、ルートの Vitest から上へたどる途中に無いので、探す範囲に入りません。
+jsdom を読み込むのは Vitest です。Node.js は、import を書いたファイル（ここでは Vitest の中のファイル）のあるフォルダから
+上へたどって `node_modules` を探します。ルートの `node_modules` は、Vitest がどこに置かれていても、上へたどる途中にあります。
+`client/node_modules` は、Vitest がルートに置かれていると、上へたどる途中にありません。今の lock ファイルでは、
+Vitest はルートに置かれています。
 
-`client` で宣言したパッケージをどこに置くかは、npm と lock ファイルが決めます。Dependabot が作る lock ファイルでは、
-jsdom が `client/node_modules` に置かれることがあります。そうなると、`client` のテストが
-`Cannot find package 'jsdom'` で落ちます。ルートで宣言したパッケージは、必ずルートの `node_modules` に置かれます。
+`client` で宣言したパッケージをどこに置くかは、npm と lock ファイルが決めます。Dependabot（依存の版上げの PR を
+自動で作る GitHub の機能）が作る lock ファイルでは、jsdom が `client/node_modules` に置かれることがあります。
+そうなると、`client` のテストが `Cannot find package 'jsdom'` で落ちます。ルートで宣言したパッケージは、
+必ずルートの `node_modules` に置かれます。
 
 ## 依存の中の古い版を overrides で差し替えているもの
 

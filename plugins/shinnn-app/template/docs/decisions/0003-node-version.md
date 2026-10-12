@@ -49,7 +49,7 @@ Node.js の版に起因する警告（非対応 API の通知や `engines` の�
 ## Node.js 22 を選ばない理由
 
 22 系も LTS で、Angular 22 の要求も満たします。それでも選ばないのは、**同梱の npm 10 系では
-新しい依存の解決に失敗することがある**ためです。たとえばテストで使う Vitest 4.1 系は、npm 10 では
+新しい依存の解決に失敗することがある**ためです。たとえば Vitest 4.1 系は、npm 10 では
 peer 依存の解決で異常終了します（`Cannot read properties of null (reading 'edgesOut')`）。
 回避するには npm 11 系を手で入れてもらうしかありません。そうすると「Node.js を入れれば動く」が
 成り立ちません。手元では `npm install` が `EBADENGINE` で止まってから「npm を上げる」と
