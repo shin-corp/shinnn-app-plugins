@@ -71,6 +71,7 @@ const REQUIRED_DENY = [
   'Bash(sudo *)',
   'Read(.env)',
   'Read(**/.env)',
+  'Read(//**/.env)',
   'Edit(.env)',
   'Edit(**/.env)',
   'Bash(cat .env*)',
