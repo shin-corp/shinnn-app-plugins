@@ -63,6 +63,20 @@ Vitest の版は `@angular/build` の peer の範囲から選びます。Vitest 
 新しいライブラリを足すときは「他のパッケージが同じものを別の版で使っていないか」を先に
 見てください。peer 依存で要求される版が食い違う場合は、`npm install` の時点で分かります。
 
+## テストの画面の環境（jsdom）はルートで宣言する
+
+`client` のテストは、ブラウザの代わりに jsdom（画面の部品を Node.js の中で動かすライブラリ）を使います。
+jsdom を使うのは `client` のテストだけです。それでも、宣言は `client` ではなく、ルートの `package.json` の
+`devDependencies` に置きます。jsdom の版を上げるときも、ルートの `package.json` を直します。
+
+jsdom を読み込むのは Vitest です。Vitest は 3 つのパッケージが同じ版を使うので、ルートの `node_modules` に
+1 つだけ置かれます。Node.js は、読み込むファイルのあるフォルダから上へたどって `node_modules` を探します。
+`client/node_modules` は、ルートの Vitest から上へたどる途中に無いので、探す範囲に入りません。
+
+`client` で宣言したパッケージをどこに置くかは、npm と lock ファイルが決めます。Dependabot が作る lock ファイルでは、
+jsdom が `client/node_modules` に置かれることがあります。そうなると、`client` のテストが
+`Cannot find package 'jsdom'` で落ちます。ルートで宣言したパッケージは、必ずルートの `node_modules` に置かれます。
+
 ## 依存の中の古い版を overrides で差し替えているもの
 
 依存の依存として入ってくる古い版のうち、**実際には読み込まれないのに脆弱性の警告が出るもの**は、
