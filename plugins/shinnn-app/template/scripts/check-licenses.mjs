@@ -5,8 +5,8 @@
 //   node scripts/check-licenses.mjs
 //
 // 判定の仕方:
-//   node_modules を走査して各パッケージの package.json の license を読み、許可リストに無いものがあれば
-//   異常終了する。SPDX の式は、OR を含むならどれか 1 つ、単独と AND はすべてが許可リストにあることを見る。
+//   ルートの node_modules と、workspaces の各フォルダの node_modules を走査して各パッケージの package.json の
+//   license を読み、許可リストに無いものがあれば異常終了する。SPDX の式は、OR を含むならどれか 1 つ、単独と AND はすべてが許可リストにあることを見る。
 //   license が無い・UNLICENSED・SEE LICENSE IN … は、費用が発生するライセンスの典型なので通さない。
 // CI の policy job から呼ばれる。
 
@@ -131,6 +131,30 @@ async function collectPackageDirectories(nodeModulesPath) {
   return directories;
 }
 
+/**
+ * 走査する node_modules。ルートのものと、ルートの package.json の workspaces に並んだ各フォルダのもの。
+ * npm は workspaces のパッケージの依存を、そのフォルダの node_modules に置くことがある（lock ファイルがそう書いているとき）。
+ * ルートだけを走査すると、そこに置かれた依存を検査しない。workspaces の glob（`packages/*` など）は展開しない。
+ */
+async function listNodeModulesDirectories() {
+  const directories = [nodeModulesDirectory];
+  let manifest;
+
+  try {
+    manifest = JSON.parse(await readFile(join(repositoryRoot, 'package.json'), 'utf8'));
+  } catch {
+    return directories;
+  }
+
+  const workspaces = Array.isArray(manifest.workspaces) ? manifest.workspaces : (manifest.workspaces?.packages ?? []);
+
+  for (const workspace of workspaces) {
+    directories.push(join(repositoryRoot, workspace, 'node_modules'));
+  }
+
+  return directories;
+}
+
 try {
   await stat(nodeModulesDirectory);
 } catch {
@@ -142,7 +166,12 @@ try {
   process.exit(1);
 }
 
-const packageDirectories = await collectPackageDirectories(nodeModulesDirectory);
+const packageDirectories = [];
+
+for (const directory of await listNodeModulesDirectories()) {
+  packageDirectories.push(...(await collectPackageDirectories(directory)));
+}
+
 const foundLicenses = new Set();
 const violations = [];
 let checkedCount = 0;
