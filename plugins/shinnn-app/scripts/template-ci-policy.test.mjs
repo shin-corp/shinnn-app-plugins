@@ -1,5 +1,5 @@
 /**
- * テンプレートの .github/workflows/ci.yaml の規約チェック（policy）の回帰テスト。`node --test scripts/` で実行する。
+ * テンプレートの .github/workflows/policy.yaml の規約チェックの回帰テスト。`node --test scripts/` で実行する。
  *
  * ワークフローの YAML から手順のシェルを取り出し、Actions と同じく bash で動かして結果を確かめる。
  * - 「PR 本文に Closes #n があること」は、HTML のコメント（<!-- -->。閉じていない <!-- の後ろを含む）の中の Closes #n と、
@@ -20,7 +20,7 @@ import { after, before, test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 /** 同梱のテンプレートの CI */
-const ciYaml = fileURLToPath(new URL('../template/.github/workflows/ci.yaml', import.meta.url));
+const policyYaml = fileURLToPath(new URL('../template/.github/workflows/policy.yaml', import.meta.url));
 
 /** テストで使う一時ファイルをすべて置くディレクトリ */
 let workRoot;
@@ -34,11 +34,11 @@ after(() => {
 });
 
 /**
- * ci.yaml から、名前が name の手順の run: | のシェルを取り出す。
+ * policy.yaml から、名前が name の手順の run: | のシェルを取り出す。
  * run: より深く字下げされた行を、その字下げを除いて集める。
  */
 function stepScript(name) {
-  const lines = readFileSync(ciYaml, 'utf8').split('\n');
+  const lines = readFileSync(policyYaml, 'utf8').split('\n');
   const start = lines.findIndex((line) => line.trim() === `- name: ${name}`);
   assert.notEqual(start, -1, `手順「${name}」がありません`);
   const runIndex = lines.findIndex((line, index) => index > start && /^\s+run: \|$/.test(line));

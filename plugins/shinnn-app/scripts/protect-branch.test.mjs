@@ -4,10 +4,10 @@
  * スクリプトが呼ぶ gh を偽物（protect-branch.fake-gh.mjs）に差し替え、GitHub の状態ごとに次を確かめる。
  * - 設定しない場合（gh が無い・ログインしていない・対象が分からない・main に直接コミットするワークフローがある・
  *   既に保護かルールセットのルールがある・プランや権限のために使えない）は、終了コード 0 で終え、PUT しない
- * - 保護が無ければ、ci.yaml のジョブ名を必須のチェックにした本文を PUT する
+ * - 保護が無ければ、ワークフロー（ci.yaml・policy.yaml）のジョブ名を必須のチェックにした本文を PUT する
  * - gh が時間内に終わらないときや、GitHub が想定外のレスポンスを返したときは、終了コード 1 で終え、その先へ進まない
  * - 最後の行が 1 行の要約になっている
- * 必須のチェックの名前は、テンプレートの ci.yaml を一時フォルダに写して読ませる。GitHub には何も送らない。
+ * 必須のチェックの名前は、テンプレートの ci.yaml と policy.yaml を一時フォルダに写して読ませる。GitHub には何も送らない。
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -28,11 +28,13 @@ const templateDir = fileURLToPath(new URL('../template', import.meta.url));
 
 /** 必須のチェックの名前を読むワークフロー（リポジトリルート起点） */
 const CI = '.github/workflows/ci.yaml';
+const POLICY = '.github/workflows/policy.yaml';
 
-/** テンプレートの ci.yaml */
+/** テンプレートの ci.yaml と policy.yaml */
 const templateCi = readFileSync(join(templateDir, CI), 'utf8');
+const templatePolicy = readFileSync(join(templateDir, POLICY), 'utf8');
 
-/** テンプレートの ci.yaml のジョブ名。ブランチ保護の必須のチェックになる */
+/** テンプレートのジョブ名（ci.yaml、policy.yaml の順）。ブランチ保護の必須のチェックになる */
 const TEMPLATE_CHECKS = ['型検査と lint', 'テスト', '規約チェック'];
 
 /** 保護が無いときの GET のレスポンス */
@@ -63,13 +65,13 @@ after(() => {
  *
  * @param state 偽物の gh に渡す GitHub の状態（protect-branch.fake-gh.mjs の冒頭）
  * @param options.args スクリプトの引数
- * @param options.files リポジトリに置くファイル（パス → 中身。null なら置かない）。既定は ci.yaml だけ
+ * @param options.files リポジトリに置くファイル（パス → 中身。null なら置かない）。既定はテンプレートの ci.yaml と policy.yaml
  * @returns 終了コード・出力・最後の行（要約）と、gh の呼び出しの記録
  */
 function runProtect(state, { args = [], files = {} } = {}) {
   const caseDir = mkdtempSync(join(workRoot, 'case-'));
   const root = join(caseDir, 'repo');
-  for (const [path, content] of Object.entries({ [CI]: templateCi, ...files })) {
+  for (const [path, content] of Object.entries({ [CI]: templateCi, [POLICY]: templatePolicy, ...files })) {
     if (content !== null) {
       mkdirSync(dirname(join(root, path)), { recursive: true });
       writeFileSync(join(root, path), content);
@@ -117,10 +119,11 @@ function output(result) {
   return `${result.stdout}\n${result.stderr}`;
 }
 
-// ---- ci.yaml のジョブ名の読み取り ----
+// ---- ワークフローのジョブ名の読み取り ----
 
-test('ci.yaml: テンプレートのジョブ名（型検査と lint・テスト・規約チェック）を書かれた順に読む', () => {
-  assert.deepEqual(readJobNames(templateCi), TEMPLATE_CHECKS);
+test('ci.yaml・policy.yaml: テンプレートのジョブ名（型検査と lint・テスト、規約チェック）を書かれた順に読む', () => {
+  assert.deepEqual(readJobNames(templateCi), TEMPLATE_CHECKS.slice(0, 2));
+  assert.deepEqual(readJobNames(templatePolicy), TEMPLATE_CHECKS.slice(2));
 });
 
 test('ci.yaml: 引用符・コメント・name の無いジョブ・CRLF を読み、steps の中の name は読まない', () => {
@@ -169,18 +172,20 @@ test('ci.yaml: チェックの名前が実行時に決まるジョブや、jobs 
   }
 });
 
-test('ci.yaml: 行で読んだジョブ名が、YAML として読んだものと同じ（テンプレートの依存を入れた手元だけで確かめる）', async (t) => {
+test('ci.yaml・policy.yaml: 行で読んだジョブ名が、YAML として読んだものと同じ（テンプレートの依存を入れた手元だけで確かめる）', async (t) => {
   const yamlEntry = join(templateDir, 'node_modules', 'yaml', 'dist', 'index.js');
   if (!existsSync(yamlEntry)) {
     t.skip('テンプレートで npm ci をしていないため、yaml パッケージがありません');
     return;
   }
   const { parse } = await import(pathToFileURL(yamlEntry).href);
-  const jobs = parse(templateCi).jobs;
-  assert.deepEqual(
-    readJobNames(templateCi),
-    Object.entries(jobs).map(([id, job]) => job.name ?? id),
-  );
+  for (const text of [templateCi, templatePolicy]) {
+    const jobs = parse(text).jobs;
+    assert.deepEqual(
+      readJobNames(text),
+      Object.entries(jobs).map(([id, job]) => job.name ?? id),
+    );
+  }
 });
 
 // ---- 設定しないで終える場合 ----
@@ -255,7 +260,7 @@ test('無効にした雛形（progress-snapshot.yaml.disabled）は、main に�
   assert.equal(apiCalls(result.calls, 'PUT').length, 1);
 });
 
-test('既に保護がある: 上書きせず（PUT しない）、今の必須のチェックと ci.yaml のジョブ名との違いを示す', () => {
+test('既に保護がある: 上書きせず（PUT しない）、今の必須のチェックとワークフローのジョブ名との違いを示す', () => {
   const result = runProtect({
     protection: {
       status: 200,
@@ -276,13 +281,13 @@ test('既に保護がある: 上書きせず（PUT しない）、今の必須�
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /owner\/app の main には既にブランチ保護があります。上書きしません。/);
   assert.match(result.stdout, /今の必須のチェック: 「型検査と lint」「build」/);
-  assert.match(result.stdout, /ci\.yaml のジョブに無いチェックが必須です: 「build」/);
+  assert.match(result.stdout, /ci\.yaml \/ policy\.yaml のジョブに無いチェックが必須です: 「build」/);
   assert.match(result.stdout, /必須になっていないジョブ: 「テスト」「規約チェック」/);
   assert.equal(result.summary, 'ブランチ保護: 既にある（上書きしない）');
   assert.deepEqual(apiCalls(result.calls, 'PUT'), []);
 });
 
-test('既に保護があり、必須のチェックが ci.yaml のジョブ名と同じ: 違いの案内を出さない', () => {
+test('既に保護があり、必須のチェックがワークフローのジョブ名と同じ: 違いの案内を出さない', () => {
   const result = runProtect({
     protection: {
       status: 200,
@@ -405,7 +410,7 @@ test('管理者権限が無い（GET が 404 Not Found）: 「使えない」と
 
 // ---- 設定する場合 ----
 
-test('保護が無い（404 Branch not protected）: ci.yaml のジョブ名を必須のチェックにした本文を PUT する', () => {
+test('保護が無い（404 Branch not protected）: ワークフロー（ci.yaml・policy.yaml）のジョブ名を必須のチェックにした本文を PUT する', () => {
   const result = runProtect({ protection: NOT_PROTECTED });
 
   assert.equal(result.status, 0, result.stderr);
@@ -452,6 +457,31 @@ test('ci.yaml のジョブ名を変えると、必須のチェックもその名
   assert.deepEqual(
     body.required_status_checks.checks.map(({ context }) => context),
     ['型検査と lint', '単体テスト', '規約チェック'],
+  );
+});
+
+test('policy.yaml が無い（標準を取り込む前）: ci.yaml のジョブ名だけを必須のチェックにする', () => {
+  const result = runProtect({ protection: NOT_PROTECTED }, { files: { [POLICY]: null } });
+
+  assert.equal(result.status, 0, result.stderr);
+  const body = JSON.parse(apiCalls(result.calls, 'PUT')[0].input);
+  assert.deepEqual(
+    body.required_status_checks.checks.map(({ context }) => context),
+    TEMPLATE_CHECKS.slice(0, 2),
+  );
+});
+
+test('policy.yaml のジョブ名を変えると、ci.yaml のジョブ名の後ろに連結した必須のチェックになる', () => {
+  const renamed = templatePolicy.replace(/^ {4}name: 規約チェック$/m, '    name: 規約');
+  assert.notEqual(renamed, templatePolicy);
+
+  const result = runProtect({ protection: NOT_PROTECTED }, { files: { [POLICY]: renamed } });
+
+  assert.equal(result.status, 0, result.stderr);
+  const body = JSON.parse(apiCalls(result.calls, 'PUT')[0].input);
+  assert.deepEqual(
+    body.required_status_checks.checks.map(({ context }) => context),
+    ['型検査と lint', 'テスト', '規約'],
   );
 });
 
@@ -503,13 +533,18 @@ test('PUT が回数の制限で 403 になる: 「使えない」とはせず、
   assert.equal(result.summary, 'ブランチ保護: 設定できなかった（HTTP 403）');
 });
 
-test('ci.yaml を読めない: 理由を示して終了コード 1 で終え、保護を調べも設定もしない', () => {
-  for (const content of [null, 'jobs:\n  a:\n    name: ${{ matrix.os }}\n']) {
-    const result = runProtect({ protection: NOT_PROTECTED }, { files: { [CI]: content } });
+test('ci.yaml・policy.yaml を読めない: 理由を示して終了コード 1 で終え、保護を調べも設定もしない', () => {
+  const unreadable = 'jobs:\n  a:\n    name: ${{ matrix.os }}\n';
+  for (const [path, content] of [
+    [CI, null],
+    [CI, unreadable],
+    [POLICY, unreadable],
+  ]) {
+    const result = runProtect({ protection: NOT_PROTECTED }, { files: { [path]: content } });
 
     assert.equal(result.status, 1, output(result));
-    assert.match(result.stderr, /\.github\/workflows\/ci\.yaml から必須のチェックの名前を読めません/);
-    assert.equal(result.summary, 'ブランチ保護: 設定できなかった（ci.yaml のジョブ名を読めない）');
+    assert.ok(result.stderr.includes(`必須のチェックの名前を読めません: ${path}:`), result.stderr);
+    assert.equal(result.summary, 'ブランチ保護: 設定できなかった（ワークフローのジョブ名を読めない）');
     assert.deepEqual(apiCalls(result.calls, 'GET'), []);
     assert.deepEqual(apiCalls(result.calls, 'PUT'), []);
   }

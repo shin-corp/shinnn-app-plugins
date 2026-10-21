@@ -61,7 +61,7 @@ peer 依存の解決で異常終了します（`Cannot read properties of null (
 ## 結果
 
 - 手元で必要なのは Node.js 24 系（24.15 以上）だけです。npm は同梱のものをそのまま使います
-- CI（`.github/workflows/ci.yaml`）の `NODE_VERSION` は `'24'` です
+- CI（`.github/workflows/ci.yaml` と `policy.yaml`）の `NODE_VERSION` は `'24'` です
 - `server` の `@types/node` は 24 系です（実行する Node.js と型の版をそろえるため）
 
 ## 見直す時期

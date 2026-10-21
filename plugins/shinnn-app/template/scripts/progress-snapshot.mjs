@@ -6,7 +6,7 @@
 // 実行例:
 //   node scripts/progress-snapshot.mjs
 //
-// gh コマンド（GitHub CLI）が使えて認証済みなら、open な Issue / PR と、直近の CI（ci.yaml の実行）から作る。
+// gh コマンド（GitHub CLI）が使えて認証済みなら、open な Issue / PR と、直近の CI（ci.yaml と policy.yaml の実行）から作る。
 // Issue と PR は更新の古い順に載せ、載せきれないときは「N 件中 M 件を表示」と書き添える。
 // 一覧を取得できなかった欄は「取得できませんでした（理由）」と書き（0 件と見分けるため）、ほかの欄は続けて載せる。
 // gh が無いときも同じ書き方になる。
@@ -28,7 +28,7 @@ const PULL_REQUEST_LIMIT = 20;
 const RUN_LIMIT = 5;
 
 /** 直近の CI として載せるワークフローのファイル（.github/workflows/ の下）。ほかのワークフローの実行は載せない。 */
-const CI_WORKFLOW = 'ci.yaml';
+const CI_WORKFLOWS = ['ci.yaml', 'policy.yaml'];
 
 /** git から見たリポジトリのルート。git が無い・リポジトリの外なら null。 */
 function gitToplevel() {
@@ -138,27 +138,37 @@ function fetchOpen(connection, fields, limit) {
 }
 
 /**
- * 直近の CI（ci.yaml）の実行結果を、新しいものから RUN_LIMIT 件取り出す。
+ * 直近の CI（ci.yaml と policy.yaml）の実行結果を、新しいものから RUN_LIMIT 件取り出す。
+ * ワークフローごとに RUN_LIMIT 件を取り、日時の新しい順に並べて先頭の RUN_LIMIT 件にする。
  *
  * @returns 成功したら { value: 実行結果の配列 }、失敗したら { error: 理由の要点 }
  */
 function fetchRuns() {
-  const result = fetchJson([
-    'run',
-    'list',
-    '--workflow',
-    CI_WORKFLOW,
-    '--limit',
-    String(RUN_LIMIT),
-    '--json',
-    'displayTitle,workflowName,conclusion,status,headBranch,createdAt',
-  ]);
+  const runs = [];
 
-  if ('value' in result && !Array.isArray(result.value)) {
-    return { error: 'gh の出力が想定した形ではありません' };
+  for (const workflow of CI_WORKFLOWS) {
+    const result = fetchJson([
+      'run',
+      'list',
+      '--workflow',
+      workflow,
+      '--limit',
+      String(RUN_LIMIT),
+      '--json',
+      'displayTitle,workflowName,conclusion,status,headBranch,createdAt',
+    ]);
+
+    if ('error' in result) {
+      return result;
+    }
+    if (!Array.isArray(result.value)) {
+      return { error: 'gh の出力が想定した形ではありません' };
+    }
+    runs.push(...result.value);
   }
 
-  return result;
+  runs.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  return { value: runs.slice(0, RUN_LIMIT) };
 }
 
 /** 日付を YYYY-MM-DD にする。 */
@@ -253,20 +263,21 @@ function buildReport(issues, pullRequests, runs) {
     lines.push('');
   }
 
-  lines.push(`## 直近の CI（${CI_WORKFLOW}）`, '');
+  lines.push(`## 直近の CI（${CI_WORKFLOWS.join(' / ')}）`, '');
 
   if ('error' in runs) {
     lines.push(...unavailableLines(runs.error));
   } else if (runs.value.length === 0) {
     lines.push('実行結果がありません。', '');
   } else {
-    lines.push('| 実行 | 結果 | ブランチ | 日時 |', '|:--|:--|:--|:--|');
+    // 1 回の push で ci.yaml と policy.yaml の実行が同じ題名で並ぶので、ワークフローの列で見分ける
+    lines.push('| ワークフロー | 実行 | 結果 | ブランチ | 日時 |', '|:--|:--|:--|:--|:--|');
 
     for (const run of runs.value) {
       const result = run.conclusion === 'success' ? '成功' : escapeCell(run.conclusion || run.status);
 
       lines.push(
-        `| ${escapeCell(run.displayTitle ?? run.workflowName)} | ${result} | ${escapeCell(run.headBranch)} | ${formatDate(run.createdAt)} |`,
+        `| ${escapeCell(run.workflowName)} | ${escapeCell(run.displayTitle ?? run.workflowName)} | ${result} | ${escapeCell(run.headBranch)} | ${formatDate(run.createdAt)} |`,
       );
     }
 

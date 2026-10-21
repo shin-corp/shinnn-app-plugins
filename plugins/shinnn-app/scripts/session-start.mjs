@@ -5,15 +5,40 @@
  * gh が無い環境では、GitHub の画面の URL と、gh の導入・ログインの案内を出す。
  * 一覧を取得できなかった欄は、0 件（「（なし）」）と見分けられるよう、取得できなかったことと理由の要点を出す。
  * 依存か git のフックが入っていない作業フォルダ（作ったばかりの worktree など）では、先に npm install を促す。
+ * 「引き継ぎメモ」Issue に CI で確かめていないマージ（手元の確かめで進めた PR と、外しているブランチ保護）が残っていれば、
+ * 確かめる手順を案内する。
+ * gh の呼び出しは最大 4 回（次に着手する Issue・open な PR・直近の CI・引き継ぎメモ）。hooks.json の timeout（60 秒）に収まるよう、
+ * 呼び出しに使える時間の合計を HOOK_BUDGET に絞る。
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { fromRoot, hasCommand, isAppRepo, projectDir, readHookInput, run } from './lib/hook-io.mjs';
+import { UNVERIFIED_MERGES_HEADING, unverifiedMergeLines } from './lib/unverified-merges.mjs';
 
 const MAX_LINES = 10;
 
 /** gh の 1 回の呼び出しを待つ時間（ミリ秒） */
 const GH_TIMEOUT = 20_000;
+
+/**
+ * gh の呼び出しに使える時間の合計（ミリ秒）。hooks.json の SessionStart の timeout（60 秒）より短くする。
+ * gh は最大 4 回呼ぶので、1 回ごとに GH_TIMEOUT で待つと合計が 60 秒を超えうる。残りの時間が短い呼び出しは、待つ時間を残りに絞る。
+ */
+const HOOK_BUDGET = 50_000;
+
+const startedAt = Date.now();
+
+/** gh の呼び出しに残っている時間（ミリ秒）。使い切っていれば 0 */
+function remainingBudget() {
+  return Math.max(0, HOOK_BUDGET - (Date.now() - startedAt));
+}
+
+/**
+ * 一覧の取得（ghSection）の gh が、時間切れ（または起動できず）になったか。
+ * これを見るのは、引き継ぎメモの取得（unverifiedMergesSection）だけで、なっていれば取得を飛ばす。
+ * 一覧の取得どうしは、前が時間切れでも飛ばさず、待つ時間を残りに絞って呼ぶ。
+ */
+let ghFailedToStart = false;
 
 function section(title, body) {
   const text = body.trim();
@@ -27,7 +52,7 @@ function section(title, body) {
  */
 function failureReason(result) {
   if (result.failedToStart) {
-    return `gh が起動できないか、${GH_TIMEOUT / 1000} 秒以内に終わりませんでした`;
+    return 'gh が起動できないか、時間内に終わりませんでした';
   }
   const firstLine = result.stderr
     .split(/\r?\n/)
@@ -44,7 +69,8 @@ function failureReason(result) {
 
 /** gh の一覧を 1 つの節にする。取得できなければ「（なし）」ではなく、取得できなかったことと理由を書く */
 function ghSection(title, args, root) {
-  const result = run('gh', args, { cwd: root, timeout: GH_TIMEOUT });
+  const result = run('gh', args, { cwd: root, timeout: Math.min(GH_TIMEOUT, Math.max(remainingBudget(), 1000)) });
+  ghFailedToStart ||= result.failedToStart;
   if (result.failedToStart || result.status !== 0) {
     return `## ${title}\n取得できませんでした（${failureReason(result)}）`;
   }
@@ -163,6 +189,47 @@ function dependencySection(root) {
   ].join('\n');
 }
 
+/**
+ * 「CI で確かめていないマージ」の節。「引き継ぎメモ」Issue（setup.json の handoverIssue）の見出しの下に行があるときだけ出す。
+ * 行は、手元の確かめで進めた PR と、外しているブランチ保護。
+ * 番号が無い・前の gh の呼び出しが時間切れだった・この gh の呼び出しが失敗した・行が無いときは null（節を出さない）。
+ * gh の失敗は、前の 3 つの節が示す。この呼び出しだけが失敗したときは、示さずに節を出さない。
+ *
+ * @param setupPath - .shinnn/setup.json の絶対パス
+ * @param root - リポジトリのルート
+ */
+function unverifiedMergesSection(setupPath, root) {
+  let handover;
+  try {
+    handover = JSON.parse(readFileSync(setupPath, 'utf8')).handoverIssue;
+  } catch {
+    return null;
+  }
+  const remaining = remainingBudget();
+  if (!Number.isInteger(handover) || handover <= 0 || ghFailedToStart || remaining === 0) {
+    return null;
+  }
+  const result = run('gh', ['issue', 'view', String(handover), '--json', 'body', '--jq', '.body'], {
+    cwd: root,
+    timeout: Math.min(GH_TIMEOUT, remaining),
+  });
+  if (result.failedToStart || result.status !== 0) {
+    return null;
+  }
+  const lines = unverifiedMergeLines(result.stdout);
+  if (lines.length === 0) {
+    return null;
+  }
+  return section(
+    UNVERIFIED_MERGES_HEADING,
+    [
+      `「引き継ぎメモ」Issue（#${handover}）に、CI が始まらないまま手元の確かめで進めた PR か、外しているブランチ保護の行が残っています。`,
+      ...lines,
+      'Actions が動くなら、`/shinnn-app:pr` の「9. CI で確かめていないマージを確かめる」で `main` の CI を走らせてください。',
+    ].join('\n'),
+  );
+}
+
 const input = await readHookInput();
 
 // テンプレートから作ったアプリのリポジトリでだけ動く
@@ -240,22 +307,20 @@ if (hasCommand('gh')) {
     ghSection(
       '直近の CI',
       [
-        'run',
-        'list',
-        // 品質の判断に使う CI だけを見る。ほかのワークフロー（Dependabot の対応づけなど）の実行は混ぜない
-        '--workflow',
-        'ci.yaml',
-        '--limit',
-        '3',
-        '--json',
-        'conclusion,status,displayTitle,workflowName',
-        '--template',
-        // 実行中は結果（conclusion）がまだ空なので、状態（status）を出す
-        '{{range .}}{{.workflowName}}: {{if .conclusion}}{{.conclusion}}{{else}}{{.status}}{{end}} / {{.displayTitle}}\n{{end}}',
+        'api',
+        // 品質の判断に使う CI（ci.yaml と policy.yaml）だけを、1 回の呼び出しで取る。
+        // ほかのワークフロー（Dependabot の対応づけなど）の実行は混ぜない。実行中は結果（conclusion）がまだ空なので、状態（status）を出す
+        'repos/{owner}/{repo}/actions/runs?per_page=20',
+        '--jq',
+        'limit(6; .workflow_runs[] | select(.path | startswith(".github/workflows/ci.yaml") or startswith(".github/workflows/policy.yaml")) | .name + ": " + (.conclusion // .status) + " / " + .display_title)',
       ],
       root,
     ),
   );
+  const unverified = unverifiedMergesSection(fromRoot(root, '.shinnn', 'setup.json'), root);
+  if (unverified !== null) {
+    out.push(unverified);
+  }
 } else {
   out.push(withoutGhSection(root));
 }

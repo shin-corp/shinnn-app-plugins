@@ -7,7 +7,7 @@
  * - ファイルには書かない
  * - 一覧を取得できなかった欄は、0 件（「ありません」）と書かずに、取得できなかったことと理由を書き、ほかの欄は続けて載せる
  * - 別のリポジトリの作業ツリーの中では gh を呼ばない（親のリポジトリの一覧を拾わない）
- * - 直近の CI は ci.yaml の実行だけを載せる
+ * - 直近の CI は ci.yaml と policy.yaml の実行だけを載せる
  * - 一覧を載せきれないときは総件数を添え、更新の古いもの（滞っているもの）を残す
  * - 題名などに | や \ を含んでも、表の列がずれない
  * ワークフローは YAML の文字列を行で読み、権限・手順の並び・資格情報の扱いを確かめる。
@@ -176,7 +176,7 @@ test('別のリポジトリの作業ツリーの中では gh の一覧を載せ�
   }
 });
 
-test('直近の CI には ci.yaml の実行だけを載せ、ほかのワークフローの実行は載せない', () => {
+test('直近の CI には ci.yaml と policy.yaml の実行だけを新しい順に載せ、ほかのワークフローの実行は載せない', () => {
   const state = baseState();
   state.runs.unshift({
     workflow: 'dependabot-issue.yaml',
@@ -188,13 +188,59 @@ test('直近の CI には ci.yaml の実行だけを載せ、ほかのワーク�
     createdAt: day(3),
   });
 
+  state.runs.push({
+    workflow: 'policy.yaml',
+    displayTitle: '一覧画面の追加',
+    workflowName: '規約チェック',
+    conclusion: 'failure',
+    status: 'completed',
+    headBranch: 'feature/policy',
+    createdAt: day(3),
+  });
+
   const result = runSnapshot(state);
 
   assert.equal(result.status, 0, result.stderr);
   const rows = tableRows(section(result.report, '直近の CI')).map(cells);
-  // ブランチの列で見分ける。ci.yaml の実行（feature/list）だけが載る
-  const branches = rows.map((row) => row[2]);
-  assert.deepEqual(branches, ['feature/list']);
+  // ブランチの列で見分ける。ci.yaml の実行（feature/list）と policy.yaml の実行（feature/policy）だけが、新しい順に載る
+  const branches = rows.map((row) => row[3]);
+  assert.deepEqual(branches, ['feature/policy', 'feature/list']);
+  const workflows = rows.map((row) => row[0]);
+  assert.deepEqual(workflows, ['規約チェック', 'CI']);
+});
+
+test('直近の CI は、2 つのワークフローの実行を合わせて新しい順に並べ、5 件に切る', () => {
+  const run = (workflow, workflowName, n) => ({
+    workflow,
+    displayTitle: `実行 ${n}`,
+    workflowName,
+    conclusion: 'success',
+    status: 'completed',
+    headBranch: `feature/${workflow}-${n}`,
+    createdAt: day(n),
+  });
+  const state = baseState();
+  // ci.yaml は偶数日、policy.yaml は奇数日。各ワークフローの中は新しい順（gh run list の並び）
+  state.runs = [
+    ...[10, 8, 6, 4].map((n) => run('ci.yaml', 'CI', n)),
+    ...[11, 9, 7, 5].map((n) => run('policy.yaml', '規約チェック', n)),
+  ];
+
+  const result = runSnapshot(state);
+
+  assert.equal(result.status, 0, result.stderr);
+  const rows = tableRows(section(result.report, '直近の CI')).map(cells);
+  assert.equal(rows.length, 5);
+  assert.deepEqual(
+    rows.map((row) => row[3]),
+    [
+      'feature/policy.yaml-11',
+      'feature/ci.yaml-10',
+      'feature/policy.yaml-9',
+      'feature/ci.yaml-8',
+      'feature/policy.yaml-7',
+    ],
+  );
 });
 
 test('実行中の CI は、結果がまだ空なので状態を載せる', () => {
@@ -206,7 +252,7 @@ test('実行中の CI は、結果がまだ空なので状態を載せる', () =
 
   assert.equal(result.status, 0, result.stderr);
   const rows = tableRows(section(result.report, '直近の CI')).map(cells);
-  assert.equal(rows[0][1], 'in_progress');
+  assert.equal(rows[0][2], 'in_progress');
 });
 
 test('PR と CI の一覧を取得できなかったときは、0 件とは書かずに取得できなかったことと理由を書く', () => {
@@ -311,7 +357,7 @@ test('題名・ラベル・ブランチ名に | や改行を含んでも、表�
   const pullRequestRow = tableRows(section(result.report, 'レビュー待ち'));
   assert.deepEqual(pullRequestRow.map(cells), [['#2', 'C\\|D', 'いいえ', day(2).slice(0, 10)]]);
   const runRow = tableRows(section(result.report, '直近の CI'));
-  assert.deepEqual(runRow.map(cells), [['E \\| F 2 行目', 'fail\\|ure', 'feature/x\\|y', day(2).slice(0, 10)]]);
+  assert.deepEqual(runRow.map(cells), [['CI', 'E \\| F 2 行目', 'fail\\|ure', 'feature/x\\|y', day(2).slice(0, 10)]]);
 });
 
 test('題名・ラベル・ブランチ名に \\ を含んでも、表の列がずれない', () => {
@@ -331,7 +377,9 @@ test('題名・ラベル・ブランチ名に \\ を含んでも、表の列が�
   const pullRequestRow = tableRows(section(result.report, 'レビュー待ち'));
   assert.deepEqual(pullRequestRow.map(cells), [['#2', 'C\\\\\\\\\\|D\\\\', 'いいえ', day(2).slice(0, 10)]]);
   const runRow = tableRows(section(result.report, '直近の CI'));
-  assert.deepEqual(runRow.map(cells), [['E\\\\\\|F', 'fail\\\\\\|ure', 'feature/x\\\\\\|y', day(2).slice(0, 10)]]);
+  assert.deepEqual(runRow.map(cells), [
+    ['CI', 'E\\\\\\|F', 'fail\\\\\\|ure', 'feature/x\\\\\\|y', day(2).slice(0, 10)],
+  ]);
 });
 
 /** ワークフローのファイル */

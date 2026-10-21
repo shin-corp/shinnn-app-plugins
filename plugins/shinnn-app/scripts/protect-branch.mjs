@@ -3,8 +3,9 @@
  * /shinnn-app:setup が、顧客のリポジトリの main にブランチ保護を設定するスクリプト。
  *
  * ブランチ保護は GitHub のリポジトリの設定で、条件を満たさない変更を main に入れさせない。ここで課す条件は次のとおり。
- * - CI（`.github/workflows/ci.yaml`）のジョブがすべて通った PR だけをマージできる（必須のチェック）。
- *   チェックの名前は ci.yaml の各ジョブの `name:` で、ファイルから読む
+ * - CI（`.github/workflows/ci.yaml` と `policy.yaml`）のジョブがすべて通った PR だけをマージできる（必須のチェック）。
+ *   チェックの名前は両方のファイルの各ジョブの `name:` で、ファイルから読む（ci.yaml、policy.yaml の順に連結する。
+ *   policy.yaml が無い、標準を取り込む前のリポジトリでは ci.yaml だけを読む）
  * - 管理者にも同じ条件を課す。main への直接の push もできなくなる
  * - PR の承認は必須にしない。必須にすると、マージの方針が self-review のとき /shinnn-app:pr が PR をマージできない
  * - PR のブランチが最新の main を取り込んでいることは求めない（strict: false）。履歴を一直線にすることも求めない
@@ -17,7 +18,7 @@
  * - ルールセット（新しい方式のブランチ保護。リポジトリか組織の設定）のルールが、既にそのブランチに 1 つでも効いている。
  *   従来の保護を足すと 2 つの設定が重なって分かりにくくなるので足さず、効いているルールの種類と必須のチェックを示す
  * - プランか権限のために使えない（例: 無料プランの private のリポジトリ）。CI と週次レビューで担保する
- * ci.yaml のジョブ名を読めない、gh が時間内に終わらない、GitHub が想定外のレスポンスを返した、などは終了コード 1。
+ * ワークフローのジョブ名を読めない、gh が時間内に終わらない、GitHub が想定外のレスポンスを返した、などは終了コード 1。
  *
  * 最後の行に 1 行の要約（例「ブランチ保護: 設定した（必須のチェック 3 つ）」）を出す。
  * README の「有効な機能」表と決定記録にそのまま書ける形にしてある。
@@ -37,8 +38,14 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { hasCommand, run } from './lib/hook-io.mjs';
 
-/** 必須のチェックの名前を読む CI のワークフロー（リポジトリルート起点） */
-const CI_WORKFLOW = '.github/workflows/ci.yaml';
+/** 必須のチェックの名前を読む CI のワークフロー（リポジトリルート起点）。この順に連結する。policy.yaml は無くてもよい */
+const CI_WORKFLOWS = [
+  { path: '.github/workflows/ci.yaml', required: true },
+  { path: '.github/workflows/policy.yaml', required: false },
+];
+
+/** 案内の文言に使う、CI のワークフローのファイル名 */
+const CI_WORKFLOW_LABEL = 'ci.yaml / policy.yaml';
 
 /** main に直接コミットするワークフロー。あれば保護を設定しない */
 const DIRECT_COMMIT_WORKFLOWS = ['.github/workflows/progress-snapshot.yaml', '.github/workflows/progress-snapshot.yml'];
@@ -143,14 +150,14 @@ function nameValue(raw, jobId) {
 }
 
 /**
- * ci.yaml の各ジョブの、GitHub 上のチェックの名前（`name:`。無ければジョブのキー）を書かれた順に返す。
+ * ワークフロー（ci.yaml / policy.yaml）の各ジョブの、GitHub 上のチェックの名前（`name:`。無ければジョブのキー）を書かれた順に返す。
  * 読めなければ、理由を持つ Error を投げる。
  *
  * YAML のパーサーは使わない（プラグインは依存を持たない）。読むのは、ブロック形式で書いた `jobs:` の直下のキーと、
  * その直下の `name:` だけ。マトリクス（strategy）や別のワークフローを呼ぶ（uses）ジョブと、式（${{ }}）を含む名前は、
  * チェックの名前が実行時に決まるので読めないものとして扱う。
  *
- * @param text ci.yaml の中身
+ * @param text ワークフローの中身
  */
 export function readJobNames(text) {
   const lines = text.split(/\r?\n/);
@@ -214,6 +221,31 @@ export function readJobNames(text) {
     throw new Error('jobs: の中にジョブがありません');
   }
   return [...new Set(jobs.map((job) => job.name))];
+}
+
+/**
+ * CI のワークフローのジョブ名を、CI_WORKFLOWS の順に連結して返す（重なる名前は 1 つにする）。
+ * 読めなければ、どのファイルかを添えた Error を投げる。
+ *
+ * @param root リポジトリのルート
+ */
+function readWorkflowJobNames(root) {
+  const names = [];
+  for (const { path, required } of CI_WORKFLOWS) {
+    const file = join(root, path);
+    if (!existsSync(file)) {
+      if (required) {
+        throw new Error(`${path}: ファイルがありません`);
+      }
+      continue;
+    }
+    try {
+      names.push(...readJobNames(readFileSync(file, 'utf8')));
+    } catch (error) {
+      throw new Error(`${path}: ${error.message}`, { cause: error });
+    }
+  }
+  return [...new Set(names)];
 }
 
 /**
@@ -376,10 +408,10 @@ function currentChecks(protection) {
 }
 
 /**
- * 今の必須のチェックを示し、ci.yaml のジョブ名と違えばその違いも示す。
+ * 今の必須のチェックを示し、ワークフローのジョブ名と違えばその違いも示す。
  *
  * @param current 今の必須のチェックの名前
- * @param expected ci.yaml のジョブ名
+ * @param expected ワークフローのジョブ名
  * @param where 必須のチェックを直す GitHub の画面
  */
 function showChecks(current, expected, where) {
@@ -390,10 +422,10 @@ function showChecks(current, expected, where) {
   if (missing.length === 0 && extra.length === 0) {
     return;
   }
-  console.log(`  ${CI_WORKFLOW} のジョブ名: ${quoteNames(expected)}`);
+  console.log(`  ${CI_WORKFLOW_LABEL} のジョブ名: ${quoteNames(expected)}`);
   if (extra.length > 0) {
     console.log(
-      `  ci.yaml のジョブに無いチェックが必須です: ${quoteNames(extra)}（ほかのワークフローやアプリが報告しないと、PR をマージできません）`,
+      `  ${CI_WORKFLOW_LABEL} のジョブに無いチェックが必須です: ${quoteNames(extra)}（ほかのワークフローやアプリが報告しないと、PR をマージできません）`,
     );
   }
   if (missing.length > 0) {
@@ -506,18 +538,14 @@ function main() {
   }
 
   // 3. 必須のチェックの名前
-  const ciPath = join(root, CI_WORKFLOW);
   let checkNames;
   try {
-    if (!existsSync(ciPath)) {
-      throw new Error('ファイルがありません');
-    }
-    checkNames = readJobNames(readFileSync(ciPath, 'utf8'));
+    checkNames = readWorkflowJobNames(root);
   } catch (error) {
     return failed(
-      'ci.yaml のジョブ名を読めない',
-      `${CI_WORKFLOW} から必須のチェックの名前を読めません: ${error.message}`,
-      'ci.yaml の jobs: をテンプレートと同じ形（ジョブごとに name: を 1 行で書く）にする',
+      'ワークフローのジョブ名を読めない',
+      `必須のチェックの名前を読めません: ${error.message}`,
+      'ci.yaml / policy.yaml の jobs: をテンプレートと同じ形（ジョブごとに name: を 1 行で書く）にする',
     );
   }
 
@@ -620,7 +648,7 @@ function main() {
   }
 
   console.log(`[shinnn-app:setup] ${target} にブランチ保護を設定しました。`);
-  console.log(`  必須のチェック: ${quoteNames(checkNames)}（${CI_WORKFLOW} のジョブ名）`);
+  console.log(`  必須のチェック: ${quoteNames(checkNames)}（${CI_WORKFLOW_LABEL} のジョブ名）`);
   console.log('  管理者にも適用: する / PR の承認: 必須にしない / 最新の main の取り込み: 求めない');
   return { code: 0, summary: `${SUMMARY}: 設定した（必須のチェック ${checkNames.length} つ）` };
 }

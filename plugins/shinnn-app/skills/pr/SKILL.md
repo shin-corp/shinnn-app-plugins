@@ -1,6 +1,6 @@
 ---
 name: pr
-description: 変更をコミット・プッシュしてドラフト PR を作り、レビューが収束するまで回す。マージの方針が self-review なら CI の通過後にマージまで行う。PR 本文には対応 Issue（Closes #n）・変更後の状態・次の一手を必ず書く。「PR を作って」「レビューに出したい」で起動
+description: 変更をコミット・プッシュしてドラフト PR を作り、レビューが収束するまで回す。マージの方針が self-review なら CI の通過後にマージまで行う（CI が始まらないときは、手元の確かめで代える）。PR 本文には対応 Issue（Closes #n）・変更後の状態・次の一手を必ず書く。「PR を作って」「レビューに出したい」で起動。セッション開始時の状況に「CI で確かめていないマージ」が出たときの確認（手順 9）でも起動
 ---
 
 # PR を出してレビューを収束させる
@@ -11,7 +11,9 @@ description: 変更をコミット・プッシュしてドラフト PR を作り
 | `mergePolicy` | 収束したあと |
 |:--|:--|
 | `human`（既定） | **ready にするのもマージするのも人。** Claude はドラフトのまま渡し、収束したことを報告する |
-| `self-review` | Claude が ready にし、CI の通過を待ってマージする（「7. マージする」） |
+| `self-review` | Claude が ready にし、CI の通過を待ってマージする（「7. マージする」）。CI が始まらないときは、CI の通過を「8. CI が始まらないとき」の手元の確かめで代える |
+
+「9. CI で確かめていないマージを確かめる」だけを行うときは、0〜8 を飛ばす。
 
 ## 0. 流れに乗っているかを見る
 
@@ -24,6 +26,7 @@ description: 変更をコミット・プッシュしてドラフト PR を作り
 
 `/shinnn-app:check` を通し、緑であること。まとめての `check` を走らせるのは、PR 1 本につきここの 1 回だけ
 （`feature` は直前に `check` を走らせずにこのスキルを呼ぶ。実装の途中の確認は hook が行う）。
+ただし、CI が始まらないときの「8. CI が始まらないとき」の 2 は、`check` を通し直す。
 加えて、`git diff origin/main...HEAD` を通しで読み、次を満たさない箇所を直す。
 **レビュアーに指摘される前に自分で直す。**
 
@@ -74,7 +77,7 @@ gh pr create --draft --base main --title "<タイトル>" --body-file <本文の
 
 | 見出し | 内容 |
 |:--|:--|
-| 対応 Issue | `Closes #n`。これが無いと CI の policy job が落ち、マージしても Issue が閉じない |
+| 対応 Issue | `Closes #n`。これが無いと CI の規約チェック（`policy.yaml`）が落ち、マージしても Issue が閉じない |
 | 目的 | なぜこの変更が要るのか |
 | 変更点 | 箇条書き・体言止め |
 | 対応した受入条件 | `AC-n` の一覧。数えられるものは数値も |
@@ -115,6 +118,9 @@ gh pr edit <PR 番号> --add-reviewer <Copilot のレビュアー名>
 ## 5. 指摘への対応
 
 - **1 コメント = 1 コミット**。どのコミットが何に対応したかを、コメントへの返信に SHA 付きで書く
+- **push は、1 巡の指摘をすべて直してから 1 回**にする（Actions の分を節約するため。push のたびに CI が走る）。
+  コメントへの返信は、その push の後に書く
+- PR 本文の書き換え（「見送った指摘」など）も、1 巡につき 1 回にまとめる（Actions の分を節約するため。本文を直すと規約チェック（`policy.yaml`）が走り直す）
 - Critical / Warning が 1 件でも残っている間は次の段階に進まない
 - Info は必須ではない。見送るなら**理由を返信と PR 本文に残す**（次に同じ指摘が来たとき再検証しないで済む）
 - **動作に影響が大きい指摘は自分で判断せず人に相談する**
@@ -128,7 +134,16 @@ gh pr edit <PR 番号> --add-reviewer <Copilot のレビュアー名>
 続けて `/shinnn-app:retro` で、この PR の Issue に振り返り（詰まり / 学び / 次に試す）を残し、
 引き継ぐ人が知らないと困ることを「引き継ぎメモ」Issue に足す。利用者に頼まれるのを待たない。
 
-`mergePolicy` が `human` ならここで終わり（ready にはしない）。`self-review` なら続けて 7 に進む。
+続けて、`mergePolicy` にかかわらず、最新のコミットの CI の状態を `gh pr checks <番号>` で見る。
+
+- すべて緑: `human` はここで終わる（ready にはしない）。`self-review` は 7 に進む
+- 実行中がある: `gh pr checks <番号> --watch` で終わるまで待ち、結果で分ける
+- 失敗がある: 「8. CI が始まらないとき」の 1 の見分け方で、CI が始まっていないかを見る
+  - step が動いて落ちた job がある: ふつうの CI の失敗なので、直して push し、この 6 の CI の確認からやり直す（`retro` はやり直さない）
+  - CI が始まっていない: 8 の 1〜3 を行う
+    - `human`: 8 の 4 の報告をして終わる
+    - `self-review`: 7 の CI の条件だけを 8 の手元の確かめで満たす。7 の残りの条件（指摘が 0 件・人の判断待ちが無い）もすべて満たすときだけ、
+      7 のコマンドの代わりに 8 の 4 でマージする。満たさないときは、8 の 4 の報告（`human` と同じ）をして人に渡す
 
 ## 7. マージする（`mergePolicy: self-review` のときだけ）
 
@@ -136,7 +151,9 @@ gh pr edit <PR 番号> --add-reviewer <Copilot のレビュアー名>
 
 - Critical / Warning の指摘が 0 件で、見送った指摘の理由を PR 本文に書いてある
 - 「規約で迷った点」に人の判断待ちの項目が無い
-- 最新のコミットで CI が緑（CI は `check` と同じ内容を走らせるので、ここで `check` を走らせ直さない）
+- 最新のコミットで CI が緑（CI は `check` と同じ内容を走らせるので、ここで `check` を走らせ直さない）。
+  ただし、CI が始まらないときは、この条件を 8 の 2 の手元の確かめで満たし、マージは下のコマンドではなく 8 の 4 で行う
+  （始まっていない CI を `gh pr checks` で待たない）
 
 ```
 gh pr ready <番号>
@@ -145,9 +162,96 @@ gh pr merge <番号> --merge --delete-branch
 git switch main && git pull --ff-only
 ```
 
-- CI が落ちたら、直してからやり直す。`--admin` などで検査を飛ばさない
+- CI が落ちたら（step が動いて落ちたら）、直してからやり直す。`--admin` などで検査を飛ばさない
 - リポジトリが auto-merge を許可しているなら、ready の直後に `gh pr merge <番号> --auto --merge --delete-branch` としてもよい
   （CI が通った時点でマージされる）。その場合も `gh pr view <番号> --json state` でマージされたことを確かめてから報告する
 - `gh pr merge` が `workflow` スコープの不足で失敗したら（ワークフローを変える PR）、人にマージを頼む。
   `gh auth refresh -h github.com -s workflow` で足せる
 - 報告には、マージしたこと・閉じた Issue・`main` の状態（CI の結果）を書く
+
+## 8. CI が始まらないとき
+
+「CI が始まらない」の定義と、手元の確かめでマージに進んでよい条件は、規約 `git-workflow.md` の「CI が始まらないとき」にある。
+ここは手順。`mergePolicy` が `human` でも `self-review` でも使う。
+
+1. 最新のコミットの CI の実行を見る。CI は `ci.yaml` と `policy.yaml` の 2 つのワークフローで動く。
+
+   ```
+   gh run list --commit <最新のコミットの SHA> --json databaseId,workflowName,conclusion
+   gh run view <実行の番号> --json jobs --jq '.jobs[] | "\(.databaseId) \(.name) \(.conclusion) step=\(.steps | length)"'
+   ```
+
+   `gh run list --commit` は、同じワークフローの古い実行も返す（本文の編集で `policy.yaml` の実行が増える）。
+   `workflowName` ごとに、一覧の先頭（いちばん新しい）実行だけを見る。`--workflow` で絞らない
+   （標準を取り込む前の、`policy.yaml` が無いリポジトリでは 404 になる）。
+   その実行の番号ごとに `gh run view` を繰り返す（2 つのワークフローとも見る）。
+
+   - 実行がまだ終わっていなければ（`conclusion` が空）、待つ
+   - 落ちた（`failure`）job が 1 つ以上あり、落ちた job がすべて `step=0` なら、CI が始まっていない（`ci.yaml` が緑で、`policy.yaml` だけが `step=0` で落ちた場合も含む）
+   - step が動いて落ちた job が 1 つでもあれば、ふつうの CI の失敗として直す（この節には進まない）
+   - 理由の表示は `gh api "repos/{owner}/{repo}/check-runs/<job の databaseId>/annotations" --jq '.[].message'` で読み、報告に写す
+2. 最新のコミットで、手元で確かめる。
+   - `git status --porcelain` が空であること（コミットしていない変更があると、確かめたものと PR が食い違う）
+   - `npm run dev` を止めてから `npm ci` を通す（`package.json` と `package-lock.json` の食い違いを見る。Windows では動いている開発サーバーがファイルを掴み、`npm ci` が失敗する）
+   - `/shinnn-app:check` を通し直す
+   - `npm audit --audit-level=high` を通す
+   - PR 本文に `Closes #<Issue 番号>` があること（`gh pr view <番号> --json body`）
+   - `shared/src/api/` を変えたなら、テストも変えているか、本文に「テストを変えない理由」があること
+   - 認証情報の混入（gitleaks）は手元では確かめない（9 の `main` の CI が履歴をすべて走査する）
+3. 「引き継ぎメモ」Issue（番号は `.shinnn/setup.json` の `handoverIssue`）の本文に、見出し `## CI で確かめていないマージ` の下へ
+   `- #<PR 番号>（<YYYY-MM-DD>）` の 1 行を足す。見出しが無ければ、本文の末尾に見出しごと足す。ほかの見出しの下は変えない。
+
+   ```
+   gh issue view <Issue 番号> --json body --jq .body > <ファイル>
+   （ファイルを書き換える）
+   gh issue edit <Issue 番号> --body-file <ファイル>
+   ```
+4. 必須のチェックがあるかを確かめて、マージを進める。次のどちらかで 1 以上が出れば、必須のチェックがある。
+
+   ```
+   gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.checks | length'
+   gh api repos/{owner}/{repo}/rules/branches/main --jq '[.[] | select(.type == "required_status_checks")] | length'
+   ```
+
+   1 つ目はブランチ保護、2 つ目はルールセット（新しい方式のブランチ保護）を見る。1 つ目は、ブランチ保護が無ければ 404 で終わる（必須のチェックは無い）。
+   - 必須のチェックが無い: 2 の手元の確かめが通っていれば、次のマージに進む
+   - 必須のチェックがある: 2 の手元の確かめが通ったら、**人に**外してもらう。ブランチ保護なら Settings → Branches → main のルールを消す。
+     ルールセットなら Settings → Rules → Rulesets で必須のチェックを外す。
+     頼むときに、3 と同じやり方で `- ブランチ保護を外している（<YYYY-MM-DD>。ブランチ保護 / ルールセット）` の行も足す（すでにあれば足さない）
+   - マージ（`self-review`）: `gh pr ready <番号>` → `gh pr merge <番号> --merge --delete-branch`。
+     GitHub がブランチ保護（必須のチェック）で断ったら、人に渡す。`--admin` で飛ばさない
+   - 報告（`human`）: CI が始まらなかったこと・理由の表示・手元の確かめの結果を書き、マージを人に頼む（保護があれば、外すことも頼む）
+   - `ci.yaml` に `workflow_dispatch` が無い、または `policy.yaml` が無いリポジトリ（標準を取り込む前）では、報告に `/shinnn-app:update-rules` で標準を取り込むことを添える（9 で `main` の CI を走らせるために要る）
+
+## 9. CI で確かめていないマージを確かめる
+
+セッション開始時の状況に「CI で確かめていないマージ」が出たときに行う。
+
+1. `git fetch` で `origin/main` を最新にする。
+2. 標準を取り込む前のリポジトリ（`ci.yaml` に `workflow_dispatch` が無い、または `policy.yaml` が無い）では、`main` の CI を手で走らせられない。
+   先に `/shinnn-app:update-rules` で標準を取り込む。その PR のマージで `main` に push の CI が走るので、その結果で 4 に進む
+   （`gh run list --branch main --event push --limit 2 --json databaseId,workflowName,headSha` で、`ci.yaml` と `policy.yaml` の実行を取る）。
+3. `main` の CI を、2 つのワークフローとも手で走らせ、その実行を取る。`gh workflow run` は実行の番号を返さないので、走らせる前の時刻（UTC）を控え、それ以降に作られた実行だけを取る。
+
+   ```
+   date -u +%Y-%m-%dT%H:%M:%SZ
+   gh workflow run ci.yaml --ref main
+   gh workflow run policy.yaml --ref main
+   gh run list --branch main --event workflow_dispatch --created ">=<控えた時刻>" --json databaseId,workflowName,headSha
+   ```
+
+   実行が出るまで数秒かかる。2 つ出るまで待ってから取る。2 つの実行の `headSha` が `origin/main` のコミットと同じことを確かめる。
+4. 実行ごとに `gh run watch <実行の番号> --exit-status` で結果を待つ（時間がかかるので、Bash の `run_in_background` で動かす）。
+5. 結果で分ける。
+   - まだ始まらない（8 の見分け方）: 行を残して終わる
+   - 2 つとも緑:
+     1. 見出しの下の行のうち、マージ済みの PR の行を消す。まだ open な PR は、その PR の最新のコミットの 2 つの実行を
+        `gh run rerun <実行の番号>` でやり直し（ワークフローごとに最新の実行）、どちらも緑なら消す。マージせずに閉じた PR の行は消す
+     2. 「ブランチ保護を外している」の行があれば、保護を戻す（戻す時期は規約 `git-workflow.md` の「CI が始まらないとき」）。
+        - ブランチ保護: `node ${CLAUDE_PLUGIN_ROOT}/scripts/protect-branch.mjs --dry-run` で設定する内容を人に見せ、
+          了承を得てから `--dry-run` を外して実行する（`setup` の手順 5 の 12 と同じ）
+        - ルールセット: 外した必須のチェックを、人に戻してもらう
+
+        戻ったら、その行を消す。スクリプトが保護が残っていると示して終わったときも、保護は戻っているので消す
+   - どちらかが落ちた: `gh issue create` で直す Issue を作る。題は `[不具合] main の CI が落ちている`、ラベルは `status:next`、
+     本文に落ちた job と、見出しの下の PR の番号を書く。行は、直して `main` の CI が緑になるまで残す

@@ -53,6 +53,7 @@ const REQUIRED_FILES = [
   '.github/ISSUE_TEMPLATE/feature.yml',
   '.github/ISSUE_TEMPLATE/bug.yml',
   '.github/workflows/ci.yaml',
+  '.github/workflows/policy.yaml',
   '.github/workflows/dependabot-issue.yaml',
   'docs/仕様書.md',
   'docs/env.md',

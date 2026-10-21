@@ -176,12 +176,12 @@ PR を誰がマージするかを決める。既定は `human`。
 | 値 | 動き | 選ぶ場合 |
 |:--|:--|:--|
 | `human`（既定） | Claude はドラフトのまま渡し、人が ready にしてマージする | シン株式会社のレビューを必ず通したい |
-| `self-review` | `/shinnn-app:pr` がセルフレビュー（Critical / Warning が 0）と CI の通過を確かめ、ready にしてマージまで行う | 顧客が「シン株式会社のレビューを待たずに進める」と明示した |
+| `self-review` | `/shinnn-app:pr` がセルフレビュー（Critical / Warning が 0）と CI の通過を確かめ、ready にしてマージまで行う（CI が始まらないときは、規約 `git-workflow.md` の「CI が始まらないとき」に従う） | 顧客が「シン株式会社のレビューを待たずに進める」と明示した |
 
 `self-review` を選ぶ前に、次を相手に説明して同意を取る。
 
 - **Claude が人の確認なしにマージまで行う設定**であること。`.claude/settings.json` は `gh pr` を許可しているので、`gh pr merge` の実行時に確認は出ない。止めたければ `human` に戻す（setup の再実行）
-- Claude がマージするのは **CI が緑の PR だけ**（`/shinnn-app:pr` が確かめる）。使えるプランなら手順 5 の 12 でブランチ保護も設定し、
+- Claude がマージするのは **CI が緑の PR だけ**（`/shinnn-app:pr` が確かめる。ただし、CI が始まらないときは、規約 `git-workflow.md` の「CI が始まらないとき」に従う）。使えるプランなら手順 5 の 12 でブランチ保護も設定し、
   CI が緑でない PR は GitHub の側でもマージできなくする。承認（Approve）は必須にしないので、Claude が作った PR を Claude がマージできる
 - `gh` のトークンに `workflow` スコープがあるか（ワークフローを変える PR のマージに要る。手順 2 で確認する）
 - リポジトリの auto-merge を許可するか（手順 5 の 10）
@@ -230,7 +230,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
    | `--profile` | `full` / `client-only`（`optional.client-only-profile` も一緒に合わせる） |
    | `--reviewer` | `CODEOWNERS` の `@SHINNN_REVIEWER` を置き換えるシン株式会社の担当者のアカウント |
    | `--database` | `database-url` / `local-postgres` / `docker` / `pglite` / `managed` |
-   | `--merge-policy` | `human`（既定。人が ready にしてマージする）/ `self-review`（`/shinnn-app:pr` がセルフレビューと CI の通過後にマージする） |
+   | `--merge-policy` | `human`（既定。人が ready にしてマージする）/ `self-review`（`/shinnn-app:pr` がセルフレビューと CI の通過後にマージする。CI が始まらないときは「CI が始まらないとき」に従う） |
    | `--enable` / `--disable` | 選択項目。`.shinnn/setup.json` の `optional` にあるキーだけを受け付ける |
    | `--handover-issue` | 「引き継ぎメモ」Issue の番号（下の 8 で Issue を作ってから渡す） |
    | `--complete` | `setupCompletedAt` に現在時刻を入れる |
@@ -274,7 +274,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
     node ${CLAUDE_PLUGIN_ROOT}/scripts/protect-branch.mjs --dry-run
     ```
 
-    対象は `main`。`.github/workflows/ci.yaml` の 3 つのジョブの通過を必須にする（必須のチェックの名前は各ジョブの `name:` で、テンプレートのままなら「型検査と lint」「テスト」「規約チェック」）。管理者にも同じ条件を課す。
+    対象は `main`。`.github/workflows/ci.yaml` と `policy.yaml` の 3 つのジョブの通過を必須にする（必須のチェックの名前は各ジョブの `name:` で、テンプレートのままなら「型検査と lint」「テスト」「規約チェック」）。管理者にも同じ条件を課す。
     承認（Approve）は必須にしない（`self-review` では Claude が作った PR を Claude がマージするので、必須にするとマージできない）。
     マージの前にブランチを `main` の最新に追いつかせることと、履歴を一直線にすることも必須にしない
     （`/shinnn-app:pr` はマージコミットを作ってマージする）。
@@ -347,7 +347,7 @@ claude --add-dir <元のアプリのフォルダ>
 - ブランチ保護のスクリプトが「使えない（理由）」と示して終わる（private で無料のプラン、管理者権限が無い）: 止めずに続け、
   理由を「有効な機能」表と `docs/decisions/` の記録に残す。`main` への push を確実に止めるのはブランチ保護なので、
   使えるプランへの変更を推奨として伝える（プランを変えるか、管理者が setup を再実行すれば設定できる）
-- ブランチ保護のスクリプトが、既にあるブランチ保護を示して終わる: 上書きしない。必須のチェックに CI の 3 つのジョブが無ければ、
+- ブランチ保護のスクリプトが、既にあるブランチ保護を示して終わる: 上書きしない。必須のチェックに CI の 3 つのジョブ（`ci.yaml` の 2 つと `policy.yaml` の 1 つ）が無ければ、
   差分を示して人に判断してもらう
 - ブランチ保護のスクリプトが、`main` に直接コミットするワークフローが残っているとして設定しない: 止めずに続ける。理由を記録に残して、シン株式会社に相談する。
   そのワークフローの扱いが決まったら、setup を再実行する
@@ -355,8 +355,8 @@ claude --add-dir <元のアプリのフォルダ>
   最後の行の要約（`ブランチ保護: 設定できなかった（…）`）で書く。要約の行が出ていなければ（スクリプトが途中で止まった）、
   `ブランチ保護: 設定できなかった（スクリプトが途中で止まった）` と書く。「引き継ぎメモ」Issue の「引き継ぎの注意」にも、
   原因と、直した後に setup を再実行することを書く。原因を直したら、setup を再実行する。再実行の手順 5 の 12 で、
-  「有効な機能」表のブランチ保護の行が書き換わり、結果は新しい setup の記録に残る。原因が `ci.yaml` のときは、
-  人が直した `ci.yaml`（または `/shinnn-app:update-rules` で標準に戻した `ci.yaml`）を `main` に取り込んでから再実行する
+  「有効な機能」表のブランチ保護の行が書き換わり、結果は新しい setup の記録に残る。原因が `ci.yaml` か `policy.yaml` のときは、
+  人が直したそのファイル（または `/shinnn-app:update-rules` で標準に戻したもの）を `main` に取り込んでから再実行する
 - すでに `.github/workflows/` に手を入れたファイルがある: 上書きせず、差分を示して人に判断してもらう
 - `gh pr merge` が `workflow` スコープの不足で失敗する: `gh auth refresh -h github.com -s workflow` を案内する。それまでは人がマージする
 - 適用スクリプトが `選択項目 … は optional にありません` で止まる: 項目そのものを増やすのは標準の変更にあたる。
