@@ -30,8 +30,8 @@ PR を出す前に、CI と同じ内容を手元で通す。**ここが緑にな
 | 6 | `node scripts/check-mandatory.mjs` | 必須項目（ファイル・deny・規約）の実体が残っているか |
 | 7 | `node scripts/check-licenses.mjs` | 依存のライセンスが許可リスト（OSS）に収まっているか。外れたものは費用が発生する可能性があるのでシン株式会社に相談する |
 | 8 | `npx prettier --check "client/**/*.ts"` | 画面の `.ts` が prettier の書き方にそろっているか。リポジトリの `.github/workflows/ci.yaml` にこの確認が無ければ（標準を取り込む前）飛ばして「未導入」と報告し、`/shinnn-app:update-rules` を案内する。出たのがこの PR で編集したファイルだけなら `npx prettier --write <ファイル>` で直す。編集していないファイルが出たら、数によらず `/shinnn-app:update-rules` の「画面の `.ts` の整形」のとおり、整形だけの PR を別に出す |
-| 9 | `npm audit --omit=dev --audit-level=high` | 実行時の依存（各 `package.json` の `dependencies`。依存の依存を含む）に、重さが high 以上の脆弱性の勧告（GitHub が公開する脆弱性の知らせ）が出ていないか。CI の規約チェックの「依存の脆弱性」と同じ。落ちたら下の「`npm audit` で勧告が出たとき」の順で直す |
-| 10 | `npm audit --audit-level=high` | 開発用の依存（`devDependencies`）も含めて、high 以上の勧告が出ていないか。CI はこれで落ちず、注記（警告の知らせ）を出す。ここも落ちた扱いにしない。勧告が出たら「`npm audit` で勧告が出たとき」の 3 |
+| 9 | `npm audit --omit=dev --audit-level=high` | 実行時の依存（各 `package.json` の `dependencies`。依存の依存を含む）に、重さが high 以上の脆弱性の勧告（GitHub が公開する脆弱性の知らせ）が出ていないか。CI の規約チェックの「依存の脆弱性」と同じ。落ちたら、下の「`npm audit` で勧告が出たとき」の冒頭から進める |
+| 10 | `npm audit --audit-level=high` | 開発用の依存（`devDependencies`）も含めて、high 以上の勧告が出ていないか。CI はこれで落ちず、注記（警告の知らせ）を出す。ここも落ちた扱いにしない。勧告が出たら、「`npm audit` で勧告が出たとき」の冒頭から進める（1 の後は 3） |
 
 `scripts/` の確認スクリプトが無い場合は、その項目を飛ばして「未導入」と報告する（勝手に作らない）。
 
@@ -102,7 +102,7 @@ Issue と PR の本文を書き換えるときは、`gh issue view <番号> --js
 今の本文を読む。それに足した本文を、Write ツールで scratchpad の `issue-body.md`（PR は `pr-body.md`）に書き、`--body-file` に渡す
 （リダイレクトでファイルに書くと、確認が出るか、リポジトリの中にファイルが残る）。
 
-1. **直しの Issue と PR を探す。** ここでは探すだけで、作らない
+1. **直しの Issue と PR を探す。** どの入り口から来ても、最初にここを通る。ここでは探すだけで、作らない
    - `main` の側: `git fetch` の後に、勧告の出たパッケージが `git diff HEAD...origin/main -- package-lock.json`
      （このブランチを切った後の `main` の変更）に出たら、`main` の側で版が変わっている。既に直っていることがある。
      PR があれば、`gh pr update-branch <番号>` と `git pull --ff-only` で `main` を取り込んでから、`npm audit` を流し直す。
@@ -110,10 +110,8 @@ Issue と PR の本文を書き換えるときは、`gh issue view <番号> --js
    - 直しの Issue: `gh issue list --state open --label type:deps --limit 200 --json number,title,labels --jq '.[] | select(.title == "[依存] 依存の脆弱性の修正") | "\(.number) \([.labels[].name] | join(","))"'`。
      ラベルに `status:blocked` があれば、シン株式会社の判断待ち。2 の 5 には進まない
    - 直しの PR: 直しの Issue があれば、`gh pr list --state open --head feature/<Issue 番号>-audit --json number --jq '.[].number'`
-   - Dependabot などの PR: `gh pr list --state open --limit 200 --json number,title,body --jq '.[] | select((.title + .body) | contains("<パッケージの名前>")) | "\(.number) \(.title)"'`。
-     本文の版（`from <今の版> to <新しい版>`）が勧告の直った版を入れるなら、そのパッケージはその PR で直る
    - 流し直して勧告が出なくなったときは、ここで終わる。直しの Issue に書いたパッケージのどれにも勧告が出なくなったら、
-     `gh issue close <番号> --comment "<理由>"` で閉じる
+     `gh issue close <番号> --comment "<理由>"` で閉じる。直しの PR があれば、`gh pr close <番号> --comment "<理由>"` で閉じる
 2. **実行時の依存の勧告（9 で落ちた）**
    1. この PR が原因かを見る。`git diff origin/main...HEAD -- package-lock.json`（コミットした分）と
       `git diff HEAD -- package-lock.json`（まだコミットしていない分）に、勧告の出たパッケージが出たら、この PR で足した・上げた依存が原因。
@@ -121,10 +119,9 @@ Issue と PR の本文を書き換えるときは、`gh issue view <番号> --js
    2. 直しを元の PR に混ぜない（規約 `git-workflow.md` の「1 Issue = 1 ブランチ = 1 PR」）。1 で見つけた直しの Issue を使う
       - 見つからなければ、題を `[依存] 依存の脆弱性の修正` にして作る。ラベルは `type:deps` と `status:next` を付ける。
         本文には、勧告の出たパッケージごとに、勧告の番号（`GHSA-` で始まるもの）をすべて・実行時の依存か開発用の依存か・
-        `npm explain <パッケージの名前>` の出力・直る PR（Dependabot などの PR があるとき）を書く。直し方は、この節の 4 だと書き添える
-      - 見つかった Issue の本文に無いパッケージは、本文に足す。直しの PR が既にあれば、足したパッケージも直しのブランチで
-        4 の順に直して push し、直しの PR の本文も直す
-      - Dependabot などの PR で直るパッケージは、直しの PR では直さない（本文に、その PR の番号を書く）
+        `npm explain <パッケージの名前>` の出力を書く。直し方は、この節の 4 だと書き添える
+      - 見つかった Issue の本文に無いパッケージは、本文に足す（`status:blocked` のときも足すだけ）。ただし、直しの PR が既にあれば、
+        足さずにその PR のマージを待つ。マージの後にも勧告が残っていれば、そのときに 1 からやり直す
    3. 元の PR の本文の「確認した結果」に、`依存の脆弱性: NG（<勧告の番号>。この PR が原因でない。#<直しの Issue の番号> で直す）` の 1 行を書く。
       元の PR は、そのまま出してよい。元の PR が既にあれば、本文を書き換える（上の書き換え方）
    4. 元の PR の CI は、「依存の脆弱性」で落ちたままになる。規約チェックのその後ろの step（開発用を含む依存の脆弱性・依存のライセンス・
@@ -135,8 +132,9 @@ Issue と PR の本文を書き換えるときは、`gh issue view <番号> --js
    5. 直しの PR がまだ無く、直しの Issue が `status:next` なら、元の PR の `/shinnn-app:pr` が終わった後に、ほかの Issue より先に進める
       - ブランチを切る前に、`npm audit fix --dry-run` と、勧告の出たパッケージごとの `npm explain <パッケージの名前>` で、
         4 のどれで直るかを見る（どちらもファイルを書き換えない）。どれも 4 の 5 に当たるなら、ブランチを切らずに 4 の 5 に進む
+      - `git status --porcelain` が空であることを確かめる（空でなければ、元のブランチで先にコミットする）
       - `feature` の手順 3 のとおりに、`origin/main` から `feature/<Issue 番号>-audit` を切り、ラベルを `status:doing` に替える
-      - 直しの Issue に書いたパッケージ（Dependabot などの PR で直るものを除く）を、4 の順にすべて直す。
+      - 直しの Issue に書いたパッケージを、4 の順にすべて直す。
         `/shinnn-app:pr` で、題を `[依存] 依存の脆弱性の修正` にして PR を出す。依存の差し替えは振る舞いを変えないので、
         受入条件は足さない（規約 `testing.md` の「何をテストするか」の、振る舞いが変わらない変更の項目）。
         PR 本文の「対応した受入条件」には「無し（依存の差し替え）」と書く
@@ -181,8 +179,8 @@ Issue と PR の本文を書き換えるときは、`gh issue view <番号> --js
         PR にする。残った勧告と試したことは、本文の「規約で迷った点」に書く
       - 直しのブランチにいるときは、そのあと元のブランチに戻る
 5. **直した後。** `npm ls --all` と、`check` の 9（開発用の依存の勧告を直したときは 10 も）が通ることを確かめる。
-   `package-lock.json` の差分は、ADR 0002 の「lock ファイルの作り直し方」のとおりに確かめる（この節が無いリポジトリでは、
-   直したパッケージとその依存だけに収まっていることを確かめる）。この PR の中で直したときは、続けて `check` の 1〜8 を通し直す。
+   `package-lock.json` の差分は、ADR 0002 の「lock ファイルの作り直し方」の差分の確かめ方のとおりに確かめる（通す監査は、ここに書いた
+   9 と 10 にする。この節が無いリポジトリでは、直したパッケージとその依存だけに収まっていることを確かめる）。この PR の中で直したときは、続けて `check` の 1〜8 を通し直す。
    直しの PR では、続く `/shinnn-app:pr` の手順 1 の `check` で代える
 
 ## 報告
@@ -195,8 +193,8 @@ test: 成功 N / 失敗 N
 AC カバレッジ: 満たしている AC / 全体
 API 定義カバレッジ: テストがあるルート / 全体
 画面の書式: OK / NG / 未導入
-依存の脆弱性: OK / NG / 確かめられない（NG なら勧告の番号と、この PR が原因か）
-依存の脆弱性（開発用）: OK / 勧告あり / 確かめられない（勧告ありなら勧告の番号と、直しの Issue）
+依存の脆弱性: OK / NG / 確かめられない（NG なら、勧告の番号・この PR が原因か・直しの Issue の番号。2 の 3 の形）
+依存の脆弱性（開発用）: OK / 勧告あり / 確かめられない（勧告ありなら、勧告の番号と直しの Issue の番号。3 の形）
 ```
 
 範囲を絞って確かめたときは、確かめた範囲と結果（成功 N / 失敗 N、失敗したものの名前）だけを短く報告する。
