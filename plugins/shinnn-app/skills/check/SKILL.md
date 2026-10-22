@@ -73,41 +73,62 @@ lint のルールごとの直し方の規約（`.claude/rules/` の下）:
 
 ## `npm audit` で落ちたとき
 
-勧告は、コードを変えていなくても、ある日から出ることがある。そのときは、`main` の CI も同じ理由で落ちている。
+勧告は、コードを変えていなくても、ある日から出ることがある。そのときは、`main` で CI を走らせても同じ理由で落ちる。
+出力に `# npm audit report` が無く、エラー（`audit endpoint returned an error` など）で終わったときは、勧告で落ちたのではない。
+レジストリに届かなかったので、「依存の脆弱性: 確かめられない」と報告し、下の手順には進まない。
 `--audit-level` を上げる、CI の `npm audit` の step を消す、のどちらでも通さない（勧告が見えなくなるだけで、脆弱性は残る）。
 
 1. **この PR が原因かを見る。** `git fetch` の後に、`git diff origin/main...HEAD -- package-lock.json`（コミットした分）と
    `git diff HEAD -- package-lock.json`（まだコミットしていない分）を実行する
    - どちらも何も出ない、または勧告の出たパッケージが差分に無い: 既にある依存に新しい勧告が出た。2 に進む
    - 勧告の出たパッケージが差分にある: この PR で足した・上げた依存が原因。この PR の中で 3 の順に直す
-2. **直しを元の PR に混ぜない**（規約 `git-workflow.md` の「1 Issue = 1 ブランチ = 1 PR」）
-   - 元の PR は、そのまま出してよい（`check` の残りの項目は通す）。その PR の CI は、`npm audit` の step だけが落ちる
-   - 元の PR を出した後に、`[依存] <パッケージの名前> の脆弱性の修正` の Issue を作る。ラベルは `type:deps` と `status:next` を付ける
-   - `main` から `fix/<Issue 番号>-audit` を切る。3 の順に直し、`/shinnn-app:pr` で PR を出す
-   - 直しの PR がマージされたら、元のブランチに戻る。`gh pr update-branch <元の PR の番号>` で `main` を取り込み、
-     `git pull --ff-only` で手元にも入れる
+2. **直しを元の PR に混ぜない**（規約 `git-workflow.md` の「1 Issue = 1 ブランチ = 1 PR」）。次の順に進める
+   1. 同じ直しが既にあるかを見る。見つかったら、新しく作らずにその番号を使う
+      - 開いている Issue と PR（Dependabot のものを含む）: `gh issue list --state open --label type:deps --search "<パッケージの名前>"` と
+        `gh pr list --state open --search "<パッケージの名前>"`
+      - 閉じた Issue: `gh issue list --state closed --label type:deps --search "<勧告の番号>"`。見つかったら、`main` では直っている。
+        6 の取り込みだけを行う（元の PR がまだ無ければ、PR を出してから取り込む）
+   2. 無ければ、`[依存] <パッケージの名前> の脆弱性の修正` の Issue を作る。ラベルは `type:deps` と `status:doing` を付ける。
+      本文に、勧告の番号（`GHSA-` で始まる）と `npm explain <パッケージの名前>` の出力を書く
+   3. 元の PR の本文の「確認した結果」に、`依存の脆弱性: NG（この PR が原因でない。#<直しの Issue の番号> で直す）` の 1 行を書く。
+      元の PR は、そのまま出してよい（`check` の残りの項目は通す）
+   4. 元の PR の CI では、`npm audit` の step が落ちる。規約チェックのその後ろの step（依存のライセンス・認証情報の混入）は飛ばされる。
+      飛ばされた step は、6 で `main` を取り込んだ後の CI で確かめられる
+   5. 元の PR を出した後に、`git fetch origin main` → `git switch -c feature/<Issue 番号>-audit origin/main` で直しのブランチを切る。
+      3 の順に直し、`/shinnn-app:pr` で PR を出す。依存の差し替えは振る舞いを変えないので、受入条件は足さない
+      （規約 `testing.md` の「振る舞いが変わらない変更」）。PR 本文の「対応した受入条件」には「無し（依存の差し替え）」と書く
+   6. 直しの PR がマージされたら、元のブランチに戻る（`git switch <元のブランチ>`）。`gh pr update-branch <元の PR の番号>` で
+      `main` を取り込み、`git pull --ff-only` で手元にも入れる。続けて、元の PR の `/shinnn-app:pr` の手順 6 の CI の確認からやり直す
+   7. 直しの PR がこのセッションでマージされないとき（`mergePolicy` が `human` のとき、直しの PR を人に渡したとき）は、報告に次の順を書く。
+      「直しの PR #<番号> を先にマージする。その後に、元の PR #<番号> に `main` を取り込む（GitHub の PR の画面の Update branch か、
+      Claude に頼む）」
+   8. 3 の 5 でシン株式会社の判断を待つときは、直しの Issue のラベルを `status:doing` から `status:blocked` に替える
 3. **直す順。** 上から試し、直ったところで止める
    1. `npm audit fix` を実行する。`--force` は付けない。`package.json` の範囲の中で直る勧告は、これで直る
-   2. 残った勧告に `npm audit fix --force` しか示されないときは、その案を使わない。出力の
-      `Will install <名前>@<版>, which is a breaking change` は、ライブラリの版を下げるかメジャーの版を変える案である。
-      ほかの依存との版の組み合わせが崩れる
+   2. 残った勧告に `npm audit fix --force` しか示されないときは、その案を使わない。
+      出力の `Will install <名前>@<版>, which is a breaking change` と `Will install <名前>@<版>, which is outside the stated dependency range` は、
+      ライブラリの版を下げるか、メジャーの版や `package.json` の範囲の外の版に変える案を示している。
+      どちらの案でも、ほかの依存との版の組み合わせが崩れる
    3. `npm explain <勧告の出たパッケージ>` で、どのライブラリが入れているかと、どの範囲を求めているかを見る。
-      ライブラリが勧告の直っていない版に固定していれば（例: `"vite": "8.3.0"` のような 1 つの版）、4 に進む。
-      固定していなければ、5 に進む
+      ライブラリが勧告の直っていない版に固定していれば（例: `"vite": "8.3.0"` のような 1 つの版）、3 の 4 に進む。
+      固定していなければ、3 の 5 に進む
    4. ルートの `package.json` の `overrides` で、勧告の直った版に差し替える。`overrides` は、依存の依存の版を差し替える
       npm の指定である。書き方は次のとおり
-      - 固定しているライブラリをルートの `package.json` が直接宣言しているときは、この書き方を使えない（npm が `EOVERRIDE` で止まる）。5 に進む
+      - 固定しているライブラリをルートの `package.json` が直接宣言しているときは、この書き方を使えない（npm が `EOVERRIDE` で止まる）。
+        3 の 5 に進む
       - キーは `<固定しているライブラリ>@<その今の系統>` にする（例: `"@angular/build@22.2": { "vite": "8.3.4" }`）。
         ライブラリを次の系統に上げると、差し替えは効かなくなる。項目を消し忘れても、新しい系統のライブラリに古い版を組み合わせずに済む
       - このキーは、ライブラリ自身の範囲もその系統に絞る。ライブラリを次の系統に上げるときは、`package.json` の範囲を上げて、この項目を消す
       - 差し替える版は、今の版と同じ系統（例: `8.3.x`）の中で、勧告の直った版にする
-      - 足したら、`npm update <差し替えたパッケージ>` で `package-lock.json` を作り直す。`npm install` だけでは作り直されない
-      - 差し替えた理由と外す条件（固定しているライブラリの新しい版が、勧告の直った版を固定したとき、など）を、
-        `docs/decisions/0002-package-manager.md` の「依存の中の古い版を overrides で差し替えているもの」に項目として足す。
+      - 足したら、`docs/decisions/0002-package-manager.md` の「lock ファイルの作り直し方」のとおりに `package-lock.json` を作り直し、
+        差分を確かめる。この節が無いリポジトリでは、`npm update <差し替えたパッケージ>` で作り直す（`npm install` だけでは作り直されない）
+      - 差し替えた理由と外す条件（固定しているライブラリの新しい版が、勧告の直った版を固定したとき、など）を、同じファイルの
+        「依存の中の古い版を overrides で差し替えているもの」に項目として足す。「見直す時期」にも、外す時期を 1 行足す。
         この節が無いリポジトリでは、PR 本文に書く
    5. ここまでで直らないときと、どれを選ぶか迷うときは、手を止める。「引き継ぎメモ」Issue の「シン株式会社への要望」に、
-      勧告の番号・`npm explain` の出力・試したことを書き、シン株式会社の判断を待つ
-4. **直した後。** `npm ls --all` と `npm audit --audit-level=high` が通ることを確かめる。続けて、`check` の 1〜8 を通し直す
+      勧告の番号・`npm explain` の出力・試したことを書き、シン株式会社の判断を待つ（直しの Issue のラベルは 2 の 8）
+4. **直した後。** `npm ls --all` と `npm audit --audit-level=high` が通ることを確かめる。この PR の中で直したときは、
+   続けて `check` の 1〜8 を通し直す。直しの PR（2 の 5）では、続く `/shinnn-app:pr` の手順 1 の `check` で代える
 
 ## 報告
 

@@ -172,8 +172,9 @@ PR に付いた指摘には、さらに次の決まりを当てる。
 - 実行中がある: `gh pr checks <番号> --watch` で終わるまで待ち、結果で分ける
 - 失敗がある: 「8. CI が始まらないとき」の 1 の見分け方で、CI が始まっていないかを見る
   - step が動いて落ちた job がある: ふつうの CI の失敗なので、直して push し、この 6 の CI の確認からやり直す（`retro` はやり直さない）。
-    落ちた step が `npm audit` だけなら、`check` の「`npm audit` で落ちたとき」に従う。
-    この PR が原因でなければ、直しの PR がマージされて `main` を取り込むまで、この PR の CI は落ちたままになる
+    落ちた job が規約チェックだけで、手元の `npm audit --audit-level=high` も落ちるなら、`check` の「`npm audit` で落ちたとき」に従う
+    （落ちた step の名前を見る `gh run view` は確認が出るので、手元の結果で見分ける）。
+    この PR が原因でなければ、直しの PR がマージされて `main` を取り込むまで、この PR の CI は落ちたままになる。取り込んだら、この 6 の CI の確認からやり直す
   - CI が始まっていない: 8 の 1〜3 を行う
     - `human`: 8 の 4 の報告をして終わる
     - `self-review`: 7 の CI の条件だけを 8 の手元の確かめで満たす。7 の残りの条件（指摘が 0 件・人の判断待ちが無い）もすべて満たすときだけ、
@@ -227,8 +228,8 @@ git switch main && git pull --ff-only
 2. 最新のコミットで、手元で確かめる。
    - `git status --porcelain` が空であること（コミットしていない変更があると、確かめたものと PR が食い違う）
    - `npm run dev` を止めてから `npm ci` を通す（`package.json` と `package-lock.json` の食い違いを見る。Windows では動いている開発サーバーがファイルを掴み、`npm ci` が失敗する）
-   - `/shinnn-app:check` を通し直す
-   - `npm audit --audit-level=high` を通す
+   - `/shinnn-app:check` を通し直す。ここでは `npm audit` も含めてすべて緑であること（`check` の冒頭の、この PR が原因でない
+     `npm audit` の失敗の例外は当てない）。`npm audit` だけが落ちたら、`check` の「`npm audit` で落ちたとき」の 2 で直しを先にマージする
    - PR 本文に `Closes #<Issue 番号>` があること（`gh pr view <番号> --json body`）
    - `shared/src/api/` を変えたなら、テストも変えているか、本文に「テストを変えない理由」があること
    - 認証情報の混入（gitleaks）は手元では確かめない（9 の `main` の CI が履歴をすべて走査する）
@@ -288,4 +289,6 @@ git switch main && git pull --ff-only
 
         戻ったら、その行を消す。スクリプトが保護が残っていると示して終わったときも、保護は戻っているので消す
    - どちらかが落ちた: `gh issue create` で直す Issue を作る。題は `[不具合] main の CI が落ちている`、ラベルは `status:next`、
-     本文に落ちた job と、見出しの下の PR の番号を書く。行は、直して `main` の CI が緑になるまで残す
+     本文に落ちた job と、見出しの下の PR の番号を書く。行は、直して `main` の CI が緑になるまで残す。
+     ただし、落ちた job が規約チェックだけで、`main` の上の手元の `npm audit --audit-level=high` も落ちるなら、この Issue は作らない。
+     `check` の「`npm audit` で落ちたとき」の 2 の 1・2 で直しの Issue を探すか作り、行はその直しで `main` の CI が緑になるまで残す
