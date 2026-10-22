@@ -267,8 +267,27 @@ function withFakeNpm(script, exitCode) {
 
 const devAuditStep = '依存の脆弱性（開発用を含む・止めない）';
 
+/** policy.yaml の、名前が name の手順の行（次の手順の手前まで） */
+function stepLines(name) {
+  const lines = readFileSync(policyYaml, 'utf8').split('\n');
+  const start = lines.findIndex((line) => line.trim() === `- name: ${name}`);
+  assert.notEqual(start, -1, `手順「${name}」がありません`);
+  const next = lines.findIndex((line, index) => index > start && /^\s+- name: /.test(line));
+  return lines.slice(start, next === -1 ? undefined : next);
+}
+
 test('依存の脆弱性: 止めるのは実行時の依存の high 以上だけ（開発用の依存は数えない）', () => {
   assert.equal(stepRunLine('依存の脆弱性'), 'npm audit --omit=dev --audit-level=high');
+});
+
+test('依存の脆弱性: 失敗しても先へ進める指定（continue-on-error）や、飛ばす条件（if:）を持たない', () => {
+  const block = stepLines('依存の脆弱性');
+
+  assert.equal(
+    block.some((line) => /^\s+(continue-on-error|if):/.test(line)),
+    false,
+    block.join('\n'),
+  );
 });
 
 test('依存の脆弱性（開発用を含む・止めない）: 開発用を含めて監査し、勧告があっても落とさずに注記を出す', () => {
