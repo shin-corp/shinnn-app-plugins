@@ -48,7 +48,7 @@ Claude Code がこのリポジトリで作業するときの全体方針です�
 | `/shinnn-app:setup`                  | 初回セットアップ（1 回だけ。再実行で設定を変えられる）            |
 | `/shinnn-app:feature <作りたいこと>` | 要望を PR 1 本ずつの Issue に分け、受入条件を起こして順に実装する |
 | `/shinnn-app:check`                  | 型検査・lint・テスト・受入条件カバレッジ・API 定義カバレッジ      |
-| `/shinnn-app:pr`                     | コミット → push → ドラフト PR → レビュー → `retro`                |
+| `/shinnn-app:pr`                     | コミット → セルフレビュー → push → ドラフト PR → `retro`          |
 | `/shinnn-app:why <話題 or ファイル>` | 規約の理由を平易な日本語と before / after で説明する              |
 | `/shinnn-app:retro`                  | 学びを Issue に残し、引き継ぎに関わることを「引き継ぎメモ」に足す |
 

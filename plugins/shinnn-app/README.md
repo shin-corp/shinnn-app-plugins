@@ -34,7 +34,7 @@
 |:--|:--|
 | `/shinnn-app:feature <作りたいこと>` | PR 1 本ずつの Issue に分けて順番を決め、Issue の作成 → 仕様書への反映 → 実装 → テスト → `pr` |
 | `/shinnn-app:why <話題>` | 決まりの理由を、根拠を引いて説明する |
-| `/shinnn-app:pr` | `check` → コミット → プッシュ → ドラフト PR → レビューの収束 → `retro`（`feature` が呼ぶ） |
+| `/shinnn-app:pr` | `check` → コミット → セルフレビューの収束 → プッシュ → ドラフト PR → Copilot のレビュー（有効なとき）→ `retro`（`feature` が呼ぶ） |
 | `/shinnn-app:check` | 型検査・lint・テストと、受入条件および API 定義のカバレッジ（`pr` が PR 1 本につき 1 回呼ぶ） |
 | `/shinnn-app:retro` | Issue への振り返りコメントと引き継ぎメモの追記（`pr` が呼ぶ） |
 
