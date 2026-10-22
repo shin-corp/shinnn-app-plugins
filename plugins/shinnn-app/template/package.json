@@ -30,6 +30,9 @@
   "overrides": {
     "@esbuild-kit/core-utils": {
       "esbuild": "^0.25.0"
+    },
+    "@angular/build@22.2": {
+      "vite": "8.3.4"
     }
   },
   "allowScripts": {
