@@ -292,6 +292,6 @@ git switch main && git pull --ff-only
    - どちらかが落ちた: `gh issue create` で直す Issue を作る。題は `[不具合] main の CI が落ちている`、ラベルは `status:next`、
      本文に落ちた job と、見出しの下の PR の番号を書く。行は、直して `main` の CI が緑になるまで残す。
      ただし、落ちた step が「依存の脆弱性」（`npm audit`）だけなら、この Issue は作らない（落ちた step は 8 の 1 の `gh run view` で見る）。
-     `git switch main && git pull --ff-only` の後に `npm audit --omit=dev --audit-level=high` で勧告の出たパッケージを見て、
-     `check` の「`npm audit` で勧告が出たとき」の 1 で直しの Issue を探すか作る（`status:next` なので、次の作業として取れる）。
+     `git switch main && git pull --ff-only` の後に、リポジトリの「依存の脆弱性」の行と同じ `npm audit` で勧告の出たパッケージを見る。
+     `check` の「`npm audit` で勧告が出たとき」の冒頭と 1 に従って、直しの Issue を探すか作る（`feature` の「続きから始める」が先に取る）。
      行は、その直しで `main` の CI が緑になるまで残す

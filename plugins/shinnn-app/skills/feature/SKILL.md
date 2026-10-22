@@ -139,6 +139,8 @@ gh issue edit <Issue 番号> --remove-label status:next --add-label status:doing
 
 `pr` が手順 1 で `check` を通し、最後に `retro` で振り返りまで残す。どれも利用者に打たせず、ここで続けて行う。
 計画の Issue なら、続けて 7 に進む。計画の無い 1 本なら、`/shinnn-app:session-retro` を 1 回行ってから、7 の形で報告して終える。
+ただし、`check` の「`npm audit` で勧告が出たとき」で直しの Issue（題が `[依存] 依存の脆弱性の修正`）を作ったか見つけたときは、
+終える前にその Issue を、`check` の同じ節の 2 の 5 で進める（計画の Issue でも、7 で次の Issue より先に進める）。
 
 ## 7. 次の Issue へ進む（計画があるとき）
 
@@ -148,6 +150,8 @@ PR を出したあとの動きは `.shinnn/setup.json` の `mergePolicy` で決�
 |:--|:--|
 | `human`（既定） | PR はドラフトのまま人に渡す。**今の PR を待たずに作れる** `status:next` の Issue があれば、それを 2 から進める |
 | `self-review` | `pr` がマージまで済ませたら、`git switch main && git pull --ff-only` のあと `plan.md` の「依存が解けた Issue を進める」を行い、`status:next` の先頭を 2 から進める。`pr` がマージせずに人に渡したときは `human` と同じ |
+
+どちらでも、次の Issue は「続きから始める」の 4 の順で選ぶ（題が `[依存] 依存の脆弱性の修正` の Issue を先に取る）。
 
 次のときは止まる。
 
@@ -179,11 +183,14 @@ PR を出したあとの動きは `.shinnn/setup.json` の `mergePolicy` で決�
    3. `main` にコミットがあったときは、`git switch -C main origin/main` で手元の `main` を `origin/main` に戻し、
       作業ブランチに `git switch` で戻る。コミットは作業ブランチに残るので、`git reset --hard` と違って何も失わない
    4. 手順 4 以降（残りの実装とテスト、コミット、`pr`）を進める
-1. 作業途中のブランチ（`git status` に変更がある、または PR の無い `feature/`・`fix/` ブランチ）があれば、その Issue を先に仕上げる
+1. 作業途中のブランチ（`git status` に変更がある、または PR の無い `feature/`・`fix/` ブランチ）があれば、その Issue を先に仕上げる。
+   open な PR の本文に `依存の脆弱性: NG（… #<番号> で直す）` の行があり、#<番号> の Issue が閉じていれば、その PR に `main` を取り込む
+   （`check` の「`npm audit` で勧告が出たとき」の 2 の 4）
 2. `git switch main && git pull --ff-only`
 3. `plan.md` の「依存が解けた Issue を進める」を行う
-4. open な計画（タイトルが `[計画]` の Issue）があれば、その「作る順番」で `status:next` の先頭を取る。計画が無ければ `status:next` の Issue を番号の小さい順に取る
-5. 取った Issue を 2 から進める。取れる Issue が無ければ、7 と同じ形で報告して止まる
+4. 題が `[依存] 依存の脆弱性の修正` の `status:next` の Issue があれば、計画や番号の順より先に取る（`check` の「`npm audit` で勧告が出たとき」の 2 の 5 で進める）。
+   無ければ、open な計画（タイトルが `[計画]` の Issue）の「作る順番」で `status:next` の先頭を取る。計画が無ければ `status:next` の Issue を番号の小さい順に取る
+5. 取った Issue を 2 から進める（直しの Issue は 4 のとおり）。取れる Issue が無ければ、7 と同じ形で報告して止まる
 
 ## 迷ったとき
 
