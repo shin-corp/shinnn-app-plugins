@@ -5,9 +5,11 @@
 //   node scripts/check-licenses.mjs
 //
 // 判定の仕方:
-//   node_modules を走査して各パッケージの package.json の license を読み、許可リストに無いものがあれば
-//   異常終了する。SPDX の式は、OR を含むならどれか 1 つ、単独と AND はすべてが許可リストにあることを見る。
+//   ルートの node_modules と、workspaces の各フォルダの node_modules を走査する。
+//   各パッケージの package.json の license を読み、許可リストに無いものがあれば異常終了する。
+//   SPDX の式は、OR を含むならどれか 1 つ、単独と AND はすべてが許可リストにあることを見る。
 //   license が無い・UNLICENSED・SEE LICENSE IN … は、費用が発生するライセンスの典型なので通さない。
+//   workspaces の glob（`packages/*` など）は展開しない。glob があれば異常終了する。
 // CI の policy job から呼ばれる。
 
 import { readFile, readdir, stat } from 'node:fs/promises';
@@ -131,6 +133,26 @@ async function collectPackageDirectories(nodeModulesPath) {
   return directories;
 }
 
+/**
+ * ルートの package.json の workspaces に並んだフォルダ。npm が受け付ける 2 つの形（配列と `{ packages: [...] }`）を読む。
+ * package.json が無い・読めないときは、空の配列を返す。
+ */
+async function readWorkspaces() {
+  let manifest;
+
+  try {
+    manifest = JSON.parse(await readFile(join(repositoryRoot, 'package.json'), 'utf8'));
+  } catch {
+    return [];
+  }
+
+  if (Array.isArray(manifest.workspaces)) {
+    return manifest.workspaces;
+  }
+
+  return manifest.workspaces?.packages ?? [];
+}
+
 try {
   await stat(nodeModulesDirectory);
 } catch {
@@ -142,7 +164,38 @@ try {
   process.exit(1);
 }
 
-const packageDirectories = await collectPackageDirectories(nodeModulesDirectory);
+const workspaces = await readWorkspaces();
+const globbedWorkspaces = workspaces.filter((workspace) => workspace.includes('*'));
+
+if (globbedWorkspaces.length > 0) {
+  console.error('依存ライブラリのライセンスを確認できません。');
+  console.error('');
+  console.error(
+    `  何が: ルートの package.json の workspaces に、glob の指定があります（${globbedWorkspaces.join(' / ')}）。`,
+  );
+  console.error(
+    '  なぜ: このスクリプトは glob を展開しません。そのまま進むと、そのフォルダの node_modules を検査せずに通します。',
+  );
+  console.error(
+    '  どう直す: workspaces には、フォルダの名前を 1 つずつ並べてください（例: "shared", "server", "client"）。',
+  );
+  process.exit(1);
+}
+
+// npm は workspaces のパッケージの依存を、そのフォルダの node_modules に置くことがある（lock ファイルがそう書いているとき）。
+// ルートだけを走査すると、そこに置かれた依存を検査しない。
+const nodeModulesDirectories = [nodeModulesDirectory];
+
+for (const workspace of workspaces) {
+  nodeModulesDirectories.push(join(repositoryRoot, workspace, 'node_modules'));
+}
+
+const packageDirectories = [];
+
+for (const directory of nodeModulesDirectories) {
+  packageDirectories.push(...(await collectPackageDirectories(directory)));
+}
+
 const foundLicenses = new Set();
 const violations = [];
 let checkedCount = 0;

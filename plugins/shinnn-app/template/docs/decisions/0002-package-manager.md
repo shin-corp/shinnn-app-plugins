@@ -83,9 +83,13 @@ Vitest はルートに置かれています。
 
 ## 依存の中の古い版を overrides で差し替えているもの
 
-依存の依存として入ってくる古い版のうち、**実際には読み込まれないのに脆弱性の警告が出るもの**は、
-ルートの `package.json` の `overrides` で新しい版に差し替えています。対応の要らない警告が
-出続けると、本当に対応が要る警告が埋もれるためです。
+依存の依存として入ってくる古い版のうち、次のどちらかに当てはまるものは、ルートの `package.json` の `overrides` で
+新しい版に差し替えています。
+
+1. **実際には読み込まれないのに脆弱性の警告が出るもの。** 本当に対応が要る警告を見落とさないためです。
+   対応の要らない警告が出続けると、対応が要る警告が埋もれます
+2. **読み込まれる依存のうち、脆弱性の直った版が出ているのに、それを使うライブラリが古い版に固定しているもの。**
+   ライブラリの新しい版を待つ間も、直った版で動かすためです
 
 ### `@esbuild-kit/core-utils` の下の `esbuild`
 
@@ -98,16 +102,41 @@ Vitest はルートに置かれています。
 - **外す条件**: `drizzle-kit` が `@esbuild-kit` を依存から外したとき（1.0 の正式版で外れる予定です）。
   外すときは `overrides` からこの項目を消し、`npm ls --all` が通ることを確かめます
 
+### `@angular/build` の 22.2 系の下の `vite`
+
+- **差し替え**: `8.3.0` を `8.3.4` にします
+- **経路**: `client` → `@angular/build` → `vite`
+- **理由**: `@angular/build` の 22.2 系（22.2.3 まで）は、`vite` を `8.3.0` に固定しています。`vite` は、
+  `npm run dev`（開発用のサーバー）とテストで読み込まれます。`vite` の 8.3.0〜8.3.2 には、中に含む launch-editor
+  （画面のエラー表示からエディタを開く処理）と、開発用のサーバーの脆弱性の勧告が出ています。いちばん重いのは
+  GHSA-587h-7wmj-h5pm（high）です
+- **8.3.4 を選んだ理由**: 8.3 系で勧告が直っているのは 8.3.3 以上です。その中から、Angular の 22.3 の最新の試験版
+  （22.3.0-next.2）が固定している版を選びます。Angular 自身が組み合わせて出している版だからです
+- **Vitest にも届く**: Vitest は、`@angular/build` が peer として使うパッケージです。そのため、この差し替えは
+  Vitest が使う `vite` にも届きます。lock では、ルートに置いた 1 つの `vite`（8.3.4）を、`@angular/build` と
+  Vitest（`server`・`shared` のテストを含む）が使います。項目がある間は、Vitest の `vite` も 8.3.4 から上がりません
+- **22.2 系だけに効かせる**: `overrides` のキーを `@angular/build@22.2` にします。このキーは、`vite` を差し替える
+  だけでなく、`@angular/build` 自身の範囲も 22.2 系に絞ります。そのため、項目がある間は、`npm update` を実行しても
+  `@angular/build` は 22.3 系に上がりません。22.3 系に上げるときは、`client/package.json` の `@angular/build` の範囲を
+  上げます（例: `npm install @angular/build@^22.3.0 -w client`）。範囲が 22.2 系を含まなくなると、差し替えは
+  効かなくなります。そのときは、その版が固定する `vite` が入ります
+- **キーに版を付ける理由**: 新しい系統の `@angular/build` に古い `vite` を組み合わせないためです。差し替えた版は
+  `npm ls --all` でも範囲の外として扱われないので、項目の消し忘れに気づく仕組みがありません
+- **外す条件**: `client/package.json` の `@angular/build` の範囲を 22.3 系以降に上げたとき、または 22.2 系の新しい版が
+  `vite` を 8.3.3 以上に固定したとき。外すときは `overrides` からこの項目を消し、`npm update vite` で lock ファイルを
+  作り直します。そのうえで、`npm ls --all` と `npm audit` が通ることを確かめます
+
 ### lock ファイルの作り直し方
 
-`overrides` を足したり版を変えたりしたときは、`npm update <差し替えるパッケージ>`
-（上の例では `npm update esbuild`）で `package-lock.json` を作り直します。`npm install` だけでは
+`overrides` の項目を足したとき、消したとき、版を変えたときは、`npm update <差し替えるパッケージ>`
+（`esbuild` なら `npm update esbuild`）で `package-lock.json` を作り直します。`npm install` だけでは
 lock ファイルが変わらず、`npm ls --all` が `invalid` を出して失敗します。lock ファイルを手で
 直しても同じです。
 
 `npm update` は、同じ名前のパッケージをほかの場所でも範囲内で上げることがあります。作り直した後は、
-lock ファイルの差分が差し替えた対象の下（上の例では `node_modules/@esbuild-kit/core-utils/node_modules/`）
-だけに収まっていることと、`npm ls --all` と `npm audit` が通ることを確かめてください。
+lock ファイルの差分を見て、版が変わった場所を 1 つずつ確かめてください。差し替えた場所とその依存のほかで版が
+変わっていたら、何がそれを使っているかを調べて、上がってよいかを決めます（`vite` では、Vitest が同じ `vite` を
+使うことを上の項目に書いています）。あわせて、`npm ls --all` と `npm audit` が通ることを確かめてください。
 
 ## 結果
 
@@ -120,3 +149,6 @@ lock ファイルの差分が差し替えた対象の下（上の例では `node
 - `import-x/no-extraneous-dependencies` が実際に幻の依存を見つけた件数を、半年後に振り返ります
 - パッケージマネージャを Node.js と一緒に配る仕組み（Corepack の後継）が安定したら、再検討します
 - `drizzle-kit` が `@esbuild-kit` を依存から外したら（1.0 の正式版の予定）、`esbuild` の `overrides` を外します
+- `client/package.json` の `@angular/build` の範囲を 22.3 系以降に上げたら、`vite` の `overrides` を外します
+- 22.2 系の新しい `@angular/build` を入れたら、それが固定する `vite` の版を見ます。8.3.3 以上なら、`vite` の
+  `overrides` を外します
