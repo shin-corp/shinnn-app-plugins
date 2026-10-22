@@ -25,7 +25,7 @@ PR に付いた指摘も、Critical / Warning = 0 になるまで回す。
 
 ## 1. PR を出す前に確認する
 
-`/shinnn-app:check` を通し、緑であること（この PR が原因でない `npm audit` の失敗だけは除く。`check` の「`npm audit` で落ちたとき」）。
+`/shinnn-app:check` を通し、緑であること（`check` の冒頭に挙げた `npm audit` の失敗だけは除く）。
 まとめての `check` を走らせるのは、PR 1 本につきここの 1 回だけ
 （`feature` は直前に `check` を走らせずにこのスキルを呼ぶ。実装の途中の確認は hook が行う）。
 ただし、CI が始まらないときの「8. CI が始まらないとき」の 2 は、`check` を通し直す。
@@ -172,8 +172,9 @@ PR に付いた指摘には、さらに次の決まりを当てる。
 - 実行中がある: `gh pr checks <番号> --watch` で終わるまで待ち、結果で分ける
 - 失敗がある: 「8. CI が始まらないとき」の 1 の見分け方で、CI が始まっていないかを見る
   - step が動いて落ちた job がある: ふつうの CI の失敗なので、直して push し、この 6 の CI の確認からやり直す（`retro` はやり直さない）。
-    8 の 1 の出力で、落ちた step（`failed=`）が「依存の脆弱性」（`npm audit`）だけなら、`check` の「`npm audit` で落ちたとき」に従う。
-    この PR が原因でなければ、直しの PR がマージされて `main` を取り込むまで、この PR の CI は落ちたままになる。取り込んだら、この 6 の CI の確認からやり直す
+    8 の 1 の出力で、落ちた step（`failed=`）が「依存の脆弱性」（`npm audit`）だけなら、`check` の「`npm audit` で勧告が出たとき」に従う
+    （同じ節の 1 で、前に作った直しの Issue と PR を見つけて続きから進める）。この PR が原因でなければ、直しの PR がマージされて
+    `main` を取り込むまで、この PR の CI は落ちたままになる。取り込んだら、この 6 の CI の確認からやり直す
   - CI が始まっていない: 8 の 1〜3 を行う
     - `human`: 8 の 4 の報告をして終わる
     - `self-review`: 7 の CI の条件だけを 8 の手元の確かめで満たす。7 の残りの条件（指摘が 0 件・人の判断待ちが無い）もすべて満たすときだけ、
@@ -227,9 +228,9 @@ git switch main && git pull --ff-only
 2. 最新のコミットで、手元で確かめる。
    - `git status --porcelain` が空であること（コミットしていない変更があると、確かめたものと PR が食い違う）
    - `npm run dev` を止めてから `npm ci` を通す（`package.json` と `package-lock.json` の食い違いを見る。Windows では動いている開発サーバーがファイルを掴み、`npm ci` が失敗する）
-   - `/shinnn-app:check` を通し直す。ここでは `npm audit` も含めてすべて緑であること（`check` の冒頭の、この PR が原因でない
-     `npm audit` の失敗の例外は当てない）。`npm audit` だけが落ちたら、`check` の「`npm audit` で落ちたとき」の 1 から進める
-     （この PR が原因でなければ、2 で直しを先にマージする）
+   - `/shinnn-app:check` を通し直す。ここでは `check` の 9（実行時の依存の `npm audit`）も含めてすべて緑であること（`check` の冒頭の
+     `npm audit` の例外は当てない。10 の開発用の依存の勧告は止めない）。9 が落ちたら、`check` の「`npm audit` で勧告が出たとき」に従う。
+     この PR が原因でなければ、直しを先にマージしてから `main` を取り込む
    - PR 本文に `Closes #<Issue 番号>` があること（`gh pr view <番号> --json body`）
    - `shared/src/api/` を変えたなら、テストも変えているか、本文に「テストを変えない理由」があること
    - 認証情報の混入（gitleaks）は手元では確かめない（9 の `main` の CI が履歴をすべて走査する）
@@ -291,5 +292,6 @@ git switch main && git pull --ff-only
    - どちらかが落ちた: `gh issue create` で直す Issue を作る。題は `[不具合] main の CI が落ちている`、ラベルは `status:next`、
      本文に落ちた job と、見出しの下の PR の番号を書く。行は、直して `main` の CI が緑になるまで残す。
      ただし、落ちた step が「依存の脆弱性」（`npm audit`）だけなら、この Issue は作らない（落ちた step は 8 の 1 の `gh run view` で見る）。
-     `git switch main && git pull --ff-only` の後に、`check` の「`npm audit` で落ちたとき」の 2 の 2・3・5 で、直しの Issue と PR を探すか作る
-     （元の PR は無いので、2 の 1・4・6・7 と、2 の 5 の元の PR の CI を待つところは飛ばす）。行は、その直しで `main` の CI が緑になるまで残す
+     `git switch main && git pull --ff-only` の後に `npm audit --omit=dev --audit-level=high` で勧告の出たパッケージを見て、
+     `check` の「`npm audit` で勧告が出たとき」の 1 で直しの Issue を探すか作る（`status:next` なので、次の作業として取れる）。
+     行は、その直しで `main` の CI が緑になるまで残す
