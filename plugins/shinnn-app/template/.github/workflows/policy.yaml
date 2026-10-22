@@ -118,8 +118,18 @@ jobs:
             exit 1
           fi
 
+      # 止めるのは、実行時の依存（dependencies。依存の依存を含む）の high 以上の勧告だけにする。
+      # 開発用の依存（devDependencies）の新しい勧告で、関係の無い PR まで止めないため。
       - name: 依存の脆弱性
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
+
+      # 開発用の依存も含めた監査。PR は止めず、high 以上の勧告があれば注記（warning）を出す。
+      # 開発用の依存も、開発する人の PC の上で動く。注記が出たら Issue にして追う（/shinnn-app:check の手順）。
+      - name: 依存の脆弱性（開発用を含む・止めない）
+        run: |
+          if ! npm audit --audit-level=high; then
+            echo "::warning title=依存の脆弱性（開発用を含む）::high 以上の勧告が出ているか、勧告を受け取れませんでした。PR は止めません。この step のログを見て、Issue にして追ってください。"
+          fi
 
       - name: 依存のライセンス
         run: node scripts/check-licenses.mjs

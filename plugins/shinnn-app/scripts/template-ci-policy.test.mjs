@@ -9,6 +9,8 @@
  *   理由が空の形（コードや太字の閉じる記号だけのものを含む）では通さない
  * - 同じ手順は checkout で全部取った履歴の origin/<base> で比べ、履歴を浅くしない
  *   （浅くなると、同じジョブの後の gitleaks が一部のコミットしか調べない）
+ * - 「依存の脆弱性」は実行時の依存（--omit=dev）の勧告だけで止める。「依存の脆弱性（開発用を含む・止めない）」は、
+ *   勧告があっても落とさずに注記（::warning）を出す
  * プラグインの CI は依存を入れずに動くので yaml パッケージは使わず、YAML の文字列を行で読む。
  */
 import assert from 'node:assert/strict';
@@ -244,4 +246,42 @@ test('テストを変えない理由: コメントの中・見出し・理由が
     assert.equal(result.status, 1, JSON.stringify(body));
     assert.match(result.stderr, /テストが 1 つも変わっていません/);
   }
+});
+
+/**
+ * policy.yaml から、名前が name の手順の 1 行の run: の中身を取り出す。
+ */
+function stepRunLine(name) {
+  const lines = readFileSync(policyYaml, 'utf8').split('\n');
+  const start = lines.findIndex((line) => line.trim() === `- name: ${name}`);
+  assert.notEqual(start, -1, `手順「${name}」がありません`);
+  const runLine = lines.slice(start + 1).find((line) => /^\s+run: /.test(line));
+  assert.ok(runLine, `手順「${name}」に run: がありません`);
+  return runLine.replace(/^\s+run: /, '');
+}
+
+/** 終了コードを決めた偽物の npm を、関数として手順のシェルの前に置く（PATH より関数が先に呼ばれる） */
+function withFakeNpm(script, exitCode) {
+  return `npm() { echo "npm $*"; return ${exitCode}; }\n${script}`;
+}
+
+const devAuditStep = '依存の脆弱性（開発用を含む・止めない）';
+
+test('依存の脆弱性: 止めるのは実行時の依存の high 以上だけ（開発用の依存は数えない）', () => {
+  assert.equal(stepRunLine('依存の脆弱性'), 'npm audit --omit=dev --audit-level=high');
+});
+
+test('依存の脆弱性（開発用を含む・止めない）: 開発用を含めて監査し、勧告があっても落とさずに注記を出す', () => {
+  const result = runBash(withFakeNpm(stepScript(devAuditStep), 1));
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /^npm audit --audit-level=high$/m);
+  assert.match(result.stdout, /^::warning title=/m);
+});
+
+test('依存の脆弱性（開発用を含む・止めない）: 勧告が無ければ注記を出さない', () => {
+  const result = runBash(withFakeNpm(stepScript(devAuditStep), 0));
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /::warning/);
 });
