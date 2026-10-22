@@ -139,8 +139,8 @@ gh issue edit <Issue 番号> --remove-label status:next --add-label status:doing
 
 `pr` が手順 1 で `check` を通し、最後に `retro` で振り返りまで残す。どれも利用者に打たせず、ここで続けて行う。
 計画の Issue なら、続けて 7 に進む。計画の無い 1 本なら、`/shinnn-app:session-retro` を 1 回行ってから、7 の形で報告して終える。
-ただし、`check` の「`npm audit` で勧告が出たとき」で直しの Issue（題が `[依存] 依存の脆弱性の修正`）を作ったか見つけたときは、
-終える前にその Issue を、`check` の同じ節の 2 の 5 で進める（計画の Issue でも、7 で次の Issue より先に進める）。
+ただし、`check` の「`npm audit` で勧告が出たとき」で直しの Issue（題が `[依存] 依存の脆弱性の修正`）を作ったか見つけ、
+それが `status:next` のときは、終える前にその Issue を、`check` の同じ節の 2 の 5 で進める（計画の Issue でも、7 で次の Issue より先に進める）。
 
 ## 7. 次の Issue へ進む（計画があるとき）
 
@@ -151,7 +151,8 @@ PR を出したあとの動きは `.shinnn/setup.json` の `mergePolicy` で決�
 | `human`（既定） | PR はドラフトのまま人に渡す。**今の PR を待たずに作れる** `status:next` の Issue があれば、それを 2 から進める |
 | `self-review` | `pr` がマージまで済ませたら、`git switch main && git pull --ff-only` のあと `plan.md` の「依存が解けた Issue を進める」を行い、`status:next` の先頭を 2 から進める。`pr` がマージせずに人に渡したときは `human` と同じ |
 
-どちらでも、次の Issue は「続きから始める」の 4 の順で選ぶ（題が `[依存] 依存の脆弱性の修正` の Issue を先に取る）。
+どちらでも、次の Issue を選ぶ前に「続きから始める」の 1 の後半（待っている PR への `main` の取り込み）を行う。
+次の Issue は「続きから始める」の 4 の順で選ぶ（題が `[依存] 依存の脆弱性の修正` の Issue を先に取る）。
 
 次のときは止まる。
 
