@@ -145,6 +145,8 @@ gh issue edit <Issue 番号> --remove-label status:next --add-label status:doing
 計画の Issue なら、続けて 7 に進む。計画の無い 1 本なら、`/shinnn-app:session-retro` を 1 回行ってから、7 の形で報告して終える。
 ただし、`check` の「`npm audit` で勧告が出たとき」で直しの Issue（題が `[依存] 依存の脆弱性の修正`）を作ったか見つけ、
 それが `status:next` のときは、終える前にその Issue を、`check` の同じ節の 2 の 5 で進める（計画の Issue でも、7 で次の Issue より先に進める）。
+進めてよいかを利用者に聞かない。直しは、頼まれた変更を出すための続きの作業で、依頼の範囲を広げることには当たらない。
+利用者への報告は、直しの PR まで出してから 1 回にまとめる。
 
 ## 7. 次の Issue へ進む（計画があるとき）
 

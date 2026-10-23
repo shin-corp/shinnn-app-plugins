@@ -25,7 +25,8 @@ PR に付いた指摘も、Critical / Warning = 0 になるまで回す。
 
 ## 1. PR を出す前に確認する
 
-`/shinnn-app:check` を通し、緑であること（`check` の冒頭に挙げた `npm audit` の失敗だけは除く）。
+`/shinnn-app:check` を Skill ツールで呼び、その表の 1〜10 をすべて通す。緑であること（`check` の冒頭に挙げた `npm audit` の失敗だけは除く）。
+`npm run check` と `npm test` だけで代えない（受入条件と API 定義のカバレッジ、依存の脆弱性などが抜ける）。
 まとめての `check` を走らせるのは、PR 1 本につきここの 1 回だけ
 （`feature` は直前に `check` を走らせずにこのスキルを呼ぶ。実装の途中の確認は hook が行う）。
 ただし、CI が始まらないときの「8. CI が始まらないとき」の 2 は、`check` を通し直す。
@@ -69,6 +70,7 @@ PR に付いた指摘も、Critical / Warning = 0 になるまで回す。
 PR がまだ無い間、`code-review` はこのファイルから決着済みの前提（「見送った指摘」など）を読む。
 
 続けて、push の前に `/shinnn-app:code-review` を回す。
+Skill ツールでは `shinnn-app:code-review` の名前で呼ぶ（Claude Code に組み込みの `code-review` は別のスキルで、このプラグインの 3 体のエージェントと規約の観点を使わない）。
 push の前に回すのは、Actions（GitHub の上で CI を動かす仕組み）の使える時間（分）を節約するため。
 CI は、PR を作ったときと、その後の push で走る。
 `code-review` の指摘の直しを push の前に済ませれば、その直しのために CI が増えることはない。
@@ -81,7 +83,7 @@ git -c core.quotepath=false diff --name-only origin/main...HEAD
 
 | PR の性質 | `code-review` |
 |:--|:--|
-| コードを変える PR | Critical / Warning が 0 件になるまで回す |
+| コードを変える PR（文書だけの PR のほかすべて。依存だけを変える PR を含む） | Critical / Warning が 0 件になるまで回す |
 | 文書だけの PR（`docs/` と `*.md` のみ） | 1 巡だけ回す（直した後に回し直さない） |
 
 `core.quotepath=false` を省くと、日本語のファイル名がエスケープされて判定を誤る。
@@ -168,7 +170,7 @@ PR に付いた指摘には、さらに次の決まりを当てる。
 
 続けて、`mergePolicy` にかかわらず、最新のコミットの CI の状態を `gh pr checks <番号>` で見る。
 
-- すべて緑: `human` はここで終わる（ready にはしない）。`self-review` は 7 に進む
+- すべて緑: `human` はここで `pr` を終える（ready にはしない）。`self-review` は 7 に進む
 - 実行中がある: `gh pr checks <番号> --watch` で終わるまで待ち、結果で分ける
 - 失敗がある: 「8. CI が始まらないとき」の 1 の見分け方で、CI が始まっていないかを見る
   - step が動いて落ちた job がある: ふつうの CI の失敗なので、直して push し、この 6 の CI の確認からやり直す（`retro` はやり直さない）。
@@ -179,6 +181,10 @@ PR に付いた指摘には、さらに次の決まりを当てる。
     - `human`: 8 の 4 の報告をして終わる
     - `self-review`: 7 の CI の条件だけを 8 の手元の確かめで満たす。7 の残りの条件（指摘が 0 件・人の判断待ちが無い）もすべて満たすときだけ、
       7 のコマンドの代わりに 8 の 4 でマージする。満たさないときは、8 の 4 の報告（`human` と同じ）をして人に渡す
+
+**`pr` を終えたら（`human` はこの 6 の後、`self-review` は 7 の後）、利用者に報告して止まる前に、呼んだスキルの続きに戻る**（`feature` から呼ばれたときは、`feature` の手順 6 の続き）。
+`check` の「`npm audit` で勧告が出たとき」で直しの Issue を作ったか見つけ、それが `status:next` なら、利用者に聞かずに、その節の 2 の 5 で直しの PR まで進める。
+この PR の報告は、直しの PR の報告とまとめて、最後に 1 回にする。
 
 ## 7. マージする（`mergePolicy: self-review` のときだけ）
 

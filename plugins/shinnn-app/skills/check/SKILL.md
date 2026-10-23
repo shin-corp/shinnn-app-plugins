@@ -141,7 +141,8 @@ Issue と PR の本文を書き換えるときは、`gh issue view <番号> --js
       元のブランチに戻る（`git switch <元のブランチ>`）。`gh pr update-branch <元の PR の番号>` で `main` を取り込み、
       `git pull --ff-only` で手元にも入れる。そのあと、元の PR の `/shinnn-app:pr` の手順 6 の CI の確認からやり直す。
       `gh pr update-branch` が衝突で失敗したら、そこで止めて報告する
-   5. 直しの PR がまだ無く、直しの Issue が `status:next` なら、元の PR の `/shinnn-app:pr` が終わった後に、ほかの Issue より先に進める
+   5. 直しの PR がまだ無く、直しの Issue が `status:next` なら、元の PR の `/shinnn-app:pr` が終わった後に、ほかの Issue より先に進める。
+      進めてよいかを利用者に聞かない（直しは頼まれた作業の続きとして行う。聞いて止まると、直しの Issue が誰も進めないまま残る）
       - ブランチを切る前に、`npm audit fix --dry-run` と、勧告の出たパッケージごとの `npm explain <パッケージの名前>` で、
         4 のどれで直るかを見る（どちらもファイルを書き換えない）。どれも 4 の 5 に当たるなら、ブランチを切らずに 4 の 5 に進む
       - `git status --porcelain` が空であることを確かめる（空でなければ、元のブランチで先にコミットする）
@@ -162,8 +163,11 @@ Issue と PR の本文を書き換えるときは、`gh issue view <番号> --js
    - 原因でなければ、PR は止めない（標準を取り込む前のリポジトリでは、2 と同じに扱う）。2 の 2 のとおりに直しの Issue を決める。
      PR 本文の「確認した結果」に、`依存の脆弱性（開発用）: 勧告あり（<勧告の番号>。#<直しの Issue の番号> で直す）` の 1 行を書く。
      直しは、2 の 5 と同じ形で、元の PR の後に進める
-4. **直す順。** パッケージごとに、上から試し、直ったところで止める
-   1. `npm audit fix` を実行する。`--force` は付けない。`package.json` の範囲の中で直る勧告は、これで直る
+4. **直す順。** パッケージごとに、上から試し、直ったところで止める。
+   作り直した `package-lock.json` を作り直す前に戻すときは、`git restore package-lock.json` をこの形のまま使う
+   （テンプレートの許可にある。`git checkout`・`cd <パス> &&` を付けた形・`git -C` は、確認が出る）
+   1. `npm update <勧告の出たパッケージの名前>` を流し、`npm audit` で勧告が消えたかを見る。`package.json` の範囲の中で直る勧告は、これで直る。
+      `npm audit fix` は流さない（勧告の無い依存まで範囲の中で上げ、`package-lock.json` の差分が大きくなる。差分を戻すコマンドは確認が出る）
    2. 残った勧告に `npm audit fix --force` しか示されないときは、その案を使わない。
       出力の `Will install <名前>@<版>, which is a breaking change` は、メジャーの版を変える案を示している。
       `Will install <名前>@<版>, which is outside the stated dependency range` は、`package.json` の範囲の外の版（下げる版を含む）に
