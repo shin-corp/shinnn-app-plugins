@@ -4,8 +4,8 @@ Claude Code がこのリポジトリで作業するときの全体方針です�
 
 ## 1. 進め方
 
-1. **open な Issue と PR を見る**（次に着手する Issue と open な PR はセッション開始時に表示されます。出ないときは `gh issue list` / `gh pr list` か GitHub の画面で見ます）。作業項目は GitHub Issues で管理します。引き継ぎの注意・シン株式会社への要望・CI で確かめていないマージは、pin した「引き継ぎメモ」Issue の同じ名前の見出しの下です（見出しが無ければ足す）。
-2. **頼まれた変更は、文言 1 つの直しでも Issue → ブランチ → PR で進めます（`main` で直接編集しない）。** 対象の Issue を決め（無ければ `/shinnn-app:feature` で作る）、`feature/<Issue 番号>-<slug>`（不具合の修正は `fix/`）ブランチを切ります。1 Issue = 1 ブランチ = 1 PR。
+1. **open な Issue と PR を見る**（次に着手する Issue と open な PR はセッション開始時に表示されます。出ないときは `gh issue list` / `gh pr list` か GitHub の画面で見ます）。作業項目は GitHub Issues で管理します。引き継ぎの注意・シン株式会社への要望・規約で迷った点・CI で確かめていないマージは、pin した「引き継ぎメモ」Issue の同じ名前の見出しの下です（見出しが無ければ足す）。
+2. **頼まれた変更は、文言 1 つの直しでも Issue → ブランチ → PR で進めます（`main` で直接編集しない）。** 対象の Issue を決め（無ければ `/shinnn-app:feature` で作る）、`feature/<Issue 番号>-<slug>`（不具合の修正は `fix/`）ブランチを切ります。1 Issue = 1 ブランチ = 1 PR。依存の脆弱性の勧告（CI の「依存の脆弱性」の失敗や注記）を直すときは、Issue とブランチを `/shinnn-app:check` の「`npm audit` で勧告が出たとき」で決めます。
 3. `shared`（API 定義）→ `server` → `client` → テストの順に実装します。
 4. `/shinnn-app:pr` で PR を作ります（出す前に `/shinnn-app:check` を 1 回通し、出した後に `/shinnn-app:retro` で振り返りを残す）。本文に `Closes #<番号>` を書きます。どれも `feature` が続けて行うので、利用者に打たせません。
 

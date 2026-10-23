@@ -128,7 +128,7 @@ jobs:
       - name: 依存の脆弱性（開発用を含む・止めない）
         run: |
           if ! npm audit --audit-level=high; then
-            echo "::warning title=依存の脆弱性（開発用を含む）::開発に使うものを含むライブラリに、重さが high 以上の脆弱性の知らせ（勧告）が出ているか、知らせを受け取れなかったかのどちらかです。この確認では CI を止めません。この注記を Claude Code に貼り付けて、直すよう頼んでください。"
+            echo "::warning title=依存の脆弱性（開発用を含む）::開発に使うものを含むライブラリに、重さが high 以上の脆弱性の知らせ（勧告）が出ているか、知らせを受け取れなかったかのどちらかです。この確認では CI を止めません。この注記を Claude Code に貼り付けて、直すよう頼んでください。Claude Code は、/shinnn-app:check の「npm audit で勧告が出たとき」の手順で直します。"
           fi
 
       - name: 依存のライセンス

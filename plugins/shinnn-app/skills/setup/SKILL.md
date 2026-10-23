@@ -251,7 +251,8 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
 7. `docs/decisions/` の**空いている次の番号**で `<番号>-setup.md` を作り、**選んだ理由と選ばなかった理由**を残す
    （テンプレートに `0001-template-stack.md`・`0002-package-manager.md`・`0003-node-version.md` が同梱されているので、初回は通常 `0004-setup.md`）
 8. 「引き継ぎメモ」Issue を作成して pin する（`gh issue create` → `gh issue pin`）。本文には見出し「## 引き継ぎの注意」
-   （主に `retro` が書く）と「## シン株式会社への要望」（標準を直してほしいことを書く）の 2 つを置く。`.shinnn/setup.json` に
+   （主に `retro` が書く）と「## シン株式会社への要望」（標準を直してほしいことを書く）と「## 規約で迷った点」
+   （`retro` が PR 本文の同じ名前の欄から写す）の 3 つを置く。`.shinnn/setup.json` に
    `handoverIssue` があれば作らない。番号が決まったら `--handover-issue <番号> --complete` でもう一度スクリプトを実行する
 9. シン株式会社の担当者が collaborator（リポジトリの共同作業者）に招待されていなければ招待する。
    `gh api -X PUT repos/{owner}/{repo}/collaborators/<シン株式会社の担当者のアカウント（@ なし）> -f permission=maintain`
