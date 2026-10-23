@@ -10,7 +10,7 @@
  * - 同じ手順は checkout で全部取った履歴の origin/<base> で比べ、履歴を浅くしない
  *   （浅くなると、同じジョブの後の gitleaks が一部のコミットしか調べない）
  * - 「依存の脆弱性」は実行時の依存（--omit=dev）の勧告だけで止める。「依存の脆弱性（開発用を含む・止めない）」は、
- *   勧告があっても落とさずに注記（::warning）を出す。注記は、直す手順（/shinnn-app:check の節）を名指しする
+ *   勧告があっても落とさずに注記（::warning）を出す。注記は、直す手順（/shinnn-app:check の節）を名指しし、その節は check のスキルにある
  * プラグインの CI は依存を入れずに動くので yaml パッケージは使わず、YAML の文字列を行で読む。
  */
 import assert from 'node:assert/strict';
@@ -302,6 +302,12 @@ test('依存の脆弱性（開発用を含む・止めない）: 注記は、貼
   const result = runBash(withFakeNpm(stepScript(devAuditStep), 1));
 
   assert.match(result.stdout, /^::warning title=.*\/shinnn-app:check の「npm audit で勧告が出たとき」/m);
+});
+
+test('依存の脆弱性（開発用を含む・止めない）: 注記が名指しする節が check のスキルにある', () => {
+  const skill = readFileSync(fileURLToPath(new URL('../skills/check/SKILL.md', import.meta.url)), 'utf8');
+
+  assert.match(skill, /^## `npm audit` で勧告が出たとき$/m);
 });
 
 test('依存の脆弱性（開発用を含む・止めない）: 勧告が無ければ注記を出さない', () => {
