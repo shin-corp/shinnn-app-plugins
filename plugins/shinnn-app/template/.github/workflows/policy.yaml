@@ -17,14 +17,17 @@ on:
     branches: [main]
   # 手で走らせるための入口。Actions が使えず CI が始まらなかった間にマージした PR を、main の最新のコミットで確かめる
   # （規約 git-workflow.md の「CI が始まらないとき」）。PR だけの step は github.event_name == 'pull_request' で飛ぶ。
+  # main 以外のブランチで手で走らせると、job の最初の step で落とす。
   workflow_dispatch:
 
 permissions:
   contents: read
 
 # ci.yaml の concurrency と group の名前を分ける。同じ名前だと、2 つのワークフローが互いの実行を取り消す。
+# group にはイベントの種類も入れる。入れないと、main への push が、手で走らせた main の実行を取り消す。
+# 取り消された実行は、手で走らせた確かめ（/shinnn-app:pr の「9. CI で確かめていないマージを確かめる」）では落ちたと区別できない。
 concurrency:
-  group: policy-${{ github.ref }}
+  group: policy-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -39,6 +42,21 @@ jobs:
     name: 規約チェック
     runs-on: ubuntu-latest
     steps:
+      # 手で走らせてよいのは main だけにする。ほかのブランチで走らせると、PR だけの 2 つの step が飛んだまま job が成功する。
+      # その成功は、そのコミットの PR の必須のチェック「規約チェック」を満たしてしまう。
+      # job の if: で飛ばす形にはしない。飛ばした job も成功と報告され、同じように必須のチェックを満たす。
+      - name: 手で走らせたのが main であること
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$REF" != 'refs/heads/main' ]; then
+            echo "規約チェックを手で走らせてよいのは main だけです（今は $REF）。" >&2
+            echo "手で走らせると、PR だけの確認（Closes #n など）が飛びます。main 以外のブランチは、PR の CI で確かめてください。" >&2
+            exit 1
+          fi
+          echo "main で手で走らせたことを確認しました。"
+
       - uses: actions/checkout@v7
         with:
           # gitleaks が履歴を走査するため全体を取得する

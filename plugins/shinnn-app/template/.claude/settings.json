@@ -61,6 +61,7 @@
       "Bash(git rebase *)",
       "Bash(git commit --no-verify*)",
       "Bash(git commit -n*)",
+      "Bash(gh pr merge *--admin*)",
       "Bash(sudo *)",
       "Read(.env)",
       "Read(.env.local)",

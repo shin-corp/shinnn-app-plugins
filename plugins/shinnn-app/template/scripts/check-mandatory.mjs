@@ -69,6 +69,7 @@ const REQUIRED_DENY = [
   'Bash(HUSKY=0 *)',
   'Bash(git reset --hard*)',
   'Bash(git commit --no-verify*)',
+  'Bash(gh pr merge *--admin*)',
   'Bash(sudo *)',
   'Read(.env)',
   'Read(**/.env)',

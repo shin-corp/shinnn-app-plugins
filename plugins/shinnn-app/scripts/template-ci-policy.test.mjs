@@ -11,6 +11,8 @@
  *   （浅くなると、同じジョブの後の gitleaks が一部のコミットしか調べない）
  * - 「依存の脆弱性」は実行時の依存（--omit=dev）の勧告だけで止める。「依存の脆弱性（開発用を含む・止めない）」は、
  *   勧告があっても落とさずに注記（::warning）を出す。注記は、直す手順（/shinnn-app:check の節）を名指しし、その節は check のスキルにある
+ * - 「手で走らせたのが main であること」は job の最初の step で、main 以外のブランチで手で走らせたら落とす。
+ *   job の if: で飛ばす形にはしない（飛ばした job も成功と報告され、PR の必須のチェックを満たす）
  * プラグインの CI は依存を入れずに動くので yaml パッケージは使わず、YAML の文字列を行で読む。
  */
 import assert from 'node:assert/strict';
@@ -315,4 +317,36 @@ test('依存の脆弱性（開発用を含む・止めない）: 勧告が無け
 
   assert.equal(result.status, 0, result.stderr);
   assert.doesNotMatch(result.stdout, /::warning/);
+});
+
+const dispatchStep = '手で走らせたのが main であること';
+
+test('手で走らせたのが main であること: main 以外のブランチなら落とす', () => {
+  const result = runBash(stepScript(dispatchStep), { env: { REF: 'refs/heads/feature/12-item-filter' } });
+
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /手で走らせてよいのは main だけです/);
+});
+
+test('手で走らせたのが main であること: main なら通す', () => {
+  const result = runBash(stepScript(dispatchStep), { env: { REF: 'refs/heads/main' } });
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('手で走らせたのが main であること: job の最初の step で、手で走らせたときだけ動く', () => {
+  const lines = readFileSync(policyYaml, 'utf8').split('\n');
+  const firstStep = lines.find((line) => /^\s+- (name|uses): /.test(line));
+
+  assert.equal(firstStep.trim(), `- name: ${dispatchStep}`);
+  assert.ok(stepLines(dispatchStep).some((line) => line.trim() === "if: github.event_name == 'workflow_dispatch'"));
+});
+
+test('規約チェックの job は if: を持たない（飛ばした job も成功と報告され、必須のチェックを満たす）', () => {
+  const lines = readFileSync(policyYaml, 'utf8').split('\n');
+
+  assert.equal(
+    lines.some((line) => /^ {4}if:/.test(line)),
+    false,
+  );
 });

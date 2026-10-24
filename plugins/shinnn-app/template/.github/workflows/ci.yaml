@@ -14,8 +14,10 @@ on:
 permissions:
   contents: read
 
+# group にはイベントの種類も入れる。入れないと、main への push が、手で走らせた main の実行を取り消す。
+# 取り消された実行は、手で走らせた確かめ（/shinnn-app:pr の「9. CI で確かめていないマージを確かめる」）では落ちたと区別できない。
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:

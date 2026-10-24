@@ -204,7 +204,7 @@ gh pr merge <番号> --merge --delete-branch
 git switch main && git pull --ff-only
 ```
 
-- CI が落ちたら（step が動いて落ちたら）、直してからやり直す。`--admin` などで検査を飛ばさない
+- CI が落ちたら（step が動いて落ちたら）、直してからやり直す。検査を飛ばさない（`--admin` の禁止は規約 `git-workflow.md` の「やらないこと」）
 - リポジトリが auto-merge を許可しているなら、ready の直後に `gh pr merge <番号> --auto --merge --delete-branch` としてもよい
   （CI が通った時点でマージされる）。その場合も `gh pr view <番号> --json state` でマージされたことを確かめてから報告する
 - `gh pr merge` が `workflow` スコープの不足で失敗したら（ワークフローを変える PR）、人にマージを頼む。
@@ -262,7 +262,7 @@ git switch main && git pull --ff-only
      ルールセットなら Settings → Rules → Rulesets で必須のチェックを外す。
      頼むときに、3 と同じやり方で `- ブランチ保護を外している（<YYYY-MM-DD>。ブランチ保護 / ルールセット）` の行も足す（すでにあれば足さない）
    - マージ（`self-review`）: `gh pr ready <番号>` → `gh pr merge <番号> --merge --delete-branch`。
-     GitHub がブランチ保護（必須のチェック）で断ったら、人に渡す。`--admin` で飛ばさない
+     GitHub がブランチ保護（必須のチェック）で断ったら、人に渡す（`--admin` の禁止は規約 `git-workflow.md` の「やらないこと」）
    - 報告（`human`）: CI が始まらなかったこと・理由の表示・手元の確かめの結果を書き、マージを人に頼む（保護があれば、外すことも頼む）
    - `ci.yaml` に `workflow_dispatch` が無い、または `policy.yaml` が無いリポジトリ（標準を取り込む前）では、報告に `/shinnn-app:update-rules` で標準を取り込むことを添える（9 で `main` の CI を走らせるために要る）
 

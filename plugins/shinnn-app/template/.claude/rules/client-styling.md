@@ -47,7 +47,7 @@ paths:
   `--font-display`）で足す。どの画面のどこに使うかは、「見た目の方針」に書く。名前に画面の名前を付けない。
   色の値は、テーマの変数（`--mat-sys-*`）から取る。主色と別の系統の色が要るときは、`theme-color` の生成に
   第 3 の色（`--tertiary-color`）として加える
-- 配色は Material のテーマで決める。使うのは、同梱のテーマ（`styles.css` が読み込む `azure-blue.css`）か、主色から
+- 配色は Material のテーマで決める。使うのは、同梱のテーマ（Angular Material の `azure-blue.css`）か、主色から
   Material の `theme-color` で生成した `client/src/theme.css` のどちらかにする
 - 色を変えるときは、`theme.css` を生成し直す（生成物を手で編集しない決まりは、[git-workflow.md](git-workflow.md) の「やらないこと」）
 - `theme.css` を読み込むレイヤは、同梱のテーマと同じ `material` にする

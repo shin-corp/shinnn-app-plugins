@@ -3,6 +3,7 @@
  *
  * - 本文の編集（`edited`）で走るのは policy.yaml だけ。ci.yaml の `pull_request` には `edited` を付けない
  * - 2 つのワークフローの concurrency の group は別の名前にする（同じだと互いの実行を取り消す）
+ * - concurrency の group にはイベントの種類を入れる（入れないと、`main` への push が手で走らせた実行を取り消す）
  * - どちらにも `workflow_dispatch` がある（Actions が使えなかった間にマージした PR を、`main` で手で確かめる）
  *
  * YAML のパーサーは使わない（プラグインは依存を持たない）。ブロック形式で書いた最上位のキーの下の行を、文字列として読む。
@@ -65,6 +66,12 @@ test('本文の編集（edited）で走るのは policy.yaml だけ', () => {
 
 test('ci.yaml と policy.yaml の concurrency の group は別の名前', () => {
   assert.notEqual(concurrencyGroup(workflow('ci.yaml')), concurrencyGroup(workflow('policy.yaml')));
+});
+
+test('ci.yaml と policy.yaml の concurrency の group にはイベントの種類が入っている', () => {
+  for (const name of ['ci.yaml', 'policy.yaml']) {
+    assert.match(concurrencyGroup(workflow(name)), /\$\{\{ github\.event_name \}\}/, name);
+  }
 });
 
 test('ci.yaml と policy.yaml のどちらにも workflow_dispatch がある', () => {
