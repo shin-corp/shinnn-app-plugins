@@ -269,12 +269,18 @@ function withFakeNpm(script, exitCode) {
 
 const devAuditStep = '依存の脆弱性（開発用を含む・止めない）';
 
-/** policy.yaml の、名前が name の手順の行（次の手順の手前まで） */
+/**
+ * policy.yaml の、名前が name の手順の行（次の手順の手前まで）。
+ * 次の手順は、同じ字下げの `- ` で始まる行（`- name:` のほか `- uses:`・`- run:` も）。
+ */
 function stepLines(name) {
   const lines = readFileSync(policyYaml, 'utf8').split('\n');
   const start = lines.findIndex((line) => line.trim() === `- name: ${name}`);
   assert.notEqual(start, -1, `手順「${name}」がありません`);
-  const next = lines.findIndex((line, index) => index > start && /^\s+- name: /.test(line));
+  const indent = lines[start].search(/\S/);
+  const next = lines.findIndex(
+    (line, index) => index > start && line.search(/\S/) === indent && line.trimStart().startsWith('- '),
+  );
   return lines.slice(start, next === -1 ? undefined : next);
 }
 
@@ -337,9 +343,18 @@ test('手で走らせたのが main であること: main なら通す', () => {
 test('手で走らせたのが main であること: job の最初の step で、手で走らせたときだけ動く', () => {
   const lines = readFileSync(policyYaml, 'utf8').split('\n');
   const firstStep = lines.find((line) => /^\s+- (name|uses): /.test(line));
+  const block = stepLines(dispatchStep);
 
   assert.equal(firstStep.trim(), `- name: ${dispatchStep}`);
-  assert.ok(stepLines(dispatchStep).some((line) => line.trim() === "if: github.event_name == 'workflow_dispatch'"));
+  assert.ok(
+    block.some((line) => line.trim() === "if: github.event_name == 'workflow_dispatch'"),
+    block.join('\n'),
+  );
+  assert.equal(
+    block.some((line) => /^\s+continue-on-error:/.test(line)),
+    false,
+    block.join('\n'),
+  );
 });
 
 test('規約チェックの job は if: を持たない（飛ばした job も成功と報告され、必須のチェックを満たす）', () => {
