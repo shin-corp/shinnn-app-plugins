@@ -208,6 +208,7 @@ test('--align-only（update-rules の使い方）: 標準を写した後の古�
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /テンプレートの形に揃える: standardsVersion: 削除/);
   assert.doesNotMatch(result.stdout, /workflow |CODEOWNERS/);
+  assert.doesNotMatch(result.stderr, /CODEOWNERS/);
   assert.deepEqual(disabledWorkflows(repo), disabledWorkflows(templateDir));
   assert.equal(readFileSync(join(repo, '.github', 'CODEOWNERS'), 'utf8'), codeowners);
 
@@ -269,6 +270,168 @@ test('--dry-run: 変更内容を出すだけで、何も書き換えない', () 
   assert.match(result.stdout, /workflow health-report\.yaml: 有効化/);
   assert.equal(readFileSync(join(repo, SETUP), 'utf8'), before);
   assert.deepEqual(disabledWorkflows(repo), disabledWorkflows(templateDir));
+});
+
+/** CODEOWNERS のパス */
+function codeownersPath(repo) {
+  return join(repo, '.github', 'CODEOWNERS');
+}
+
+/** 担当者を記録し、CODEOWNERS を指定の中身にしたリポジトリ */
+function makeRepoWithReviewer(reviewer, codeowners) {
+  const repo = makeRepo();
+  const result = runApply(repo, ['--reviewer', reviewer]);
+
+  assert.equal(result.status, 0, result.stderr);
+  writeFileSync(codeownersPath(repo), codeowners);
+  return repo;
+}
+
+test('CODEOWNERS: 担当者を決めた後に別の担当者へ変えると、規則の行が新しい担当者になり、説明の行は変わらない', () => {
+  const repo = makeRepo();
+  const template = readFileSync(codeownersPath(repo), 'utf8');
+
+  const first = runApply(repo, ['--reviewer', '@first-reviewer']);
+  assert.equal(first.status, 0, first.stderr);
+  assert.match(first.stdout, /CODEOWNERS: @SHINNN_REVIEWER → @first-reviewer/);
+  assert.equal(readFileSync(codeownersPath(repo), 'utf8'), template.replace('* @SHINNN_REVIEWER', '* @first-reviewer'));
+
+  const second = runApply(repo, ['--reviewer', '@second-reviewer']);
+  assert.equal(second.status, 0, second.stderr);
+  assert.match(second.stdout, /reviewer: @first-reviewer → @second-reviewer/);
+  assert.match(second.stdout, /CODEOWNERS: @first-reviewer → @second-reviewer/);
+  assert.equal(
+    readFileSync(codeownersPath(repo), 'utf8'),
+    template.replace('* @SHINNN_REVIEWER', '* @second-reviewer'),
+  );
+  assert.equal(JSON.parse(readFileSync(join(repo, SETUP), 'utf8')).reviewer, '@second-reviewer');
+});
+
+test('CODEOWNERS: 前の担当者と全体が一致するアカウントだけを置き換え、他のレビュアーと説明は変えない', () => {
+  const repo = makeRepoWithReviewer(
+    '@old-reviewer',
+    [
+      '# @old-reviewer はシン株式会社の担当者',
+      '  # @old-reviewer は字下げした説明の行',
+      '* @old-reviewer @old-reviewer-2 @customer-owner',
+      '/docs/ @customer-owner @old-reviewer # @old-reviewer は行の途中からの説明',
+      '/design/ @old-reviewer/team @old-reviewer-2',
+      '',
+    ].join('\n'),
+  );
+  const result = runApply(repo, ['--reviewer', '@new-reviewer']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    readFileSync(codeownersPath(repo), 'utf8'),
+    [
+      '# @old-reviewer はシン株式会社の担当者',
+      '  # @old-reviewer は字下げした説明の行',
+      '* @new-reviewer @old-reviewer-2 @customer-owner',
+      '/docs/ @customer-owner @new-reviewer # @old-reviewer は行の途中からの説明',
+      '/design/ @old-reviewer/team @old-reviewer-2',
+      '',
+    ].join('\n'),
+  );
+});
+
+test('CODEOWNERS: プレースホルダと前の担当者の両方があれば、どちらも置き換えて、両方を出す', () => {
+  const repo = makeRepoWithReviewer('@old-reviewer', '* @SHINNN_REVIEWER\n/docs/ @old-reviewer\n');
+  const result = runApply(repo, ['--reviewer', '@new-reviewer']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /CODEOWNERS: @SHINNN_REVIEWER, @old-reviewer → @new-reviewer/);
+  assert.equal(readFileSync(codeownersPath(repo), 'utf8'), '* @new-reviewer\n/docs/ @new-reviewer\n');
+});
+
+test('CODEOWNERS: 担当者を変えない実行でも、プレースホルダが残っていれば記録の担当者に置き換える', () => {
+  const repo = makeRepoWithReviewer('@old-reviewer', '* @SHINNN_REVIEWER\n');
+  const result = runApply(repo, ['--enable', 'copilot-review']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /CODEOWNERS: @SHINNN_REVIEWER → @old-reviewer/);
+  assert.equal(readFileSync(codeownersPath(repo), 'utf8'), '* @old-reviewer\n');
+});
+
+test('CODEOWNERS: 同じ担当者で再実行すると「変更はありません」で、書き換えない', () => {
+  const codeowners = '* @old-reviewer\n';
+  const repo = makeRepoWithReviewer('@old-reviewer', codeowners);
+  const result = runApply(repo, ['--reviewer', '@old-reviewer']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /変更はありません/);
+  assert.equal(readFileSync(codeownersPath(repo), 'utf8'), codeowners);
+});
+
+test('CODEOWNERS: 改行が CRLF のファイルでも置き換え、改行はそのまま残す', () => {
+  const repo = makeRepoWithReviewer('@old-reviewer', '# 説明\r\n* @old-reviewer\r\n');
+  const result = runApply(repo, ['--reviewer', '@new-reviewer']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(readFileSync(codeownersPath(repo), 'utf8'), '# 説明\r\n* @new-reviewer\r\n');
+});
+
+test('CODEOWNERS: --dry-run で別の担当者を指定すると、置き換えの内容を出すだけで、何も書き換えない', () => {
+  const codeowners = '* @old-reviewer\n';
+  const repo = makeRepoWithReviewer('@old-reviewer', codeowners);
+  const setupBefore = readFileSync(join(repo, SETUP), 'utf8');
+  const result = runApply(repo, ['--dry-run', '--reviewer', '@new-reviewer']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /reviewer: @old-reviewer → @new-reviewer/);
+  assert.match(result.stdout, /CODEOWNERS: @old-reviewer → @new-reviewer/);
+  assert.equal(readFileSync(codeownersPath(repo), 'utf8'), codeowners);
+  assert.equal(readFileSync(join(repo, SETUP), 'utf8'), setupBefore);
+});
+
+test('CODEOWNERS: 記録の担当者が規則の行に無ければ注意を出し、「すでに指定どおり」と出さず、説明の中の名前は数えない', () => {
+  const codeowners = '# @recorded-reviewer は説明\n* @stale-reviewer # @recorded-reviewer は説明\n';
+  const repo = makeRepoWithReviewer('@recorded-reviewer', codeowners);
+  const result = runApply(repo, ['--reviewer', '@recorded-reviewer']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /注意: CODEOWNERS の規則の行に @recorded-reviewer がありません/);
+  assert.match(result.stdout, /変更はありません/);
+  assert.doesNotMatch(result.stdout, /すでに指定どおり/);
+  assert.equal(readFileSync(codeownersPath(repo), 'utf8'), codeowners);
+});
+
+test('CODEOWNERS: 記録と違っているときは、規則の行にある人を指定してから新しい担当者を指定すると揃う', () => {
+  const repo = makeRepoWithReviewer('@recorded-reviewer', '* @stale-reviewer\n');
+
+  const direct = runApply(repo, ['--dry-run', '--reviewer', '@new-reviewer']);
+  assert.equal(direct.status, 0, direct.stderr);
+  assert.match(direct.stderr, /注意: CODEOWNERS の規則の行に @new-reviewer がありません/);
+  assert.doesNotMatch(direct.stdout, /CODEOWNERS/);
+
+  const aligned = runApply(repo, ['--reviewer', '@stale-reviewer']);
+  assert.equal(aligned.status, 0, aligned.stderr);
+  assert.doesNotMatch(aligned.stderr, /CODEOWNERS/);
+
+  const changed = runApply(repo, ['--reviewer', '@new-reviewer']);
+  assert.equal(changed.status, 0, changed.stderr);
+  assert.doesNotMatch(changed.stderr, /CODEOWNERS/);
+  assert.match(changed.stdout, /CODEOWNERS: @stale-reviewer → @new-reviewer/);
+  assert.equal(readFileSync(codeownersPath(repo), 'utf8'), '* @new-reviewer\n');
+});
+
+test('CODEOWNERS: 担当者が決まっていないプレースホルダのままなら注意を出さない', () => {
+  const result = runApply(makeRepo(), ['--enable', 'copilot-review']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stderr, /CODEOWNERS/);
+});
+
+test('--reviewer: 空白を含む値を渡すと止まり、何も書き換えない', () => {
+  const repo = makeRepo();
+  const setupBefore = readFileSync(join(repo, SETUP), 'utf8');
+  const codeowners = readFileSync(codeownersPath(repo), 'utf8');
+  const result = runApply(repo, ['--reviewer', '@first-reviewer @second-reviewer']);
+
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /--reviewer にはアカウントを 1 つだけ/);
+  assert.equal(readFileSync(join(repo, SETUP), 'utf8'), setupBefore);
+  assert.equal(readFileSync(codeownersPath(repo), 'utf8'), codeowners);
 });
 
 test('ワークフローの雛形: 冒頭の説明が、有効にした後に読んでも正しい', () => {
