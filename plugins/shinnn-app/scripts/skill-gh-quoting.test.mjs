@@ -1,10 +1,10 @@
 /**
- * スキルに書いた gh のコマンドが、Windows PowerShell 5.1 でも Bash でも同じ引数で渡ることの回帰テスト。
- * `node --test scripts/` で実行する。
+ * 文書の gh の `--jq` の式と、スキル pr の `gh api` のパスの書き方の回帰テスト。
+ * `node --test scripts/skill-gh-quoting.test.mjs` で実行する。
  *
  * 顧客の手元が Windows のとき、Claude Code は PowerShell 5.1 でコマンドを動かすことがある。
- * PowerShell 5.1 は、単一引用符の中の二重引用符を落として gh に渡す。
- * 引用符の無い `{owner}` は、スクリプトブロックとして読む。どちらも gh が失敗する。
+ * PowerShell 5.1 は、単一引用符の中の二重引用符を落として gh に渡す。gh は引数か式を読めずに失敗する。
+ * 引用符の無い `{owner}` は、スクリプトブロック（`{ }` で囲んだ処理のかたまり）として読む。gh が動く前に止まる。
  * CI は Linux で動くので PowerShell 5.1 を動かせない。ここでは書いてある形を見る。
  */
 import assert from 'node:assert/strict';
@@ -16,8 +16,11 @@ import { fileURLToPath } from 'node:url';
 /** プラグインのルート */
 const PLUGIN_ROOT = fileURLToPath(new URL('..', import.meta.url));
 
-/** `--jq` とその式。単一引用符・二重引用符で囲んだものと、引用符の無いものを読む */
-const JQ_EXPRESSION = /--jq\s+('[^']*'|"[^"]*"|[^\s`]+)/g;
+/**
+ * gh に式を渡す引数とその式。引数は `--jq`・`--jq=` と、gh のコマンドの `-q` を読む。
+ * 式は、単一引用符・二重引用符で囲んだものと、引用符の無いものを読む
+ */
+const JQ_EXPRESSION = /(?:--jq[\s=]\s*|\bgh\s[^`\n|]*\s-q\s+)('[^']*'|"[^"]*"|[^\s`]+)/g;
 
 /** 引用符で囲んでいない `repos/{owner}` */
 const UNQUOTED_OWNER_PATH = /(?<!["'])repos\/\{owner\}/;
@@ -73,14 +76,14 @@ test('check は直しの Issue を --json の結果から題で探す', () => {
   );
 });
 
-test('pr の CI の見分け方は、gh run view の式が出す項目だけを使う', () => {
+test('pr の CI の見分け方は、job と step の conclusion を出す式を使う', () => {
   const skill = readSkill('pr', 'SKILL.md');
-  const command = skill.split('\n').find((line) => line.includes('gh run view <実行の番号>'));
 
-  assert.ok(command, 'gh run view のコマンドが無い');
-  for (const field of ['databaseId', 'name', 'conclusion', 'steps']) {
-    assert.ok(command.includes(field), `${field} を出していない`);
-  }
+  assert.ok(
+    skill.includes(
+      `gh run view <実行の番号> --json jobs --jq '.jobs[] | {databaseId, name, conclusion, steps: [.steps[] | {name, conclusion}]}'`,
+    ),
+  );
   assert.doesNotMatch(skill, /step=|failed=/);
 });
 
