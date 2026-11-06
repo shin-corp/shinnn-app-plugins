@@ -191,6 +191,7 @@ PR を出したあとの動きは `.shinnn/setup.json` の `mergePolicy` で決�
       作業ブランチに `git switch` で戻る。コミットは作業ブランチに残るので、`git reset --hard` と違って何も失わない
    4. 手順 4 以降（残りの実装とテスト、コミット、`pr`）を進める
 1. 作業途中のブランチ（`git status` に変更がある、または PR の無い `feature/`・`fix/` ブランチ）があれば、その Issue を先に仕上げる。
+   ただし、その Issue の題が `[設定] 初回セットアップの適用` なら、このスキルでは進めず、`/shinnn-app:setup` を実行する。
    open な PR の本文に `依存の脆弱性: NG（… #<番号> で直す）` の行があり、#<番号> の Issue が閉じていれば、その PR に `main` を取り込む
    （`check` の「`npm audit` で勧告が出たとき」の 2 の 4）
 2. `git switch main && git pull --ff-only`
