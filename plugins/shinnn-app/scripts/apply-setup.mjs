@@ -63,6 +63,9 @@ const TEMPLATE_STANDARDS_PATH = new URL('../template/.claude/rules/.standards-ve
 /** テンプレートの setup.json には無いが、setup が書き足すキー。 */
 const KEYS_ADDED_BY_SETUP = ['handoverIssue'];
 
+/** テンプレートの CODEOWNERS にある、担当者を差し替えるためのプレースホルダ。 */
+const REVIEWER_PLACEHOLDER = '@SHINNN_REVIEWER';
+
 /**
  * 記録をテンプレートの形に揃える。古いテンプレートから作ったリポジトリには、今の標準に無いキー・古い説明・
  * 外した選択項目が残り、今の選択項目のキーが無いことがある。Claude は deny で `.shinnn/` を編集できず、書き換えるのは
@@ -223,6 +226,9 @@ function parseArgs(argv) {
       continue;
     }
     if (key === '--reviewer') {
+      if (/\s/.test(value)) {
+        fail(`--reviewer にはアカウントを 1 つだけ指定してください: ${value}`);
+      }
       options.reviewer = value.startsWith('@') ? value : `@${value}`;
       continue;
     }
@@ -304,6 +310,9 @@ if (options.profile !== undefined) {
   setup.optional['client-only-profile'] = options.profile === 'client-only';
 }
 
+/** この実行で変える前の担当者。CODEOWNERS に残っていれば、新しい担当者に置き換える */
+const previousReviewer = setup.reviewer;
+
 if (options.reviewer !== undefined && setup.reviewer !== options.reviewer) {
   changes.push(`reviewer: ${setup.reviewer} → ${options.reviewer}`);
   setup.reviewer = options.reviewer;
@@ -384,11 +393,21 @@ function applyWorkflows() {
   }
 }
 
+/** CODEOWNERS の 1 行を、規則の部分と、`#` から後ろの説明に分ける。 */
+function splitComment(line) {
+  const start = line.search(/(^|\s)#/);
+  return start === -1 ? [line, ''] : [line.slice(0, start), line.slice(start)];
+}
+
+/** CODEOWNERS の規則の行に、記録の担当者がいないか。担当者が決まっていないときは false のまま */
+let reviewerNotListed = false;
+
 /**
- * CODEOWNERS のプレースホルダをシン株式会社の担当者のアカウントに置き換える。
+ * CODEOWNERS の担当を割り当てる規則の行で、プレースホルダと前の担当者を、記録にあるシン株式会社の担当者に置き換える。
  *
- * 置き換えるのは担当を割り当てる規則の行だけ。`#` で始まる行はプレースホルダそのものを説明する
- * コメントなので、置き換えると説明として読めなくなる。
+ * アカウント全体が一致する語だけを置き換える。部分一致にすると、別の人の `@example-2` まで変わる。
+ * `#` から後ろは置き換えない。プレースホルダを説明するコメントを置き換えると、説明として読めなくなる。
+ * 置き換えた後も規則の行に担当者がいなければ、注意を出す。その状態では PR のレビューが担当者に届かない。
  */
 function applyCodeowners() {
   const codeownersPath = join(root, '.github', 'CODEOWNERS');
@@ -397,23 +416,38 @@ function applyCodeowners() {
     return;
   }
 
-  const before = readFileSync(codeownersPath, 'utf8');
-  const replacedLines = [];
-  for (const line of before.split('\n')) {
-    if (line.trimStart().startsWith('#')) {
-      replacedLines.push(line);
-      continue;
-    }
-    replacedLines.push(line.replaceAll('@SHINNN_REVIEWER', setup.reviewer));
-  }
-  const after = replacedLines.join('\n');
+  const outdated = [REVIEWER_PLACEHOLDER, previousReviewer].filter((name) => name !== setup.reviewer);
+  const replaced = new Set();
+  let listed = false;
+  const lines = readFileSync(codeownersPath, 'utf8')
+    .split('\n')
+    .map((line) => {
+      const [rule, comment] = splitComment(line);
+      const words = rule.split(/(\s+)/).map((word) => {
+        if (!outdated.includes(word)) {
+          return word;
+        }
+        replaced.add(word);
+        return setup.reviewer;
+      });
+      listed ||= words.includes(setup.reviewer);
+      return `${words.join('')}${comment}`;
+    });
 
-  if (before === after) {
+  reviewerNotListed = !listed && setup.reviewer !== REVIEWER_PLACEHOLDER;
+  if (reviewerNotListed) {
+    console.error(`  注意: CODEOWNERS の規則の行に ${setup.reviewer} がありません（PR のレビューが届きません）。`);
+    console.error(
+      '  どう直す: 規則の行にある前の担当者を --reviewer で指定して実行し、続けて使う担当者を --reviewer で指定して実行する',
+    );
+  }
+
+  if (replaced.size === 0) {
     return;
   }
-  changes.push(`CODEOWNERS: @SHINNN_REVIEWER → ${setup.reviewer}`);
+  changes.push(`CODEOWNERS: ${[...replaced].join(', ')} → ${setup.reviewer}`);
   if (options.dryRun !== true) {
-    writeFileSync(codeownersPath, after);
+    writeFileSync(codeownersPath, lines.join('\n'));
   }
 }
 
@@ -434,7 +468,7 @@ if (options.dryRun !== true) {
 }
 
 if (changes.length === 0) {
-  console.log('[shinnn-app:setup] 変更はありません（すでに指定どおりの状態です）。');
+  console.log(`[shinnn-app:setup] 変更はありません${reviewerNotListed ? '' : '（すでに指定どおりの状態です）'}。`);
   process.exit(0);
 }
 

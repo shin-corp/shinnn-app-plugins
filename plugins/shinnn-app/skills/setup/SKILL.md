@@ -228,7 +228,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
    | 引数 | 内容 |
    |:--|:--|
    | `--profile` | `full` / `client-only`（`optional.client-only-profile` も一緒に合わせる） |
-   | `--reviewer` | `CODEOWNERS` の `@SHINNN_REVIEWER` を置き換えるシン株式会社の担当者のアカウント |
+   | `--reviewer` | `CODEOWNERS` の担当を割り当てる行で、`@SHINNN_REVIEWER` と記録の前の担当者を置き換えるシン株式会社の担当者のアカウント（1 つだけ） |
    | `--database` | `database-url` / `local-postgres` / `docker` / `pglite` / `managed` |
    | `--merge-policy` | `human`（既定。人が ready にしてマージする）/ `self-review`（`/shinnn-app:pr` がセルフレビューと CI の通過後にマージする。CI が始まらないときは「CI が始まらないとき」に従う） |
    | `--enable` / `--disable` | 選択項目。`.shinnn/setup.json` の `optional` にあるキーだけを受け付ける |
@@ -362,6 +362,9 @@ claude --add-dir <元のアプリのフォルダ>
 - `gh pr merge` が `workflow` スコープの不足で失敗する: `gh auth refresh -h github.com -s workflow` を案内する。それまでは人がマージする
 - 適用スクリプトが `選択項目 … は optional にありません` で止まる: 項目そのものを増やすのは標準の変更にあたる。
   勝手に `.shinnn/setup.json` を書き足さず、「引き継ぎメモ」Issue の「シン株式会社への要望」に上げる
+- 適用スクリプトが `CODEOWNERS の規則の行に … がありません` と注意を出す: 記録の担当者と `CODEOWNERS` の担当者が違っている。
+  担当を割り当てる行にある前の担当者を `--reviewer` で指定して実行し、続けて使う担当者を `--reviewer` で指定して実行する。
+  その行に前の担当者が無ければ、「引き継ぎメモ」Issue の「シン株式会社への要望」に上げる
 
 ## 関連
 
