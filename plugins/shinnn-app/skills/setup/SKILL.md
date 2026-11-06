@@ -1,6 +1,6 @@
 ---
 name: setup
-description: アプリの初回セットアップを対話で行う。空のフォルダでは同梱のテンプレートを展開して git と GitHub のリポジトリを用意する。テンプレートを展開した後は、テンプレートの選択・環境の検出・必須項目の確認・選択項目の決定・適用までを 1 回で通す。再実行すると選択の変更を差分の PR にする。途中で止まったときは、再実行で済んでいないところから続ける。「セットアップ」「初期設定」「最初に何をすればいい」「セットアップの選択を変えたい」「セットアップの続き」で起動
+description: アプリの初回セットアップを対話で行う。空のフォルダでは同梱のテンプレートを展開して git と GitHub のリポジトリを用意する。テンプレートを展開した後は、テンプレートの選択・環境の検出・必須項目の確認・選択項目の決定・適用までを 1 回で通す。再実行すると選択の変更を差分の PR にする。初回のセットアップが途中で止まったときは、再実行で済んでいないところから続ける。「セットアップ」「初期設定」「最初に何をすればいい」「セットアップの選択を変えたい」「セットアップの続き」で起動
 ---
 
 # 初回セットアップ
@@ -8,7 +8,7 @@ description: アプリの初回セットアップを対話で行う。空のフ�
 アプリ用の空のフォルダでプラグインを入れた直後に実行する。テンプレートがまだ無ければ同梱のものを展開して、git と GitHub の
 リポジトリを用意する。そのあと、Claude Code を起動し直してもらう。起動し直した後にもう一度実行する。その実行で、決めたことを
 `.shinnn/setup.json` に記録して、ワークフローや設定ファイルを生成する。あとから選択を変えたくなったら、このスキルをもう一度実行する。
-途中で止まったときも、もう一度実行する。済んでいないところから続く。
+初回のセットアップが途中で止まったときも、もう一度実行する。済んでいないところから続く。
 
 **選択（`.shinnn/setup.json` の値）・`CODEOWNERS`・ワークフローの有効と無効を変えてよいのは、このスキルだけ。**
 既存のアプリへ標準（規約・権限の設定・ワークフローの中身・PR テンプレートなど）を写すのは `/shinnn-app:update-rules`。
@@ -28,24 +28,29 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
 最初に、今の状態を次の順に見る。
 
 1. **`.claude/rules/.standards-version` が無い**（テンプレートがまだ無いフォルダ）: 手順 0 を 1 から行い、起動し直すよう伝えて終える
-2. **手順 0 の git と GitHub の用意が済んでいない**: 次の 2 つのコマンドで見て、済んでいないものを行う
+2. **手順 0 の git と GitHub の用意が済んでいない**: 次の 3 つのコマンドで順に見て、済んでいないものを行う
 
    ```
    git log -1 --oneline -- .claude/rules/.standards-version
    git fetch origin main
+   git log -1 --oneline origin/main -- .claude/rules/.standards-version
    ```
 
    | 結果 | 行うこと |
    |:--|:--|
-   | `git log` が失敗する、または何も出さない（テンプレートをコミットしていない） | 手順 0 の 3。終わったら `git fetch` を見直す |
-   | `git fetch` が `origin` が無いと言って失敗する | 手順 0 の 4 |
-   | `git fetch` が `origin` に `main` が無いと言って失敗する（`couldn't find remote ref`） | 手順 0 の 4 の `git push` |
-   | `git fetch` がそのほかの理由で失敗する | 「失敗したとき」の `git fetch origin main` の項目に従う |
+   | 1 つ目が失敗する、または何も出さない（テンプレートをコミットしていない） | 手順 0 の 3。終わったら 2 つ目を見る |
+   | 2 つ目が `origin` が無いと言って失敗する | 手順 0 の 4 |
+   | 2 つ目が `origin` に `main` が無いと言って失敗する（`couldn't find remote ref`） | 手順 0 の 4 の `git push` |
+   | 2 つ目がそのほかの理由で失敗する | 「失敗したとき」の `git fetch origin main` の項目に従う |
+   | 3 つ目が何も出さない（`origin` の `main` にテンプレートが無い） | 「失敗したとき」の `git push -u origin main` の項目に従う |
 
    どれかを行ったら、手順 0 の 5 に進む。どれも行わなかったら、3 に進む
 3. **リポジトリの `.claude/rules/.standards-version` が `${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/.standards-version` と違う**:
-   先に `/shinnn-app:update-rules` で標準を取り込むよう伝えて終える（規約・CLAUDE.md 雛形・アプリ作り方ガイド・権限の設定・git のフック・コミット時の整形の設定・確認のスクリプト・ワークフロー・PR テンプレート・Dependabot の設定の更新は setup ではなく update-rules が扱う）
-4. **適用の途中で止まっている**（題が `[設定] 初回セットアップの適用` の open な Issue がある。探し方は手順 5 の 2）:
+   今のブランチが `main` か `feature/<番号>-setup` なら、比べる前に `git log HEAD..origin/main --oneline -- .claude/rules/.standards-version` を見る。
+   コミットが出たら、手順 5 の 3 のとおり `origin/main` を取り込んでから比べる。
+   それでも違うときは、`feature/<番号>-setup` の未コミットの変更をコミットする。`/shinnn-app:update-rules` はブランチを切るときに未コミットの変更を持ち越す。
+   コミットしてから、先に `/shinnn-app:update-rules` で標準を取り込むよう伝えて終える（規約・CLAUDE.md 雛形・アプリ作り方ガイド・権限の設定・git のフック・コミット時の整形の設定・確認のスクリプト・ワークフロー・PR テンプレート・Dependabot の設定の更新は setup ではなく update-rules が扱う）
+4. **適用の途中で止まっている**（題が `[設定] 初回セットアップの適用` の open な Issue がある。探し方と、2 つ以上あるときの決め方は手順 5 の 2）:
    Issue の本文の決めた内容を示し、変えるものがあるかを 1 回だけ聞く。変えるものと本文に無いものだけを手順 1〜4 のとおりに聞く。
    変えたら `gh issue edit` で本文を直す。残りの手順 1〜4 は飛ばし、手順 5 を 1 から順に行う。
    `gh` が無い・ログインできないときは、適用の Issue を既に作ったかを聞く
@@ -58,8 +63,7 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
 `CLAUDE.md` と `.claude/rules/` はセッションの開始時に読み込まれるので、展開した直後のセッションには規約が入っていない。
 権限の設定（`.claude/settings.json`）も含めて確実に反映させるため、手順 0 の 2 で展開したセッションでは手順 1 に進まない。
 `node` と `git` が要る。無ければ導入を案内してから始める。
-3 と 4 は、テンプレートを `main` の最初のコミットにして GitHub に送る手順。`main` がまだ GitHub に無いこの 1 回は、
-規約 `git-workflow.md` の「`main` へ直接コミットも push もしない」に当たらない（`.husky/pre-push` もこの push を通す）。
+3 と 4 は、テンプレートを `main` の最初のコミットにして GitHub に送る手順。規約 `git-workflow.md` の「やらないこと」のただし書きに当たる。
 
 1. **フォルダが空であることを確かめる。** `claude plugin install` が作った `.claude/` と `.git/` はあってよい。
    ほかのファイルがあれば、次の 3 つを伝えて止める
@@ -91,7 +95,7 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
    | `--dest <パス>` | 展開先。既定はプロジェクトのフォルダ |
    | `--dry-run` | 版とファイル数を示すだけで、書き込まない |
 
-3. **git に記録する。** `.git` が無ければ `git init -b main`。続けて `git add -A` →
+3. **git に記録する。** `.git` が無ければ `git init -b main`。今のブランチが `main` でなければ `git branch -M main`。続けて `git add -A` →
    `git commit -m "テンプレートの取り込み"`。
    最初のコミットには対象のパッケージが無いので、コミットの接頭辞（`[server]` など）を付けない
 4. **GitHub にリポジトリを作る。** リモートが無ければ、置き場所（組織かアカウント）とリポジトリ名（既定はフォルダ名）を聞いて実行する
@@ -238,7 +242,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
    ```
 
    1 つあれば、新しく作らずにその Issue を使う。2 つ以上あれば、番号を示してどれを使うかを聞く。
-   無ければ `gh issue create` で作る。本文には決めた内容を箇条書きで書き、ラベルは `status:doing` を付ける
+   見つからないときと再実行では、`gh issue create` で作る。本文には決めた内容を箇条書きで書き、ラベルは `status:doing` を付ける
 3. 2 の Issue の番号でブランチを用意する。手順 2（環境の検出）で出た変更があれば、コミットせずにこのブランチへ持ち越す
 
    ```
@@ -248,7 +252,8 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
 
    既にある Issue を使うときは、`git switch -c` の前に `git switch feature/<Issue 番号>-setup` を試す。
    ブランチが手元か `origin` にあれば、これで移れる。移れたら `git switch -c` で切らない。
-   `git log HEAD..origin/main --oneline` にコミットが出たら、`git merge origin/main` で取り込む。
+   `git log HEAD..origin/main --oneline` にコミットが出たら、未コミットの変更をこのブランチにコミットしてから、
+   `git merge origin/main` で取り込む。`git merge` は権限の設定の許可に無いので、実行の前に確認が出る。許可してもらって進める。
    `main` の標準の版が進んでいると、4 のスクリプトが止まる。取り込むのは、これを防ぐため。
 
    `gh` が無い・ログインできない場合は、ラベルと Issue を GitHub の画面で作ってもらう。その Issue の番号を聞いてから、
@@ -324,7 +329,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
     同じ要約を 7 の記録にも書き足す。要約が `設定した` か `既にある` のときは、「引き継ぎメモ」Issue の「引き継ぎの注意」に
     ブランチ保護の項目が残っていれば、その項目を消す
 13. 変更をコミットし、`/shinnn-app:pr` で PR にする。本文の 1 行目は `Closes #<2 の Issue の番号>`。
-    このブランチの PR が既にあれば（`gh pr view`）、`/shinnn-app:pr` の手順 3 で `gh pr create` を飛ばし、push だけを行う。
+    このブランチの open な PR が既にあれば（`gh pr view --json state` が `OPEN`）、`/shinnn-app:pr` の手順 3 で `gh pr create` を飛ばし、push だけを行う。
     費用が発生する項目を増やした場合は、本文に費用の目安を書く。ready にするか、マージまで行うかは
     `/shinnn-app:pr` がマージの方針（`human` / `self-review`）に従って決める
 
@@ -350,8 +355,8 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
 **再実行のとき**は、既存の `.shinnn/setup.json` と今回の選択を比べ、**差分のある項目だけ**を変更する。
 進め方は初回と同じ。手順 5 の 2 の Issue の題は、変える内容に合わせる。前の setup の PR がマージされてから再実行する。
 ただし、初回の PR がマージされる前は、「進め方」の 4 のとおり同じ Issue とブランチで続ける。
-マージの前に再実行すると、`origin/main` から切ったブランチには前の記録が無い。そのため、「引き継ぎメモ」Issue を
-作り直すことになる。記録のファイル名もぶつかる。
+初回の後の再実行では、前の PR のマージの前に再実行すると、`origin/main` から切ったブランチには前の記録が無い。
+そのため、記録のファイル名がぶつかる。
 古いテンプレートから作ったリポジトリでは、選択を変えなくても、適用のスクリプトが記録をテンプレートの形に揃える
 （今の標準に無いキー・古い説明・今の標準に無い選択項目を消し、無い選択項目を足す。選んでいた値は残す）。`--dry-run` の出力に
 「テンプレートの形に揃える」と出たら、その内容も PR 本文に書く。
@@ -384,6 +389,10 @@ claude --add-dir <元のアプリのフォルダ>
   `gh auth login` かネットワークの確認を案内する。直ったら setup を再実行する
 - `gh repo create` が失敗する（組織でリポジトリを作る権限が無い、`gh` が無い）: GitHub の画面で空のリポジトリ（README なし）を
   作ってもらい、`git remote add origin <URL>` と `git push -u origin main` を実行する
+- `git push -u origin main` が断られる、または `origin` の `main` にテンプレートが無い（README 付きのリポジトリを作ったときなど）: 上書きしない。
+  GitHub の画面で空のリポジトリ（README なし）を作ってもらい、`git remote set-url origin <URL>` と `git push -u origin main` を実行する
+- `git merge origin/main` が衝突で止まる: `.shinnn/setup.json` の衝突は、`git checkout --theirs .shinnn/setup.json` → `git add .shinnn/setup.json` で `main` の側を取り、
+  `git commit --no-edit` でマージを終える。そのあと、手順 5 の 4 を実行し直して選択を入れ直す。ほかのファイルが衝突したら、`git merge --abort` で戻して報告する
 - `gh repo create` が、同じ名前のリポジトリが既にあると言って失敗する: `gh repo view <置き場所>/<名前> --json isEmpty,url` で中身を見る。
   空なら、`git remote add origin <URL>` と `git push -u origin main` を実行する。空でなければ、別の名前を聞く
 - `gh` の認証が切れている: `gh auth login` を案内する。ログインできなければ、手順 5 の 3 の `gh` が無い場合と同じく
