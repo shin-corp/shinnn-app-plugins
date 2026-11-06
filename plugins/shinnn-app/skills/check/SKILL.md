@@ -119,7 +119,7 @@ Issue と PR の本文を書き換えるときは、`gh issue view <番号> --js
      （このブランチを切った後の `main` の変更）に出たら、`main` の側で版が変わっている。既に直っていることがある。
      PR があれば、`gh pr update-branch <番号>` と `git pull --ff-only` で `main` を取り込んでから、`npm audit` を流し直す。
      PR がまだ無ければ、2・3 のとおりに進め、PR を出した後に取り込んで流し直す
-   - 直しの Issue: `gh issue list --state open --label type:deps --limit 200 --json number,title,labels --jq '.[] | select(.title == "[依存] 依存の脆弱性の修正") | "\(.number) \([.labels[].name] | join(","))"'`。
+   - 直しの Issue: `gh issue list --state open --label type:deps --limit 200 --json number,title,labels` の結果から、題が `[依存] 依存の脆弱性の修正` のものを探す。
      ラベルに `status:blocked` があれば、シン株式会社の判断待ち。2 の 5 には進まない
    - 直しの PR: 直しの Issue があれば、`gh pr list --state open --head feature/<Issue 番号>-audit --json number --jq '.[].number'`
    - 流し直して勧告が出なくなったときは、ここで終わる。直しの Issue に書いたパッケージのどれにも勧告が出なくなったら、
