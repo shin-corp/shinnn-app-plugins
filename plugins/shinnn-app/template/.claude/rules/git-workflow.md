@@ -73,7 +73,8 @@ Dependabot（依存更新の bot）が作る PR に対応する Issue（`[依存
 - husky のフックを飛ばさない（`git commit --no-verify` / `git push --no-verify` / `HUSKY=0`）（検査: 権限の設定。
   `git push` の `--no-verify`、`HUSKY=0` で始まるコマンド、`git commit` の直後に書いた `--no-verify` / `-n` だけを止める）
 - `main` へ直接コミットも push もしない。`main` へは、作業ブランチからの PR でだけ入れる（検査: git のフック。
-  `main` への push だけを止める）
+  GitHub に既にある `main` への push だけを止める）
+- ただし、GitHub に `main` がまだ無いときは、テンプレートの最初のコミットを `main` に作って push してよい（`/shinnn-app:setup` の手順 0）
 - `gh pr merge` に `--admin` を付けない（検査: 権限の設定）
 - `server` と `shared` の `.ts` に `prettier --write` を掛けない
 - prettier で整えるのは、画面（`client`）の `.ts` と json・md・yaml だけにする
@@ -134,6 +135,8 @@ force push と `--no-verify` を禁じるのは、非エンジニアが復旧で
 
 作業ブランチへの push を確認なしで実行するのは、確認を求めても、コードを読まない人には判断できないためです。push の
 中身の良し悪しは、コードを読まないと分かりません。代わりに、困ることを仕組みで止めます。
+
+GitHub に `main` がまだ無いときは、PR の送り先がありません。そのため、テンプレートの最初のコミットと push だけは `main` に直接行います。
 
 `main` への push を確実に止めるのは、GitHub のブランチ保護です。使えるプランなら、setup が設定します（推奨）。
 `.husky/pre-push` は、誤って push したときに止める安全網です。ただし、フックを飛ばす書き方があるので、これだけには

@@ -175,7 +175,7 @@ PR に付いた指摘には、さらに次の決まりを当てる。
 - 実行中がある: `gh pr checks <番号> --watch` で終わるまで待ち、結果で分ける
 - 失敗がある: 「8. CI が始まらないとき」の 1 の見分け方で、CI が始まっていないかを見る
   - step が動いて落ちた job がある: ふつうの CI の失敗なので、直して push し、この 6 の CI の確認からやり直す（`retro` はやり直さない）。
-    8 の 1 の出力で、落ちた step（`failed=`）が「依存の脆弱性」（`npm audit`）だけなら、`check` の「`npm audit` で勧告が出たとき」に従う
+    8 の 1 の出力で、落ちた step（`steps` の `conclusion` が `failure`）が「依存の脆弱性」（`npm audit`）だけなら、`check` の「`npm audit` で勧告が出たとき」に従う
     （同じ節の 1 で、前に作った直しの Issue と PR を見つけて続きから進める）。この PR が原因でなければ、直しの PR がマージされて
     `main` を取り込むまで、この PR の CI は落ちたままになる。取り込んだら、この 6 の CI の確認からやり直す
   - CI が始まっていない: 8 の 1〜3 を行う
@@ -220,7 +220,7 @@ git switch main && git pull --ff-only
 
    ```
    gh run list --commit <最新のコミットの SHA> --json databaseId,workflowName,conclusion
-   gh run view <実行の番号> --json jobs --jq '.jobs[] | "\(.databaseId) \(.name) \(.conclusion) step=\(.steps | length) failed=\([.steps[] | select(.conclusion == "failure") | .name] | join(","))"'
+   gh run view <実行の番号> --json jobs --jq '.jobs[] | {databaseId, name, conclusion, steps: [.steps[] | {name, conclusion}]}'
    ```
 
    `gh run list --commit` は、同じワークフローの古い実行も返す（本文の編集で `policy.yaml` の実行が増える）。
@@ -229,7 +229,7 @@ git switch main && git pull --ff-only
    その実行の番号ごとに `gh run view` を繰り返す（2 つのワークフローとも見る）。
 
    - 実行がまだ終わっていなければ（`conclusion` が空）、待つ
-   - 落ちた（`failure`）job が 1 つ以上あり、落ちた job がすべて `step=0` なら、CI が始まっていない（`ci.yaml` が緑で、`policy.yaml` だけが `step=0` で落ちた場合も含む）
+   - 落ちた（`failure`）job が 1 つ以上あり、落ちた job の `steps` がすべて空なら、CI が始まっていない（`ci.yaml` が緑で、`policy.yaml` の落ちた job だけ `steps` が空の場合も含む）
    - step が動いて落ちた job が 1 つでもあれば、ふつうの CI の失敗として直す（この節には進まない）
    - 理由の表示は `gh api "repos/{owner}/{repo}/check-runs/<job の databaseId>/annotations" --jq '.[].message'` で読み、報告に写す
 2. 最新のコミットで、手元で確かめる。
@@ -249,11 +249,11 @@ git switch main && git pull --ff-only
    （ファイルを書き換える）
    gh issue edit <Issue 番号> --body-file <ファイル>
    ```
-4. 必須のチェックがあるかを確かめて、マージを進める。次のどちらかで 1 以上が出れば、必須のチェックがある。
+4. 必須のチェックがあるかを確かめて、マージを進める。次の 1 つ目で 1 以上が出るか、2 つ目に `required_status_checks` の行が出れば、必須のチェックがある。
 
    ```
-   gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.checks | length'
-   gh api repos/{owner}/{repo}/rules/branches/main --jq '[.[] | select(.type == "required_status_checks")] | length'
+   gh api "repos/{owner}/{repo}/branches/main/protection" --jq '.required_status_checks.checks | length'
+   gh api "repos/{owner}/{repo}/rules/branches/main" --jq '.[].type'
    ```
 
    1 つ目はブランチ保護、2 つ目はルールセット（新しい方式のブランチ保護）を見る。1 つ目は、ブランチ保護が無ければ 404 で終わる（必須のチェックは無い）。
