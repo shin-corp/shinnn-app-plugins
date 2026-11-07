@@ -1,5 +1,6 @@
 # hooks と setup を動かす Node スクリプトの回帰テストを、PR と main への push で実行する。
 # プラグインは npm パッケージではないので、依存の導入なしに node --test だけで完結する。
+# テンプレートの依存を使うテスト（template-pre-commit.test.mjs）は、依存が無いので飛ばす。
 name: test
 
 on:

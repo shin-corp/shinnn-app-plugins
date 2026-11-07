@@ -75,6 +75,8 @@ Dependabot（依存更新の bot）が作る PR に対応する Issue（`[依存
 - `git push --force` / `git reset --hard` / `git rebase` / `git clean` を使わない（検査: 権限の設定）
 - husky のフックを飛ばさない（`git commit --no-verify` / `git push --no-verify` / `HUSKY=0`）（検査: 権限の設定。
   `git push` の `--no-verify`、`HUSKY=0` で始まるコマンド、`git commit` の直後に書いた `--no-verify` / `-n` だけを止める）
+- コミットが lint-staged の `Failed to back up original state!` で止まったときに、lint-staged が案内する `git apply --index <git-hash>` で戻さない
+  （戻し方は `/shinnn-app:pr` の手順 2）
 - `main` へ直接コミットも push もしない。`main` へは、作業ブランチからの PR でだけ入れる（検査: git のフック。
   GitHub に既にある `main` への push だけを止める）
 - ただし、GitHub に `main` がまだ無いときは、テンプレートの最初のコミットを `main` に作って push してよい（`/shinnn-app:setup` の手順 0）
@@ -162,6 +164,10 @@ lint は、`package.json` に書いていない依存の import を止めます�
 
 force push と `--no-verify` を禁じるのは、非エンジニアが復旧できない状態になるのを防ぐためです。履歴や検査が
 いったんおかしくなると、非エンジニアには元に戻せません。履歴を書き換えずに前へ進む（打ち消しコミットを積む）方が、常に安全です。
+
+lint-staged が案内する `git apply --index <git-hash>` で戻さないのは、この案内では退避（stash）を戻せないためです。
+`git apply` はパッチのファイルを読むので、退避のコミットの値を渡すと失敗します。
+また、この止まり方では、作業ツリーと index（ステージした中身）が半端な状態で残ります。index を HEAD に戻してから退避を当てないと、衝突します。
 
 作業ブランチへの push を確認なしで実行するのは、確認を求めても、コードを読まない人には判断できないためです。push の
 中身の良し悪しは、コードを読まないと分かりません。代わりに、困ることを仕組みで止めます。
