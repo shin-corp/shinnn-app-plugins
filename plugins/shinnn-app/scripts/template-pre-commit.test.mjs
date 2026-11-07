@@ -63,7 +63,7 @@ const guideFormatted = `${guideInitial}\n_詳細_\n`;
 /** ステージしない変更。ステージするファイルの見出しを変える */
 const retitle = (content) => content.replace('# 画面', '# 画面の説明');
 
-/** 仕様書の受入条件の行数。git の出力が何度も区切られて届く大きさにする */
+/** 仕様書の受入条件の行数。git の出力が、いくつものまとまりに分かれて届く大きさにする */
 const specRows = 2000;
 
 /** テストで使う一時ファイルをすべて置くディレクトリ */
@@ -161,7 +161,7 @@ test('ステージしていない日本語の多いファイルの変更は、�
   const local = setupRepo();
   const changedSpec = specContent('変えた受入条件');
   writeFileSync(join(local, specPath), changedSpec);
-  // 整形の掛かるファイルをステージする。タスクの後の差分には、仕様書の前に、整形で変わった差分が並ぶ
+  // 整形の掛かるファイルをステージする。--hide-unstaged が無いと、タスクの後の差分には、仕様書の前に、整形で変わった差分が並ぶ
   writeFileSync(join(local, guidePath), guideStaged);
   assert.equal(git(local, 'add', guidePath).status, 0);
 
