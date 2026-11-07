@@ -81,7 +81,16 @@ function findPreviousCommand() {
 
 /** git を実行し、失敗したらそのときの出力でテストを落とす */
 function git(cwd, ...args) {
-  const config = ['-c', 'user.name=test', '-c', 'user.email=test@example.com', '-c', 'core.autocrlf=false'];
+  const config = [
+    '-c',
+    'user.name=test',
+    '-c',
+    'user.email=test@example.com',
+    '-c',
+    'commit.gpgsign=false',
+    '-c',
+    'core.autocrlf=false',
+  ];
   const result = spawnSync('git', [...config, ...args], { cwd, encoding: 'utf8' });
   assert.equal(result.status, 0, `git ${args.join(' ')}: ${result.stderr}`);
   return result.stdout;
@@ -213,7 +222,10 @@ test('setup の手順 5 では、新しい担当者を招待するだけで、�
 });
 
 test('手順 1〜5 を飛ばせるのは、前の担当者の権限を決めるためだけの再実行に限る', () => {
-  assert.match(applySection(), /前の担当者の権限を決めるためだけの再実行（.*）は、手順 1〜5 を行わず、手順 6 に進む/);
+  assert.match(
+    setupSkill,
+    /手順 1〜6 を順に行う。ただし、「前の担当者の権限を決めたい」と頼まれたときは、手順 1〜5 を行わず手順 6 に進む/,
+  );
   assert.doesNotMatch(setupSkill, /変える項目が無い再実行は/);
   assert.match(nextStepSection(), /その場でマージしないときは、マージの後に「前の担当者の権限を決めたい」と伝えて/);
   assert.match(nextStepSection(), /前の担当者の権限を決めるためだけの再実行は、ここで終える/);
@@ -271,6 +283,23 @@ test('聞き直さないのは「残す」と決めた人だけで、分から�
   assert.match(section, /分からない: 権限は変えない。「シン株式会社への要望」に/);
   assert.match(section, /外せない（.*）: 止めずに、理由を報告する。行は足さない/);
   assert.match(section, /「分からない」と「外せない」の人には、次の再実行でまた聞く/);
+  assert.match(section, /理由が `setup を実行しているアカウント` の行は、今も同じアカウントで実行しているときだけ除く/);
+});
+
+test('確かめてほしいという行は、決まった人と、もう権限が無い人の分を消す', () => {
+  const section = nextStepSection();
+
+  assert.match(section, /外した人の行は、「引き継ぎの注意」と「シン株式会社への要望」から消す/);
+  assert.match(section, /残すと決めた人と 2 で除いた人の行は、「シン株式会社への要望」から消す/);
+});
+
+test('GitHub にアカウントが無い人は除き、ほかの理由で読めない人とは分ける', () => {
+  const row = handoverSkill.split('\n').find((line) => line.startsWith('| 15 |'));
+
+  assert.match(nextStepSection(), /`is not a user` と出た人は、GitHub にアカウントが無いので除く/);
+  assert.match(nextStepSection(), /ほかの理由で読めない（.*）ときは、除かずに 5 の「外せない」にする/);
+  assert.match(row, /`is not a user` と出た人は除く/);
+  assert.match(row, /ほかの理由で読めなければ「確認できず」にする/);
 });
 
 test('引き継ぎメモの書き換え方を、シェルの引用符に頼らない形で名指しする', () => {
@@ -283,6 +312,7 @@ test('引き継ぎメモの書き換え方を、シェルの引用符に頼ら�
 
 test('gh が無いときは、前の担当者がいるときだけ画面を案内し、残す行も書いてもらう', () => {
   assert.match(nextStepSection(), /`gh` が無い・ログインできない場合は、1 で人が残ったときに/);
+  assert.match(nextStepSection(), /今の担当者が招待を受けていることを、その画面で確かめてもらう/);
   assert.match(nextStepSection(), /残すなら、Issue の画面で 5 の「残す」の行を足してもらう/);
 });
 
@@ -304,7 +334,12 @@ test('handover-check の 15 は、今の担当者と前の担当者の両方を�
   assert.match(row, /maintain 権限を持っている/);
   assert.match(row, /前の担当者は、権限も招待も残っていないか/);
   assert.match(row, /「引き継ぎの注意」に `前の担当者 @<アカウント> の権限を残している` の行がある/);
-  assert.match(row, /読めなければ「確認できず」にする/);
+  assert.match(row, /`write` か `admin` なら残っている/);
+  assert.match(row, /`@SHINNN_REVIEWER` と、一番上の `\+` から始まる行の値を除く/);
+  assert.match(
+    row,
+    /理由が `setup を実行しているアカウント` の行は、今の `gh auth status` のアカウントと同じ人だけ OK にする/,
+  );
   assert.match(row, /前の担当者で NG なら、「前の担当者の権限を決めたい」と伝えて `\/shinnn-app:setup` を実行する/);
   assert.match(handoverSkill, /ただし、15 の前の担当者は、表のとおり `\/shinnn-app:setup` で扱う/);
 
