@@ -68,8 +68,13 @@ test('スキルの git stash のコマンドは、stash@{n} を二重引用符�
 test('pr は、コミットが lint-staged の退避で止まったら、退避から index と作業ツリーを戻す', () => {
   const skill = readSkill('pr', 'SKILL.md');
 
+  // 退避は、ほかの worktree の退避と同じ一覧に並び、番号がずれる。番号ではなく退避のコミットの値で指す
+  // 短い値（%h）は、数字だけになると番号として読まれる。--no-renames が無いと、名前を変えたファイルの元の名前が出ない
+  assert.ok(skill.includes('`git stash list --format="%gd %H %gs"`'));
+  assert.ok(!skill.includes('%gd %h %gs'));
+  assert.ok(skill.includes('`git stash show --name-only --no-renames <控えた値>`'));
   assert.ok(skill.includes('`git restore --staged --worktree -- <ファイル> <ファイル>`'));
-  assert.ok(skill.includes('`git stash apply --index "stash@{n}"`'));
+  assert.ok(skill.includes('`git stash apply --index <控えた値>`'));
   assert.ok(skill.includes('`git stash drop "stash@{n}"`'));
 });
 
