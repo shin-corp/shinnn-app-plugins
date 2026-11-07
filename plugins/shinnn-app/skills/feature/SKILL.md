@@ -170,7 +170,7 @@ PR を出したあとの動きは `.shinnn/setup.json` の `mergePolicy` で決�
 | `mergePolicy` | PR を出したあと |
 |:--|:--|
 | `human`（既定） | PR はドラフトのまま人に渡す。**今の PR を待たずに作れる** `status:next` の Issue があれば、それを 2 から進める |
-| `auto-merge` | `pr` がマージまで済ませたら、`git switch main && git pull --ff-only` のあと `plan.md` の「依存が解けた Issue を進める」を行い、`status:next` の先頭を 2 から進める。`pr` がマージせずに人に渡したときは、下の「Issue を止める」を行う |
+| `auto-merge` | `pr` がマージまで済ませたら、`git switch main` を実行し、成功したら `git pull --ff-only` を実行する。失敗したら、次に進まずに報告する。成功したら `plan.md` の「依存が解けた Issue を進める」を行い、`status:next` の先頭を 2 から進める。`pr` がマージせずに人に渡したときは、下の「Issue を止める」を行う |
 
 どちらでも、次の Issue を選ぶ前に「続きから始める」の 1 の後半（待っている PR への `main` の取り込み）を行う。
 次の Issue は「続きから始める」の 4 の順で選ぶ（題が `[依存] 依存の脆弱性の修正` の Issue を先に取る）。
@@ -183,7 +183,8 @@ PR を出したあとの動きは `.shinnn/setup.json` の `mergePolicy` で決�
    続けて、`pr` の手順 3 の形でドラフト PR を作る。本文の「規約で迷った点」には、止めた理由と、人に決めてほしいことを書く
 2. Issue を `status:blocked` にする（`gh issue edit <番号> --remove-label status:doing --add-label status:blocked`）
 3. Issue に、止めた理由と、人に決めてほしいことをコメントする
-4. `git switch main && git pull --ff-only` で戻り、進められる別の Issue に移る
+4. `git switch main` を実行し、成功したら `git pull --ff-only` を実行する。失敗したら、次に進まずに報告する。
+   成功したら、進められる別の Issue に移る
 
 ドラフト PR にするのは、止めた作業を人が見つけられるようにするため。
 コミットして push しておくと、止めた変更が次の Issue のブランチに混ざらない。
@@ -225,8 +226,8 @@ PR を出したあとの動きは `.shinnn/setup.json` の `mergePolicy` で決�
 3. 画面ごとに、`add-screen` の「9. 作った画面を見直す」を行う。指導には、画面をまたぐ食い違い（用語・配置・操作の順番）も頼む
 4. 直したものがあれば、`/shinnn-app:pr` に進む。受入条件は足さず、PR 本文の「対応した受入条件」に「無し（見た目の調整）」と書く。
    `pr` を終えたら、手順 6 には戻らず、7 の「止まるとき」の、報告の前に行う 2 に進む
-5. 直すものが無ければ、結果を Issue にコメントして閉じ、`git switch main && git pull --ff-only` で戻る。
-   続けて、7 の「止まるとき」の、報告の前に行う 2 に進む
+5. 直すものが無ければ、結果を Issue にコメントして閉じる。`git switch main` を実行し、成功したら `git pull --ff-only` を実行する。
+   失敗したら、次に進まずに報告する。成功したら、7 の「止まるとき」の、報告の前に行う 2 に進む
 
 ## 9. 画面を見ながら調整する
 
@@ -261,7 +262,7 @@ PR を出したあとの動きは `.shinnn/setup.json` の `mergePolicy` で決�
    ただし、その Issue の題が `[設定] 初回セットアップの適用` なら、このスキルでは進めず、`/shinnn-app:setup` を実行する。
    open な PR の本文に `依存の脆弱性: NG（… #<番号> で直す）` の行があり、#<番号> の Issue が閉じていれば、その PR に `main` を取り込む
    （`check` の「`npm audit` で勧告が出たとき」の 2 の 4）
-2. `git switch main && git pull --ff-only`
+2. `git switch main` を実行し、成功したら `git pull --ff-only` を実行する。失敗したら、次に進まずに報告する
 3. `plan.md` の「依存が解けた Issue を進める」を行う
 4. 題が `[依存] 依存の脆弱性の修正` の `status:next` の Issue があれば、計画や番号の順より先に取る（`check` の「`npm audit` で勧告が出たとき」の 2 の 5 で進める）。
    無ければ、open な計画（タイトルが `[計画]` の Issue）の「作る順番」で `status:next` の先頭を取る。計画が無ければ `status:next` の Issue を番号の小さい順に取る
