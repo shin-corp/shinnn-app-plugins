@@ -51,10 +51,11 @@ test('スキルに && と || を書かない', () => {
 });
 
 test('スキルに date コマンドを書かない', () => {
-  assert.deepEqual(findLines(/\bdate\s+[-+]/), [], '時刻は node -p で取る');
+  assert.deepEqual(findLines(/(^|[\s(`])date(\s|\)|`|$)/), [], '時刻は node -p で取る');
 });
 
 test('スキルにリダイレクトを書かない', () => {
+  // `>` の前に空白がある形だけを見る。空白の無い形まで見ると、`<番号>` のような置き換え用の表記に当たる
   assert.deepEqual(findLines(/\S\s+\d?>>?\s*[^=\s|]/), [], 'ファイルは Write ツールで scratchpad に書く');
 });
 
@@ -65,8 +66,9 @@ test('pr は main への切り替えと取り込みを別のコマンドにし�
   assert.match(skill, /コマンドは上から 1 つずつ実行する。失敗したら次に進まない。/);
 });
 
-test('feature と check は git switch main が成功してから git pull --ff-only を実行する', () => {
-  const steps = /`git switch main` を実行し、成功したら `git pull --ff-only` を実行する/g;
+test('feature と check は git switch main が成功してから git pull --ff-only を実行し、失敗したら止まる', () => {
+  const steps =
+    /`git switch main` を実行し、成功したら `git pull --ff-only` を実行する。失敗したら、次に進まずに報告する/g;
 
   assert.equal(readSkill('feature', 'SKILL.md').match(steps)?.length, 2);
   assert.equal(readSkill('check', 'SKILL.md').match(steps)?.length, 1);
