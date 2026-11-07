@@ -14,11 +14,12 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { stopFailureFile } from './lib/friction.mjs';
 import { unverifiedMergeLines } from './lib/unverified-merges.mjs';
 
 const script = fileURLToPath(new URL('./session-start.mjs', import.meta.url));
@@ -147,9 +148,12 @@ function createRepo(setup, { remote } = {}) {
  * @param ghLog - gh の呼び出しを JSON の行で書くファイル
  * @param ghElapsed - gh を 1 回呼ぶたびに進める時計の分（ミリ秒）
  */
-function runHook(root, { gh = 'missing', ghStderr = '', ghBody = '', ghIssue = '', ghLog = '', ghElapsed = 0 } = {}) {
+function runHook(
+  root,
+  { gh = 'missing', ghStderr = '', ghBody = '', ghIssue = '', ghLog = '', ghElapsed = 0, hookInput = {} } = {},
+) {
   const result = spawnSync(process.execPath, ['--import', fakeChildProcess, script], {
-    input: '{}',
+    input: JSON.stringify(hookInput),
     encoding: 'utf8',
     env: {
       ...process.env,
@@ -335,6 +339,60 @@ test('マージ方針: 規約に「auto-merge のとき」が無ければ、self
   assert.match(setup, /マージ方針: self-review/);
   assert.ok(!setup.includes('確認を挟まずに作りきります'), setup);
   assert.match(setup, /`\/shinnn-app:update-rules` で取り込むと auto-merge になります/);
+});
+
+/** 中断の印を置く（forRoot は印を残した作業フォルダ） */
+function writeStopFailure(root, marker, forRoot = root) {
+  writeFile(
+    root,
+    `.git/shinnn/${stopFailureFile(forRoot)}`,
+    `${JSON.stringify(marker)}
+`,
+  );
+  return join(root, '.git', 'shinnn', stopFailureFile(forRoot));
+}
+
+test('前回の中断: API のエラーで終わった印があれば、1 回だけ出して消す', () => {
+  const root = createRepo({}, { remote: 'git@github.com:example/app.git' });
+  writeStopFailure(root, { at: '2026-11-07T10:00:00.000Z', error: 'rate_limit', details: '429 Too Many Requests' });
+
+  const first = runHook(root);
+  assert.equal(first.status, 0, first.stderr);
+  const failure = section(first.stdout, '前回は途中で終わりました');
+  assert.match(failure, /API のエラー（rate_limit。429 Too Many Requests）/);
+  assert.match(failure, /「続きをお願い」/);
+
+  const second = runHook(root);
+  assert.ok(!second.stdout.includes('前回は途中で終わりました'), second.stdout);
+});
+
+test('前回の中断: 同じセッションの続き（会話の要約の後など）では知らせずに消す', () => {
+  const root = createRepo({}, { remote: 'git@github.com:example/app.git' });
+  const marker = writeStopFailure(root, {
+    at: '2026-11-07T10:00:00.000Z',
+    error: 'overloaded',
+    session: 'aaaaaaaa',
+    root,
+  });
+
+  const result = runHook(root, { hookInput: { session_id: 'aaaaaaaa-1111', source: 'compact' } });
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(!result.stdout.includes('前回は途中で終わりました'), result.stdout);
+  assert.equal(existsSync(marker), false);
+});
+
+test('前回の中断: 別の作業フォルダ（別の worktree など）の印は、読まずに残す', () => {
+  const root = createRepo({}, { remote: 'git@github.com:example/app.git' });
+  const elsewhere = join(root, 'elsewhere');
+  const marker = writeStopFailure(
+    root,
+    { at: '2026-11-07T10:00:00.000Z', error: 'overloaded', root: elsewhere },
+    elsewhere,
+  );
+
+  const result = runHook(root);
+  assert.ok(!result.stdout.includes('前回は途中で終わりました'), result.stdout);
+  assert.equal(existsSync(marker), true);
 });
 
 test('依存: node_modules と .husky/_ の両方があれば、npm install を促さない', () => {

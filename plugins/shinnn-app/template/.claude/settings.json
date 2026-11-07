@@ -27,6 +27,7 @@
       "Bash(node *check-plugin-version.mjs*)",
       "Bash(node *setup-env.mjs*)",
       "Bash(node *copy-standard.mjs*)",
+      "Bash(node *friction-report.mjs*)",
       "Bash(claude plugin marketplace update shinnn)",
       "Bash(claude plugin update shinnn-app@shinnn *)",
       "Bash(claude plugin install frontend-design@claude-plugins-official --scope local)",

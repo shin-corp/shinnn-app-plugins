@@ -41,7 +41,7 @@ description: 開発用のサーバー群（PostgreSQL・API サーバー・画�
 | 対象 | 確認方法 |
 |:--|:--|
 | PostgreSQL | サーバーの起動ログに接続エラーが出ていないこと |
-| API サーバー | `curl http://localhost:<PORT>/health`（ポートは `docs/env.md`。認証は要らない） |
+| API サーバー | `curl http://localhost:<PORT>/health`（ポートは `docs/env.md`。「うまく行かないとき」で空いているポートで起動したときは、そのポート。認証は要らない） |
 | 画面 | ブラウザで開ける。API へのリクエストが proxy 経由で通る |
 
 ポートと環境変数の一覧は `docs/env.md` が正。**このスキルに値を直接書かない**（環境ごとに違う）。
@@ -55,7 +55,7 @@ description: 開発用のサーバー群（PostgreSQL・API サーバー・画�
 
 | 症状 | 原因 | 直し方 |
 |:--|:--|:--|
-| ポートが使われている | 前回のプロセスが残っている | 残っているプロセスを止めてから起動する |
+| ポートが使われている | このセッションで前に起動したプロセスが残っているか、ほかの作業（前のセッションを含む）のプロセスが使っている | このセッションで起動したプロセスなら、止めてから起動する。ほかの作業のプロセスは止めない。ほかの作業のプロセスが使っているときは、空いているポートを API サーバー用と画面用に 1 つずつ選ぶ。API サーバーは、`PORT=<API サーバーのポート>` の 1 行を書いたファイルを scratchpad に置く。続けて、`npm exec -w server -- tsx watch --env-file-if-exists=.env --env-file=<そのファイルの絶対パス> src/index.ts` で起動する（後ろの `--env-file` が `.env` の `PORT` を上書きする）。画面の proxy の設定は、`client/proxy.conf.json` を scratchpad に写す。写したファイルの転送先を、API サーバーのポートに直す。画面は `npm exec -w client -- ng serve --port <画面のポート> --proxy-config <写したファイルの絶対パス>` で起動する。起動の確認と、利用者への画面の開き方の案内には、使ったポートを使う |
 | DB に接続できない | PostgreSQL が起動していない / 接続先が違う | 起動を確認し、`.env` の接続先を人に確認してもらう。`.env` を直したら API サーバーを止めて起動し直す |
 | 起動後の最初の書き込みだけが失敗し、2 回目は通る（Windows） | `server/package.json` の `dev` が `node --watch` で始まっている。`node --watch` は、読み込んだファイルの最終アクセス日時が書き換わると再起動する | `dev` を `tsx watch --env-file-if-exists=.env src/index.ts` に置き換えることを利用者に提案する |
 | テーブルが無い | マイグレーション未適用 | `/shinnn-app:db-migrate` |

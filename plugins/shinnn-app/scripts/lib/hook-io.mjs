@@ -143,6 +143,22 @@ export function fromRoot(root, ...parts) {
 }
 
 /**
+ * hooks が手元の記録を置くフォルダ（git の共通フォルダの中の `shinnn`）。git が使えなければ null。
+ *
+ * git の管理フォルダの中に置くので、コミットに混ざらず、`.gitignore` も要らない。
+ * worktree の `.git` はファイルなので、`--git-common-dir` で元のリポジトリの `.git` を指す。
+ * そのため、同じリポジトリのどの worktree の記録も 1 か所に集まる。
+ */
+export function stateDir(root) {
+  const result = run('git', ['rev-parse', '--git-common-dir'], { cwd: root });
+  const common = result.stdout.trim();
+  if (result.status !== 0 || common === '') {
+    return null;
+  }
+  return join(resolve(root, common), 'shinnn');
+}
+
+/**
  * 操作を止めない hook が標準出力に出す JSON を組み立てる。
  * additionalContext は Claude に渡り、systemMessage は transcript に 1 行出る。
  *

@@ -71,6 +71,16 @@ test('アプリのリポジトリ以外: session-start は状況を出さない'
   assertDidNothing(runHook('session-start.mjs', {}, plainRoot));
 });
 
+test('アプリのリポジトリ以外: record-friction は記録も知らせもしない', () => {
+  const input = {
+    hook_event_name: 'PostToolUseFailure',
+    tool_name: 'Bash',
+    tool_input: { command: 'npm test' },
+    error: 'Exit code 1',
+  };
+  assertDidNothing(runHook('record-friction.mjs', input, plainRoot));
+});
+
 test('依存を入れていないリポジトリ: format-file は lint の結果を伝えない', () => {
   const input = { tool_name: 'Edit', tool_input: { file_path: join(appRoot, 'server', 'src', 'a.ts') } };
   assertDidNothing(runHook('format-file.mjs', input, appRoot));

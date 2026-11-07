@@ -114,7 +114,8 @@ claude plugin install frontend-design@claude-plugins-official --scope local
 | :-- | :-- |
 | ファイルを直した直後 | 書き方の細かい崩れを自動で整え、直せなかったものはその場で知らせます |
 | ひと区切りついたとき | 直した部分だけ検査とテストを走らせ、結果を知らせます |
-| Claude Code を開いたとき | 次にやる作業、提出中のもの、自動検査の結果を表示します |
+| Claude Code を開いたとき | 次にやる作業、提出中のもの、自動検査の結果を表示します。前回が途中で終わっていれば、そのことも伝えます |
+| うまく行かなかったとき | 詰まったところ（失敗したコマンド、確認が出た操作など）を、このパソコンの中だけに記録します。振り返りで、手順や決まりを直す材料にします |
 
 どれも作業を止めることはありません。
 認証情報や決まりごとのファイルは設定で守られていて、Claude が書き換えられないようになっています。
@@ -154,7 +155,7 @@ claude plugin update shinnn-app@shinnn --scope project
 
 | プラグイン | 内容 |
 | :-- | :-- |
-| `shinnn-app` | 初回の setup と普段の feature（確認・提出・振り返りまで続けて行う）、内部スキル、レビューエージェント 3 体、取り決めを案内する hooks、アプリのテンプレート |
+| `shinnn-app` | 初回の setup と普段の feature（確認・提出・振り返りまで続けて行う）、内部スキル、レビューエージェント 3 体、取り決めを案内し、作業が詰まったところを記録する hooks、アプリのテンプレート |
 
 hooks は `.shinnn/setup.json` があるフォルダでだけ動き、どれも作業を止めません。
 必須ファイルの編集を止めるのは、テンプレートの `.claude/settings.json` の `deny` です。
@@ -169,7 +170,7 @@ plugins/shinnn-app/
   skills/                         コマンドと内部スキル
   agents/                         レビュー担当 3 体
   hooks/hooks.json                自動で動くものの設定
-  scripts/                        hooks の実体と、setup の展開・適用、update-rules の写しのスクリプト
+  scripts/                        hooks の実体と、setup の展開・適用、update-rules の写し、作業の記録のまとめのスクリプト
   template/                       setup が展開するテンプレート（アプリの土台）。規約と CLAUDE.md 雛形もこの中にある
 ```
 

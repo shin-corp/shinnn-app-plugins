@@ -7,12 +7,16 @@
  * 依存か git のフックが入っていない作業フォルダ（作ったばかりの worktree など）では、先に npm install を促す。
  * 「引き継ぎメモ」Issue に CI で確かめていないマージ（手元の確かめで進めた PR と、外しているブランチ保護）が残っていれば、
  * 確かめる手順を案内する。
+ * 別のセッションが API のエラーで途中で終わっていれば、そのことを出す（record-friction.mjs が残した印を読む）。
+ * 会話の要約（compact）の後にも動き、要約で抜けた今の状況を出し直す。
  * gh の呼び出しは最大 4 回（次に着手する Issue・open な PR・直近の CI・引き継ぎメモ）。hooks.json の timeout（60 秒）に収まるよう、
  * 呼び出しに使える時間の合計を HOOK_BUDGET に絞る。
  */
 import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fromRoot, hasCommand, isAppRepo, projectDir, readHookInput, run } from './lib/hook-io.mjs';
+import { readStopFailure, removeStopFailure } from './lib/friction.mjs';
+import { fromRoot, hasCommand, isAppRepo, projectDir, readHookInput, run, stateDir } from './lib/hook-io.mjs';
 import { UNVERIFIED_MERGES_HEADING, unverifiedMergeLines } from './lib/unverified-merges.mjs';
 
 const MAX_LINES = 10;
@@ -191,6 +195,39 @@ function setupSection(setupPath, installed, workflowRulePath) {
 }
 
 /**
+ * 前のセッションが API のエラーで途中で終わったときの節。record-friction.mjs（StopFailure）が残した印を読み、1 回出したら消す。
+ * 印が無ければ null（節を出さない）。
+ *
+ * 印は作業フォルダごとのファイルなので、別の worktree の印は読まない（lib/friction.mjs の stopFailureFile）。
+ * 同じセッションの続き（会話の要約の後や resume）では、利用者はすでに中断を見ているので、知らせずに消す。
+ */
+function stopFailureSection(root, sessionId) {
+  const dir = stateDir(root);
+  if (dir === null) {
+    return null;
+  }
+  const failure = readStopFailure(dir, root);
+  if (failure === null) {
+    return null;
+  }
+  if (failure.root && resolve(failure.root) !== resolve(root)) {
+    return null;
+  }
+  removeStopFailure(dir, root);
+  if (failure.session && failure.session === String(sessionId ?? '').slice(0, 8)) {
+    return null;
+  }
+  const details = failure.details ? `。${failure.details}` : '';
+  return section(
+    '前回は途中で終わりました',
+    [
+      `前回の応答は、API のエラー（${failure.error ?? '不明'}${details}）で途中で終わりました（${failure.at ?? '時刻は不明'}）。`,
+      '利用者に、止まった理由を伝えてください。「続きをお願い」と頼まれたら、続きから進めます。',
+    ].join('\n'),
+  );
+}
+
+/**
  * 依存と git のフックの節。どちらかが無ければ npm install を促す。両方あれば null（節を出さない）。
  *
  * husky は git にフックの置き場所を `.husky/_` という相対パスで登録する。`.husky/_` は npm install のときに作られ、
@@ -273,6 +310,11 @@ out.push(
     fromRoot(root, '.claude', 'rules', 'git-workflow.md'),
   ),
 );
+
+const stopFailure = stopFailureSection(root, input.session_id);
+if (stopFailure !== null) {
+  out.push(stopFailure);
+}
 
 const dependencies = dependencySection(root);
 if (dependencies !== null) {

@@ -6,9 +6,11 @@
  * 続けた応答の終わり（入力の stop_hook_active が true）では検査しない。このため伝えるのは利用者の依頼 1 回につき 1 回で、
  * 次の依頼の終わりにまた検査する。
  * 一時的に黙らせたいときは、環境変数 SHINNN_SKIP_STOP_CHECK に値を入れる（何も出さずに終える）。
+ * API のエラーで中断した後に同じセッションの応答が終わりまで届いたら、record-friction.mjs が残した中断の印を消す。
  */
 import { existsSync } from 'node:fs';
-import { appRootOf, fromRoot, hookOutput, projectDir, readHookInput, run } from './lib/hook-io.mjs';
+import { readStopFailure, removeStopFailure } from './lib/friction.mjs';
+import { appRootOf, fromRoot, hookOutput, projectDir, readHookInput, run, stateDir } from './lib/hook-io.mjs';
 
 const LINTABLE = /\.(ts|tsx|mjs|cjs|js)$/;
 
@@ -72,7 +74,27 @@ function testArgs(workspace, targets) {
   return ['exec', '-w', workspace, '--', 'vitest', 'related', '--run', '--passWithNoTests', ...targets];
 }
 
+/** 中断の印が、このセッションのものなら消す。アプリのリポジトリの外と、git が使えないときは何もしない */
+function clearStopFailureOf(hookInput) {
+  const appRoot = appRootOf(projectDir(hookInput));
+  if (!appRoot) {
+    return;
+  }
+  const dir = stateDir(appRoot);
+  if (dir === null) {
+    return;
+  }
+  const key = projectDir(hookInput);
+  const failure = readStopFailure(dir, key);
+  if (failure !== null && failure.session === String(hookInput.session_id ?? '').slice(0, 8)) {
+    removeStopFailure(dir, key);
+  }
+}
+
 const input = await readHookInput();
+
+// API のエラーで中断した後に、同じセッションの応答が終わりまで届いたら、中断の印は要らない（record-friction.mjs が残す）
+clearStopFailureOf(input);
 
 // 明示的に飛ばす指定があれば何も出さない。
 // 標準入力を読み切ってから判定する（読まずに終えると、hook に JSON を渡す側の書き込みが失敗する）
