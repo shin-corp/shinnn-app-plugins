@@ -6,6 +6,7 @@
  * - `&&` と `||` は構文エラーになる
  * - `date` は `Get-Date` として動く。`date -u +%Y-%m-%dT%H:%M:%SZ` は、現地の時刻に `Z` を付けて返す
  * - `>` はファイルの先頭に BOM（文字コードを示す印）を書く
+ * - 引用符の無い `stash@{0}` は、`{0}` がスクリプトブロックとして読まれ、git に渡らない
  * CI は Linux で動くので PowerShell 5.1 を動かせない。ここでは書いてある形を見る。時刻のコマンドは Node で動かす。
  */
 import assert from 'node:assert/strict';
@@ -57,6 +58,19 @@ test('スキルに date コマンドを書かない', () => {
 test('スキルにリダイレクトを書かない', () => {
   // `>` の前に空白がある形だけを見る。空白の無い形まで見ると、`<番号>` のような置き換え用の表記に当たる
   assert.deepEqual(findLines(/\S\s+\d?>>?\s*[^=\s|]/), [], 'ファイルは Write ツールで scratchpad に書く');
+});
+
+test('スキルの git stash のコマンドは、stash@{n} を二重引用符で囲む', () => {
+  // 1 つのコードの中で、git stash の後に、二重引用符の無い stash@{ が続く形を探す
+  assert.deepEqual(findLines(/`git stash [^`]*(?<!")stash@\{/), [], '`"stash@{n}"` のように二重引用符で囲む');
+});
+
+test('pr は、コミットが lint-staged の退避で止まったら、退避から index と作業ツリーを戻す', () => {
+  const skill = readSkill('pr', 'SKILL.md');
+
+  assert.ok(skill.includes('`git restore --staged --worktree -- <ファイル> <ファイル>`'));
+  assert.ok(skill.includes('`git stash apply --index "stash@{n}"`'));
+  assert.ok(skill.includes('`git stash drop "stash@{n}"`'));
 });
 
 test('pr は main への切り替えと取り込みを別のコマンドにし、失敗したら次に進まない', () => {

@@ -64,6 +64,19 @@ PR に付いた指摘も、Critical / Warning = 0 になるまで回す。
 
 コミットの前に `.claude/rules/git-workflow.md` の「コミットメッセージ」「コミットの分け方」を読み直し、それに従って層ごとに分ける。
 
+コミットが `Failed to back up original state!`（`lint-staged failed due to a git error.`）で止まったら、次の順で戻してからコミットし直す。
+止まるのは、ステージしていない変更（`git add` していない変更）のあるファイルを、ほかのアプリ（Excel など）が書き込めない形で開いているときである。
+このとき、lint-staged の退避（stash）は残ったまま、作業ツリーと index（ステージした中身）が半端な状態になる。
+lint-staged が出す `git apply --index <hash>` は stash に当てられないので、使わない。
+`stash@{n}` は二重引用符で囲む（囲まないと、PowerShell が `{n}` をスクリプトブロックとして読み、git に渡らない）。
+
+1. 利用者に、ステージしていない変更のあるファイルを開いているアプリを閉じてもらう
+2. `git stash list` で、`lint-staged automatic backup` の行の `stash@{n}` を確かめる。行が無ければ、退避は作られていないので、エラーの文を読んで原因を直す
+3. `git stash show --name-only "stash@{n}"` で、退避に入っているファイルを出す
+4. 出たファイルを 1 つずつ並べて、`git restore --staged --worktree -- <ファイル> <ファイル>` で HEAD の中身に戻す（ステージした変更もステージしていない変更も、退避に入っている。`$(…)` で渡すと PowerShell では動かない）
+5. `git stash apply --index "stash@{n}"` で、ステージした変更とステージしていない変更を戻す
+6. `git status` で止まる前の状態に戻ったことを確かめてから、`git stash drop "stash@{n}"` で退避を消す
+
 コミットしたら、3 で `--body-file` に渡す本文のファイルを先に書く（欄は 3 の表）。
 本文のファイルは scratchpad の `pr-body.md` に置き、リポジトリには置かない。
 リポジトリに置かないのは、コミットに混ぜないため。
