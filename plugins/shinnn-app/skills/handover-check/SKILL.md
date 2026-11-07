@@ -28,7 +28,7 @@ CI の `policy` job と同じ観点で、手元でも見られるようにした
 | 12 | 標準バージョンが最新 | `.claude/rules/.standards-version` が `${CLAUDE_PLUGIN_ROOT}/template/.claude/rules/.standards-version`（配布されている標準のバージョン）と同じ。プラグインの `version` とは別の値なので比べない |
 | 13 | README に起動 / テスト / デプロイが 3 コマンドで書かれている | README を読む |
 | 14 | 1 MB 超のファイルと実データが git に入っていない | `git ls-files` のサイズ確認 |
-| 15 | シン株式会社の担当者のアカウントが maintain 権限を持っている | `gh api repos/{owner}/{repo}/collaborators` |
+| 15 | シン株式会社の担当者のアカウントが maintain 権限を持っている | `gh api "repos/{owner}/{repo}/collaborators"` |
 | 16 | 必須項目が宣言も実体も残っている（ファイル・deny・規約） | `node scripts/check-mandatory.mjs` |
 | 17 | 依存のライセンスが許可リスト（OSS）に収まっている（外れたものは費用が発生する可能性があるのでシン株式会社に相談） | `node scripts/check-licenses.mjs` |
 

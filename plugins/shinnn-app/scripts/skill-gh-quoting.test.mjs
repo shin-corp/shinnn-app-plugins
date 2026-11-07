@@ -1,5 +1,5 @@
 /**
- * 文書の gh の `--jq` の式と、スキル pr の `gh api` のパスの書き方の回帰テスト。
+ * 文書の gh の `--jq` の式と、`gh api` のパスの書き方の回帰テスト。
  * `node --test scripts/skill-gh-quoting.test.mjs` で実行する。
  *
  * 顧客の手元が Windows のとき、Claude Code は PowerShell 5.1 でコマンドを動かすことがある。
@@ -22,8 +22,8 @@ const PLUGIN_ROOT = fileURLToPath(new URL('..', import.meta.url));
  */
 const JQ_EXPRESSION = /(?:--jq[\s=]\s*|\bgh\s[^`\n|]*\s-q\s+)('[^']*'|"[^"]*"|[^\s`]+)/g;
 
-/** 引用符で囲んでいない `repos/{owner}` */
-const UNQUOTED_OWNER_PATH = /(?<!["'])repos\/\{owner\}/;
+/** 二重引用符で囲んでいない `repos/{owner}` */
+const UNQUOTED_OWNER_PATH = /(?<!")repos\/\{owner\}/;
 
 /** 文書のファイルをすべて集める */
 function collectMarkdownFiles(dir) {
@@ -40,17 +40,22 @@ function readSkill(...segments) {
   return readFileSync(join(PLUGIN_ROOT, 'skills', ...segments), 'utf8');
 }
 
-/** 文書の中の `--jq` の式を、ファイルと行番号を付けて集める */
-function collectJqExpressions() {
+/** 文書のすべての行を、ファイルと行番号を付けて集める */
+function collectDocumentLines() {
   return collectMarkdownFiles(PLUGIN_ROOT).flatMap((file) =>
     readFileSync(file, 'utf8')
       .split('\n')
-      .flatMap((line, index) =>
-        [...line.matchAll(JQ_EXPRESSION)].map((match) => ({
-          where: `${relative(PLUGIN_ROOT, file).split(sep).join('/')}:${index + 1}`,
-          expression: match[1],
-        })),
-      ),
+      .map((line, index) => ({
+        where: `${relative(PLUGIN_ROOT, file).split(sep).join('/')}:${index + 1}`,
+        line,
+      })),
+  );
+}
+
+/** 文書の中の `--jq` の式を、ファイルと行番号を付けて集める */
+function collectJqExpressions() {
+  return collectDocumentLines().flatMap(({ where, line }) =>
+    [...line.matchAll(JQ_EXPRESSION)].map((match) => ({ where, expression: match[1] })),
   );
 }
 
@@ -94,12 +99,23 @@ test('pr は必須のチェックをルールの種類の名前で見分ける',
   assert.match(skill, /2 つ目に `required_status_checks` の行が出れば/);
 });
 
-test('pr の gh api のパスを引用符で囲む', () => {
-  const lines = readSkill('pr', 'SKILL.md').split('\n');
+test('文書の gh api のパスを引用符で囲む', () => {
+  const lines = collectDocumentLines();
 
   assert.deepEqual(
-    lines.filter((line) => UNQUOTED_OWNER_PATH.test(line)),
+    lines.filter(({ line }) => UNQUOTED_OWNER_PATH.test(line)).map(({ where, line }) => `${where} ${line.trim()}`),
     [],
+    '`repos/{owner}/…` は二重引用符で囲む',
   );
-  assert.ok(lines.some((line) => line.includes('gh api "repos/{owner}/')));
+  assert.ok(lines.some(({ line }) => line.includes('"repos/{owner}/')));
+});
+
+test('feature の計画は、読んだ id を次のコマンドに書いて sub-issue を紐づける', () => {
+  const plan = readSkill('feature', 'plan.md');
+
+  assert.ok(plan.includes(`gh api "repos/{owner}/{repo}/issues/<子の番号>" --jq .id`));
+  assert.ok(
+    plan.includes(`gh api "repos/{owner}/{repo}/issues/<親の番号>/sub_issues" -F sub_issue_id=<1 行目で出た id>`),
+  );
+  assert.doesNotMatch(plan, /\$\(/);
 });

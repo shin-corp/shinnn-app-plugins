@@ -42,8 +42,8 @@
 4. 子 Issue を親 Issue の sub-issue として紐づける。紐づけるのは、GitHub の画面で進み具合が見えるようにするため。紐づけに失敗しても止めない
 
    ```
-   id=$(gh api repos/{owner}/{repo}/issues/<子の番号> --jq .id)
-   gh api repos/{owner}/{repo}/issues/<親の番号>/sub_issues -F sub_issue_id="$id"
+   gh api "repos/{owner}/{repo}/issues/<子の番号>" --jq .id
+   gh api "repos/{owner}/{repo}/issues/<親の番号>/sub_issues" -F sub_issue_id=<1 行目で出た id>
    ```
 
 5. `docs/仕様書.md` の「3. スコープ」の「やること」「やらないこと」を直す。この変更は先頭の Issue の PR に入れる（`main` に直接コミットしない）。

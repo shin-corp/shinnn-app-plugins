@@ -298,17 +298,17 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
    `handoverIssue` があれば作らない。無くても、open な「引き継ぎメモ」Issue があれば作らず、それを pin して番号を使う。
    番号が決まったら `--handover-issue <番号> --complete` でもう一度スクリプトを実行する
 9. シン株式会社の担当者が collaborator（リポジトリの共同作業者）に招待されていなければ招待する。
-   `gh api -X PUT repos/{owner}/{repo}/collaborators/<シン株式会社の担当者のアカウント（@ なし）> -f permission=maintain`
+   `gh api -X PUT "repos/{owner}/{repo}/collaborators/<シン株式会社の担当者のアカウント（@ なし）>" -f permission=maintain`
    （リポジトリの管理者権限が要る。権限の指定は組織のリポジトリでだけ有効で、個人アカウントのリポジトリでは無視される）。
    招待されていないと `CODEOWNERS` に書いてもレビュー依頼が届かない
 10. マージの方針が `self-review` なら、リポジトリで auto-merge を許可するかを聞く。許可する場合は
-    `gh api -X PATCH repos/{owner}/{repo} -f allow_auto_merge=true`（リポジトリの管理者権限が要る）。
+    `gh api -X PATCH "repos/{owner}/{repo}" -f allow_auto_merge=true`（リポジトリの管理者権限が要る）。
     許可しなくても `/shinnn-app:pr` は CI の完了を待ってからマージするので、動きは変わらない
 11. Dependabot のアラート（依存の脆弱性の通知）とセキュリティ更新（脆弱性を直す PR の自動作成）を有効にする。
     `.github/dependabot.yml` はメジャー更新を PR にしないが、セキュリティ更新はその指定に関係なく PR になる。
     private のリポジトリでは既定で無効のことがあるので、必ず実行する。セキュリティ更新はアラートが有効でないと使えないので、この順に行う。
-    `gh api -X PUT repos/{owner}/{repo}/vulnerability-alerts`
-    `gh api -X PUT repos/{owner}/{repo}/automated-security-fixes`
+    `gh api -X PUT "repos/{owner}/{repo}/vulnerability-alerts"`
+    `gh api -X PUT "repos/{owner}/{repo}/automated-security-fixes"`
     （どちらもリポジトリの管理者権限が要る）。できなければ、止めずに結果を報告する。そのうえで、GitHub の画面で
     Settings → 「Security and quality」の「Advanced Security」（画面によっては「Code security」）を開き、
     「Dependabot alerts」と「Dependabot security updates」の **Enable** を押すよう案内する
