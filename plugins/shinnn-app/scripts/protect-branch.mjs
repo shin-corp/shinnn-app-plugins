@@ -7,7 +7,7 @@
  *   チェックの名前は両方のファイルの各ジョブの `name:` で、ファイルから読む（ci.yaml、policy.yaml の順に連結する。
  *   policy.yaml が無い、標準を取り込む前のリポジトリでは ci.yaml だけを読む）
  * - 管理者にも同じ条件を課す。main への直接の push もできなくなる
- * - PR の承認は必須にしない。必須にすると、マージの方針が self-review のとき /shinnn-app:pr が PR をマージできない
+ * - PR の承認は必須にしない。必須にすると、マージの方針が auto-merge のとき /shinnn-app:pr が PR をマージできない
  * - PR のブランチが最新の main を取り込んでいることは求めない（strict: false）。履歴を一直線にすることも求めない
  *   （/shinnn-app:pr はマージコミットを作ってマージする）
  *

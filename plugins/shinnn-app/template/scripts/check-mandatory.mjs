@@ -45,6 +45,7 @@ const REQUIRED_FILES = [
   '.claude/settings.json',
   '.claude/rules/.standards-version',
   '.husky/pre-commit',
+  '.husky/commit-msg',
   '.husky/pre-push',
   '.lintstagedrc.json',
   '.github/CODEOWNERS',

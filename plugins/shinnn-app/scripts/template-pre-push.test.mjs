@@ -124,7 +124,7 @@ test('送り先の main を消す push も断る', () => {
 
 test('settings.json では push を確認なしにし、フックを飛ばす指定と force push を deny する', () => {
   const settings = JSON.parse(readFileSync(join(templateDir, '.claude', 'settings.json'), 'utf8'));
-  const { allow, ask, deny } = settings.permissions;
+  const { allow, ask = [], deny } = settings.permissions;
   assert.ok(allow.includes('Bash(git push *)'));
   assert.ok(!ask.some((rule) => rule.startsWith('Bash(git push')));
   for (const rule of [

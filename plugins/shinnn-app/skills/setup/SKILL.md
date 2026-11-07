@@ -132,10 +132,13 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
 
 ### 2. 環境の検出
 
-`node ${CLAUDE_PLUGIN_ROOT}/scripts/setup-env.mjs` を実行して、OS / Node / npm / Git / gh（ログインの状態とスコープ）/ Docker と PostgreSQL の候補を調べる。
+`node ${CLAUDE_PLUGIN_ROOT}/scripts/setup-env.mjs` を実行して、OS / Node / npm / Claude Code / Git / gh（ログインの状態とスコープ）/ Docker と PostgreSQL の候補を調べる。
 スクリプトが出す表を示し、**足りないものは導入手順を案内する**（管理者として実行したターミナルが必要なものはその旨を伝える）。
 
 - Node は 24 系（24.15 以上）が前提。npm は Node.js 24 に同梱される 11 系をそのまま使う
+- Claude Code は 2.1.283 以上が前提。この版から、ターミナルの対話のセッションは、プランによらず権限の自動判定（auto mode）で始まる。
+  auto mode では確認が減る。表の版は、PATH で最初に見つかる `claude` のもの（デスクトップアプリが動かしている版とは違うことがある）。
+  古ければ `claude update` を案内する。デスクトップアプリでは、画面の権限のモードの切り替えで選ぶ
 - `gh` が無い場合、Issue と PR を使う機能（セッション開始時の一覧、Issue と PR の作成、マージ）は動かない。導入を案内し、
   入るまでは Issue と PR を GitHub の画面で扱ってもらう。GitHub 自体を使えない顧客は対象外（手順 0 から GitHub のリポジトリを前提にしている）
 - PostgreSQL は検出順に従って選ぶ。Docker は `docker` コマンドが動けばよく、Docker Desktop でも WSL の Docker Engine でも構わない
@@ -148,7 +151,7 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
   ブランチ保護（`main` に入れる変更に CI の通過を必須にする GitHub の設定）は、使えるプランなら手順 5 の 12 で設定する。
   テンプレートは `main` に直接書き込む仕組みを持たないので、CI の通過を必須にしても止まるものは無い
 - トークンのスコープは表の gh の行で見る。`workflow` が無いと、ワークフローを変える PR を `gh` からマージできない。
-  マージの方針を `self-review` にするなら `gh auth refresh -h github.com -s workflow` を案内する
+  マージの方針を `auto-merge` にするなら `gh auth refresh -h github.com -s workflow` を案内する
 
 `client-only` を選んだ場合、PostgreSQL の確認は飛ばす。
 
@@ -161,6 +164,7 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
 | root の `CLAUDE.md` / `.claude/rules/` / `settings.json` の deny | 構成と規約が同じでないと、シン株式会社が引き継げない |
 | import 制約 lint | 層をまたぐ参照を人の注意ではなく機械で止める |
 | husky の pre-commit | コミットするファイルに自動で直せない lint のエラーがあれば、コミットを止める。画面の `.ts` と json・md・yaml は prettier で整える（型エラーとテストの失敗は CI が止める） |
+| husky の commit-msg | コミットメッセージの形が規約に合わなければ、コミットを止める |
 | husky の pre-push | 誤って `main` に push したときに止める安全網（確実に止めるのは手順 5 の 12 のブランチ保護） |
 | CI の check / test / policy | 品質の判断を人の気分に依存させない |
 | Issue テンプレートとラベル | 進捗を Issues で管理するので、形が揃っていないと読めない |
@@ -204,15 +208,16 @@ PR を誰がマージするかを決める。既定は `human`。
 | 値 | 動き | 選ぶ場合 |
 |:--|:--|:--|
 | `human`（既定） | Claude はドラフトのまま渡し、人が ready にしてマージする | シン株式会社のレビューを必ず通したい |
-| `self-review` | `/shinnn-app:pr` がセルフレビュー（Critical / Warning が 0）と CI の通過を確かめ、ready にしてマージまで行う（CI が始まらないときは、規約 `git-workflow.md` の「CI が始まらないとき」に従う） | 顧客が「シン株式会社のレビューを待たずに進める」と明示した |
+| `auto-merge` | Claude が確認を挟まずに、進められる Issue が無くなるまで作りきる。`/shinnn-app:pr` がセルフレビュー（Critical / Warning が 0）と CI の通過を確かめ、ready にしてマージまで行う（CI が始まらないときは、規約 `git-workflow.md` の「CI が始まらないとき」に従う）。作りきった後に、動く画面を見ながら調整する | 顧客が「シン株式会社のレビューを待たずに進める」と明示した。元のアプリの作り直しのように、最後まで作ってから画面を見て調整したい |
 
-`self-review` を選ぶ前に、次を相手に説明して同意を取る。
+`auto-merge` を選ぶ前に、次を相手に説明して同意を取る。
 
 - **Claude が人の確認なしにマージまで行う設定**であること。`.claude/settings.json` は `gh pr` を許可しているので、`gh pr merge` の実行時に確認は出ない。止めたければ `human` に戻す（setup の再実行）
 - Claude がマージするのは **CI が緑の PR だけ**（`/shinnn-app:pr` が確かめる。ただし、CI が始まらないときは、規約 `git-workflow.md` の「CI が始まらないとき」に従う）。使えるプランなら手順 5 の 12 でブランチ保護も設定し、
   CI が緑でない PR は GitHub の側でもマージできなくする。承認（Approve）は必須にしないので、Claude が作った PR を Claude がマージできる
+- 決まっていないことは、Claude が仮に決めて進めること。仮に決めたことは、最後にまとめて報告する（規約 `git-workflow.md` の「`auto-merge` のとき」）
 - `gh` のトークンに `workflow` スコープがあるか（ワークフローを変える PR のマージに要る。手順 2 で確認する）
-- リポジトリの auto-merge を許可するか（手順 5 の 10）
+- GitHub の自動マージの機能を許可するか（手順 5 の 10）
 
 `@claude` メンションへの応答と PR の AI レビューは、**発言者をリポジトリの関係者（OWNER / MEMBER /
 COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている**。この 2 つは、公開リポジトリで第三者のコメント 1 件から
@@ -271,7 +276,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
    | `--profile` | `full` / `client-only`（`optional.client-only-profile` も一緒に合わせる） |
    | `--reviewer` | `CODEOWNERS` の担当を割り当てる行で、`@SHINNN_REVIEWER` と記録の前の担当者を置き換えるシン株式会社の担当者のアカウント（1 つだけ） |
    | `--database` | `database-url` / `local-postgres` / `docker` / `pglite` / `managed` |
-   | `--merge-policy` | `human`（既定。人が ready にしてマージする）/ `self-review`（`/shinnn-app:pr` がセルフレビューと CI の通過後にマージする。CI が始まらないときは「CI が始まらないとき」に従う） |
+   | `--merge-policy` | `human`（既定。人が ready にしてマージする）/ `auto-merge`（`/shinnn-app:pr` がセルフレビューと CI の通過後にマージする。CI が始まらないときは「CI が始まらないとき」に従う） |
    | `--enable` / `--disable` | 選択項目。`.shinnn/setup.json` の `optional` にあるキーだけを受け付ける |
    | `--handover-issue` | 「引き継ぎメモ」Issue の番号（下の 8 で Issue を作ってから渡す） |
    | `--complete` | `setupCompletedAt` に現在時刻を入れる |
@@ -301,7 +306,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
    `gh api -X PUT "repos/{owner}/{repo}/collaborators/<シン株式会社の担当者のアカウント（@ なし）>" -f permission=maintain`
    （リポジトリの管理者権限が要る。権限の指定は組織のリポジトリでだけ有効で、個人アカウントのリポジトリでは無視される）。
    招待されていないと `CODEOWNERS` に書いてもレビュー依頼が届かない
-10. マージの方針が `self-review` なら、リポジトリで auto-merge を許可するかを聞く。許可する場合は
+10. マージの方針が `auto-merge` なら、リポジトリで GitHub の自動マージの機能（CI が通った時点でマージする機能）を許可するかを聞く。許可する場合は
     `gh api -X PATCH "repos/{owner}/{repo}" -f allow_auto_merge=true`（リポジトリの管理者権限が要る）。
     許可しなくても `/shinnn-app:pr` は CI の完了を待ってからマージするので、動きは変わらない
 11. Dependabot のアラート（依存の脆弱性の通知）とセキュリティ更新（脆弱性を直す PR の自動作成）を有効にする。
@@ -319,7 +324,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
     ```
 
     対象は `main`。`.github/workflows/ci.yaml` と `policy.yaml` の 3 つのジョブの通過を必須にする（必須のチェックの名前は各ジョブの `name:` で、テンプレートのままなら「型検査と lint」「テスト」「規約チェック」）。管理者にも同じ条件を課す。
-    承認（Approve）は必須にしない（`self-review` では Claude が作った PR を Claude がマージするので、必須にするとマージできない）。
+    承認（Approve）は必須にしない（`auto-merge` では Claude が作った PR を Claude がマージするので、必須にするとマージできない）。
     マージの前にブランチを `main` の最新に追いつかせることと、履歴を一直線にすることも必須にしない
     （`/shinnn-app:pr` はマージコミットを作ってマージする）。
     既にブランチ保護があれば（従来の方式でも、ルールセットで有効になっているルールでも）上書きせず、今の必須のチェックを示して終わる。
@@ -331,7 +336,7 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
 13. 変更をコミットし、`/shinnn-app:pr` で PR にする。本文の 1 行目は `Closes #<2 の Issue の番号>`。
     このブランチの open な PR が既にあれば（`gh pr view --json state` が `OPEN`）、`/shinnn-app:pr` の手順 3 で `gh pr create` を飛ばし、push だけを行う。
     費用が発生する項目を増やした場合は、本文に費用の目安を書く。ready にするか、マージまで行うかは
-    `/shinnn-app:pr` がマージの方針（`human` / `self-review`）に従って決める
+    `/shinnn-app:pr` がマージの方針（`human` / `auto-merge`）に従って決める
 
 `.shinnn/setup.json` の形は次のとおり。キーはテンプレート同梱のものと同じにする。**勝手に増やさない・減らさない**。
 
@@ -372,7 +377,9 @@ setup の PR がまだマージされていなければ、先にマージして�
 /shinnn-app:feature "アプリの目的と、最初に作る画面"
 ```
 
-元のアプリを作り直すとき: `/exit` で終了し、ターミナルでこのフォルダに移って次で起動してもらう。
+元のアプリを作り直すとき: マージの方針が `human` なら、`auto-merge` に変えると確認を挟まずに最後まで作りきることを伝える。
+変えたいと言われたら、setup を再実行し、「マージの方針（`mergePolicy`）」の選ぶ場合と同意の説明のとおりに進める。
+`/exit` で終了し、ターミナルでこのフォルダに移って次で起動してもらう。
 起動したら、`/shinnn-app:feature <元のアプリのフォルダ>にあるアプリを作り直したい` と入力してもらう。
 
 ```

@@ -13,7 +13,6 @@
     "frontend-design@claude-plugins-official": true
   },
   "permissions": {
-    "defaultMode": "acceptEdits",
     "disableBypassPermissionsMode": "disable",
     "allow": [
       "Bash(npm *)",
@@ -43,9 +42,14 @@
       "Bash(git pull --ff-only*)",
       "Bash(git push *)",
       "Bash(gh pr *)",
-      "Bash(gh issue *)"
+      "Bash(gh issue *)",
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "Bash(gh run watch *)",
+      "Bash(gh run rerun *)",
+      "Bash(gh workflow run ci.yaml *)",
+      "Bash(gh workflow run policy.yaml *)"
     ],
-    "ask": ["Bash(docker *)"],
     "deny": [
       "Bash(rm -rf *)",
       "Bash(git push --force*)",

@@ -17,7 +17,7 @@
  *   --profile <名前>      full / client-only
  *   --reviewer <@名前>    CODEOWNERS に入れるシン株式会社の担当者のアカウント
  *   --database <方式>     database-url / local-postgres / docker / pglite / managed
- *   --merge-policy <方針> human（人がマージする）/ self-review（/shinnn-app:pr がセルフレビューと CI 通過後にマージする）
+ *   --merge-policy <方針> human（人がマージする）/ auto-merge（/shinnn-app:pr がセルフレビューと CI 通過後にマージする）
  *   --enable <キー,…>     選択項目を有効にする（.shinnn/setup.json の optional のキー）
  *   --disable <キー,…>    選択項目を無効にする
  *   --handover-issue <n>  「引き継ぎメモ」Issue の番号
@@ -51,8 +51,11 @@ const PROFILES = ['full', 'client-only'];
 /** 受け付ける DB の用意方法。scripts/setup-env.mjs の検出結果と同じ語を使う。 */
 const DATABASE_MODES = ['database-url', 'local-postgres', 'docker', 'pglite', 'managed'];
 
-/** 受け付けるマージの方針。human は人がマージ、self-review は /shinnn-app:pr がセルフレビューと CI の通過後にマージする。 */
-const MERGE_POLICIES = ['human', 'self-review'];
+/** 受け付けるマージの方針。human は人がマージ、auto-merge は /shinnn-app:pr がセルフレビューと CI の通過後にマージする。 */
+const MERGE_POLICIES = ['human', 'auto-merge'];
+
+/** 標準を取り込む前の記録に残る値と、揃えた後の値。記録を揃えるときに置き換える。 */
+const RENAMED_MERGE_POLICIES = { 'self-review': 'auto-merge' };
 
 /** プラグインに同梱のテンプレートの setup.json。リポジトリの記録をこの形に揃える。 */
 const TEMPLATE_SETUP_PATH = new URL('../template/.shinnn/setup.json', import.meta.url);
@@ -106,6 +109,13 @@ function alignWithTemplate(current, template) {
     }
     if (key === 'optional' || key === 'database') {
       aligned[key] = alignObject(current[key] ?? {}, templateValue, key, notes);
+      continue;
+    }
+    if (key === 'mergePolicy' && Object.hasOwn(RENAMED_MERGE_POLICIES, current.mergePolicy)) {
+      aligned.mergePolicy = RENAMED_MERGE_POLICIES[current.mergePolicy];
+      notes.push(
+        `mergePolicy: ${current.mergePolicy} → ${aligned.mergePolicy}（auto-merge では、確認を挟まずに作りきり、決まっていないことは仮置きして進める）`,
+      );
       continue;
     }
     if (Object.hasOwn(current, key)) {

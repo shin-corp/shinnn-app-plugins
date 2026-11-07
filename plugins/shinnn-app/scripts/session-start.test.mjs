@@ -297,6 +297,46 @@ function installDependencies(root) {
   writeFile(root, '.husky/_/h', '# husky が作る呼び出し役\n');
 }
 
+test('マージ方針: human では任せている旨を出さない', () => {
+  const result = runHook(createRepo({ mergePolicy: 'human' }));
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(section(result.stdout, 'セットアップ'), /マージ方針: human/);
+  assert.ok(!result.stdout.includes('確認を挟まずに作りきります'), result.stdout);
+});
+
+test('マージ方針: auto-merge では、確認を挟まずに作りきることと規約の節を出す', () => {
+  const result = runHook(createRepo({ mergePolicy: 'auto-merge' }));
+
+  assert.equal(result.status, 0, result.stderr);
+  const setup = section(result.stdout, 'セットアップ');
+  assert.match(setup, /マージ方針: auto-merge/);
+  assert.match(setup, /確認を挟まずに作りきります（規約 git-workflow\.md の「`auto-merge` のとき」）/);
+});
+
+test('マージ方針: 規約に「auto-merge のとき」があれば、記録の self-review は auto-merge として出す', () => {
+  const root = createRepo({ mergePolicy: 'self-review' });
+  writeFile(root, '.claude/rules/git-workflow.md', '# git の進め方\n\n## `auto-merge` のとき\n');
+  const result = runHook(root);
+
+  assert.equal(result.status, 0, result.stderr);
+  const setup = section(result.stdout, 'セットアップ');
+  assert.match(setup, /マージ方針: auto-merge/);
+  assert.ok(!setup.includes('self-review'), setup);
+});
+
+test('マージ方針: 規約に「auto-merge のとき」が無ければ、self-review のまま出し、作りきる案内を出さない', () => {
+  const root = createRepo({ mergePolicy: 'self-review' });
+  writeFile(root, '.claude/rules/git-workflow.md', '# git の進め方\n\n## やらないこと\n');
+  const result = runHook(root);
+
+  assert.equal(result.status, 0, result.stderr);
+  const setup = section(result.stdout, 'セットアップ');
+  assert.match(setup, /マージ方針: self-review/);
+  assert.ok(!setup.includes('確認を挟まずに作りきります'), setup);
+  assert.match(setup, /`\/shinnn-app:update-rules` で取り込むと auto-merge になります/);
+});
+
 test('依存: node_modules と .husky/_ の両方があれば、npm install を促さない', () => {
   const root = createRepo({});
   installDependencies(root);
