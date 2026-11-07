@@ -1,13 +1,14 @@
 /**
  * テンプレートの .husky/pre-commit（lint-staged）の回帰テスト。`node --test scripts/` で実行する。
  *
- * 一時フォルダに手元のリポジトリを作り、husky と同じ呼び方（`sh -e <フック>`）で pre-commit を動かして、
+ * 一時フォルダに手元のリポジトリを作る。husky と同じ呼び方（`sh -e <フック>`）で pre-commit を動かし、
  * 本物の git commit の結果を確かめる。
  * - ステージしていないファイルの変更は、日本語の多い大きな差分でもコミットに入らず、作業ツリーに残る
  * - 一部だけステージしたファイルは、ステージした分を整形してコミットし、残りを作業ツリーに残す
+ * - まだコミットの無いリポジトリでも、一部だけステージしたファイルの残りはコミットに入らない
  * - タスクが失敗したら、コミットせず、ステージした変更もステージしていない変更も元のまま残る
  * lint-staged と prettier は、テンプレートの node_modules のものを使う。
- * テンプレートの依存が入っていないとき（このリポジトリの CI のプラグインのジョブ）は飛ばす。CI ではテンプレートのジョブで動かす。
+ * テンプレートの依存が入っていないときは飛ばす（template で `npm ci` を実行すると動く）。
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -23,7 +24,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -59,6 +60,9 @@ const guideStaged = `${guideInitial}\n*詳細*\n`;
 /** `guideStaged` を整形した後の中身 */
 const guideFormatted = `${guideInitial}\n_詳細_\n`;
 
+/** ステージしない変更。ステージするファイルの見出しを変える */
+const retitle = (content) => content.replace('# 画面', '# 画面の説明');
+
 /** 仕様書の受入条件の行数。git の出力が何度も区切られて届く大きさにする */
 const specRows = 2000;
 
@@ -92,8 +96,8 @@ function specContent(label) {
   return `${lines.join('\n')}\n`;
 }
 
-/** 手元のリポジトリを作り、最初のコミットの後に husky と同じ呼び方でフックを入れる */
-function setupRepo() {
+/** 手元のリポジトリを作り、整形の設定と、ステージするファイルの最初の中身を置く。コミットとフックはまだ無い */
+function setupEmptyRepo() {
   const root = mkdtempSync(join(workRoot, 'case-'));
   const local = join(root, 'local');
   assert.equal(git(root, 'init', '--initial-branch=main', local).status, 0);
@@ -108,16 +112,27 @@ function setupRepo() {
   writeFileSync(join(local, 'package.json'), '{ "private": true }\n');
   // Windows でも管理者の権限なしに作れるよう、ジャンクションにする（ほかの OS では種類の指定は無視される）
   symlinkSync(templateModules, join(local, 'node_modules'), 'junction');
-  mkdirSync(join(local, 'docs'));
   mkdirSync(join(local, 'client'));
-  writeFileSync(join(local, specPath), specContent('受入条件'));
   writeFileSync(join(local, guidePath), guideInitial);
-  assert.equal(git(local, 'add', '.').status, 0);
-  assert.equal(git(local, 'commit', '-m', 'テンプレートの取り込み').status, 0);
-  const hooksDir = join(root, 'hooks');
+  return local;
+}
+
+/** husky と同じ呼び方でフックを入れる */
+function installHook(local) {
+  const hooksDir = join(dirname(local), 'hooks');
   mkdirSync(hooksDir);
   writeFileSync(join(hooksDir, 'pre-commit'), `#!/bin/sh\nsh -e "${preCommit}" "$@"\n`, { mode: 0o755 });
   assert.equal(git(local, 'config', 'core.hooksPath', hooksDir).status, 0);
+}
+
+/** 仕様書を足して最初のコミットを済ませ、その後にフックを入れたリポジトリを作る */
+function setupRepo() {
+  const local = setupEmptyRepo();
+  mkdirSync(join(local, 'docs'));
+  writeFileSync(join(local, specPath), specContent('受入条件'));
+  assert.equal(git(local, 'add', '.').status, 0);
+  assert.equal(git(local, 'commit', '-m', 'テンプレートの取り込み').status, 0);
+  installHook(local);
   return local;
 }
 
@@ -163,14 +178,28 @@ test('一部だけステージしたファイルは、ステージした分を�
   const local = setupRepo();
   writeFileSync(join(local, guidePath), guideStaged);
   assert.equal(git(local, 'add', guidePath).status, 0);
-  writeFileSync(join(local, guidePath), guideStaged.replace('# 画面', '# 画面の説明'));
+  writeFileSync(join(local, guidePath), retitle(guideStaged));
 
   const result = git(local, 'commit', '-m', '[client]画面の説明の追加');
 
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(committedFiles(local), [guidePath]);
   assert.equal(committedContent(local, guidePath), guideFormatted);
-  assert.equal(readFileSync(join(local, guidePath), 'utf8'), guideFormatted.replace('# 画面', '# 画面の説明'));
+  assert.equal(readFileSync(join(local, guidePath), 'utf8'), retitle(guideFormatted));
+});
+
+test('まだコミットの無いリポジトリでも、一部だけステージしたファイルの残りはコミットに入らない', { skip }, () => {
+  const local = setupEmptyRepo();
+  installHook(local);
+  writeFileSync(join(local, guidePath), guideStaged);
+  assert.equal(git(local, 'add', '.').status, 0);
+  writeFileSync(join(local, guidePath), retitle(guideStaged));
+
+  const result = git(local, 'commit', '-m', 'テンプレートの取り込み');
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(committedContent(local, guidePath), guideFormatted);
+  assert.equal(readFileSync(join(local, guidePath), 'utf8'), retitle(guideFormatted));
 });
 
 test('タスクが失敗したら、コミットせず、ステージした変更もステージしていない変更も元のまま残る', { skip }, () => {
