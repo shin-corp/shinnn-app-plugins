@@ -1,0 +1,2 @@
+# コミットメッセージの形を確かめる（.claude/rules/git-workflow.md の「コミットメッセージ」）。
+node scripts/check-commit-message.mjs "$1"

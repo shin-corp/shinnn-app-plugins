@@ -218,6 +218,31 @@ test('--align-only（update-rules の使い方）: 標準を写した後の古�
   assert.equal(setup.reviewer, '@example-reviewer');
 });
 
+test('--align-only: 記録の self-review を auto-merge に揃える', () => {
+  const repo = makeRepo();
+  const setup = { ...templateSetup(), mergePolicy: 'self-review' };
+  writeFileSync(join(repo, SETUP), `${JSON.stringify(setup, null, 2)}\n`);
+  writeStandardsVersion(repo, readFileSync(join(templateDir, '.claude', 'rules', '.standards-version'), 'utf8'));
+  const result = runApply(repo, ['--align-only']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /mergePolicy: self-review → auto-merge/);
+  assert.equal(JSON.parse(readFileSync(join(repo, SETUP), 'utf8')).mergePolicy, 'auto-merge');
+});
+
+test('--merge-policy: auto-merge を受け付け、self-review は止める', () => {
+  const accepted = makeRepo();
+  const ok = runApply(accepted, ['--merge-policy', 'auto-merge']);
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.equal(JSON.parse(readFileSync(join(accepted, SETUP), 'utf8')).mergePolicy, 'auto-merge');
+
+  const refused = makeRepo();
+  const before = readFileSync(join(refused, SETUP), 'utf8');
+  const ng = runApply(refused, ['--merge-policy', 'self-review']);
+  assert.notEqual(ng.status, 0);
+  assert.equal(readFileSync(join(refused, SETUP), 'utf8'), before);
+});
+
 test('--align-only: 選択を変える引数と一緒には使えず、何も書き換えない', () => {
   for (const args of [['--enable', 'health-report'], ['--reviewer', '@example-reviewer'], ['--complete']]) {
     const repo = makeRepo();

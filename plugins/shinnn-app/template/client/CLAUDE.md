@@ -113,8 +113,8 @@ client/
   **100 件を超えうる一覧はサーバーページングにする**（`limit` と `offset` を画面の signal にして、ページャの操作で読み直す）。
   総件数（`total`）と取得件数が食い違う場合は、そのことを画面に出す
 - **入力**: `MatDialog` + Reactive Forms + Material の form field / select。編集対象は `MAT_DIALOG_DATA` で受け取る
-- **見た目**: 画面を足す・見た目を変えるときは、コードを書く前に `frontend-design` スキルで案を立てる
-  （`add-screen` の手順 0 と 3。見た目を変える依頼も `/shinnn-app:feature` から進める）。
+- **見た目**: `frontend-design` スキルでデザインの指導を受ける（いつ受けるかは `.claude/rules/client-styling.md` の「デザインの指導」、
+  受け方は `/shinnn-app:add-screen` の「デザインの指導を受ける」）。見た目を変える依頼も `/shinnn-app:feature` から進める。
   アプリ全体の方針は `docs/仕様書.md` の「見た目の方針」に沿う
 
 ## API 呼び出し

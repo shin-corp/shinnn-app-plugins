@@ -152,7 +152,7 @@ Issue と PR の本文を書き換えるときは、`gh issue view <番号> --js
         `/shinnn-app:pr` で、題を `[依存] 依存の脆弱性の修正` にして PR を出す。依存の差し替えは振る舞いを変えないので、
         受入条件は足さない（規約 `testing.md` の「何をテストするか」の、振る舞いが変わらない変更の項目）。
         PR 本文の「対応した受入条件」には「無し（依存の差し替え）」と書く
-      - 直しの PR がこのセッションでマージされたら（`mergePolicy` が `self-review` のとき）、2 の 4 に進む
+      - 直しの PR がこのセッションでマージされたら（`mergePolicy` が `auto-merge` のとき）、2 の 4 に進む
    6. 直しの PR がこのセッションでマージされないとき（`mergePolicy` が `human` のとき、直しの PR を人に渡したとき）は、
       元のブランチに戻ってから、報告に次の順を書く
       - 直しの PR があるとき: 「直しの PR #<番号> を先にマージする。その後に、元の PR #<番号> に `main` を取り込む
@@ -166,7 +166,7 @@ Issue と PR の本文を書き換えるときは、`gh issue view <番号> --js
      直しは、2 の 5 と同じ形で、元の PR の後に進める
 4. **直す順。** パッケージごとに、上から試し、直ったところで止める。
    作り直した `package-lock.json` を作り直す前に戻すときは、`git add` の前に、`git restore package-lock.json` をこの形のまま使う
-   （テンプレートの許可にある。`git checkout`・`git restore -- package-lock.json`・`git -C <パス>` の形は、確認が出る）。
+   （テンプレートの許可にある。`git checkout`・`git restore -- package-lock.json`・`git -C <パス>` の形は許可に無いので、権限のモードによっては確認が出る）。
    戻した後に、`git diff HEAD -- package-lock.json` が空であることを見る（`git add` した後の lock は、この形では戻らない）
    1. `npm update <勧告の出たパッケージの名前>` を流し、`npm audit` で勧告が消えたかを見る。`package.json` の範囲の中で直る勧告は、これで直る。
       `npm audit fix` は流さない（勧告の無い依存まで範囲の中で上げ、`package-lock.json` の差分が大きくなる。レビューで確かめる量が増える）

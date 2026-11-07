@@ -11,9 +11,9 @@
 //   --database <方式>  検出の結果に関わらず、この方式の手順を出す（setup で利用者が選んだ方式を書くため）。
 //                      database-url / local-postgres / docker / pglite / managed
 //
-// 開発環境として、OS / Node.js / npm / Git / GitHub CLI（gh。ログインの状態とスコープ）/ Docker を表で示す。
+// 開発環境として、OS / Node.js / npm / Claude Code / Git / GitHub CLI（gh。ログインの状態とスコープ）/ Docker を表で示す。
 // 使う人のパソコンごとに違うので、この表は docs/env.md に書かない。
-// 外部のコマンドはシェルを介さずに呼び、見つからないものは「見つかりません」として続ける。
+// 外部のコマンドはシェルを介さずに呼ぶ（Windows の claude.cmd だけは cmd を介す）。見つからないものは「見つかりません」として続ける。
 //
 // PostgreSQL の検出の順番（先に見つかったものを採用する）:
 //   1. DATABASE_URL が設定済み          → そのまま使う
@@ -50,6 +50,9 @@ const requiredNode = { major: 24, minor: 15 };
 /** 前提の npm の系。Node.js 24 に同梱される版 */
 const requiredNpmMajor = 11;
 
+/** ターミナルの対話のセッションが、プランによらず権限の自動判定（auto mode）で始まる Claude Code の版 */
+const requiredClaude = [2, 1, 283];
+
 /** コマンドを実行して成功したかを返す。 */
 function commandSucceeds(command, args) {
   try {
@@ -81,6 +84,39 @@ function commandVersion(command, args) {
   }
 
   return result.stdout.match(/\d+\.\d+\.\d+/)?.[0] ?? result.stdout.split('\n')[0];
+}
+
+/** x.y.z の版が前提の版以上か。形が違って比べられなければ null。 */
+function meetsVersion(version, required) {
+  if (!/^\d+\.\d+\.\d+$/.test(version)) {
+    return null;
+  }
+
+  const parts = version.split('.').map(Number);
+
+  for (let index = 0; index < required.length; index += 1) {
+    if (parts[index] !== required[index]) {
+      return parts[index] > required[index];
+    }
+  }
+
+  return true;
+}
+
+/** Claude Code の版の判定。古いと確認が増えるので、更新の仕方まで示す。 */
+function describeClaudeVerdict(version) {
+  const required = requiredClaude.join('.');
+
+  const meets = version === null ? null : meetsVersion(version, requiredClaude);
+
+  if (meets === null) {
+    return `版を確かめられません。\`claude --version\` で ${required} 以上かを確かめてください`;
+  }
+  if (meets) {
+    return '満たしています';
+  }
+
+  return `${required} 以上にしてください（\`claude update\`）。古い版では、操作のたびに確認が出ることがあります`;
 }
 
 /** OS の名前と版。WSL の中なら、そう分かるようにする（Windows 側とは入っているものが違うため）。 */
@@ -128,6 +164,28 @@ function detectNpmVersion() {
   }
 
   return null;
+}
+
+/**
+ * Claude Code の版。見つからなければ null。
+ *
+ * Windows で npm から入れた Claude Code は claude.cmd だけのことがあり、シェルを介さずには起動できない。
+ * そのときは、cmd を介して起動し直す（引数は固定の文字列だけを渡す）。
+ */
+function detectClaudeVersion() {
+  const version = commandVersion('claude', ['--version']);
+
+  if (version !== null || process.platform !== 'win32') {
+    return version;
+  }
+
+  const result = spawnSync('claude --version', { encoding: 'utf8', timeout: commandTimeoutMs, shell: true });
+
+  if (result.error !== undefined || result.status !== 0) {
+    return null;
+  }
+
+  return result.stdout.match(/\d+\.\d+\.\d+/)?.[0] ?? null;
 }
 
 /** `gh auth status` のスコープの並び（`'repo', 'workflow'` や `repo, workflow`）を配列にする。 */
@@ -217,6 +275,14 @@ function detectEnvironment() {
           : `${requiredNpmMajor} 系ではありません。Node.js ${requiredNode.major} に同梱の npm を使ってください`,
     });
   }
+
+  const claudeVersion = detectClaudeVersion();
+
+  rows.push({
+    item: 'Claude Code',
+    detected: claudeVersion ?? '見つかりません',
+    verdict: describeClaudeVerdict(claudeVersion),
+  });
 
   const gitVersion = commandVersion('git', ['--version']);
 

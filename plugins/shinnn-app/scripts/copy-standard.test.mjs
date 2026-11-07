@@ -90,6 +90,7 @@ test('copy-standard: 規約・権限の設定・スクリプト・ワークフ�
     '.claude/settings.json',
     'docs/アプリ作り方ガイド.md',
     '.husky/pre-commit',
+    '.husky/commit-msg',
     '.husky/pre-push',
     '.lintstagedrc.json',
     'scripts/check-ac-coverage.mjs',

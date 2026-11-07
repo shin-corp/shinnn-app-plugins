@@ -8,7 +8,7 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
@@ -39,13 +39,30 @@ function makeEnvRepo() {
  * setup-env.mjs をコマンドの無い環境で実行する。DB の検出は DATABASE_URL で済ませ、接続も docker も試さない。
  * カレントは対象の外に置き、書き込み先が `--repo-dir` で決まることも確かめる
  */
-function runSetupEnv(repo, args) {
+function runSetupEnv(repo, args, extraEnv = {}) {
   const result = spawnSync(process.execPath, [setupEnvScript, '--repo-dir', repo, ...args], {
     cwd: workRoot,
     encoding: 'utf8',
-    env: envWithoutCommands({ DATABASE_URL: 'postgres://localhost:5432/app' }),
+    env: envWithoutCommands({ DATABASE_URL: 'postgres://localhost:5432/app', ...extraEnv }),
   });
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+}
+
+/**
+ * 決まった版を出すだけの偽の claude を置いたフォルダ。
+ * Windows では、npm から入れたときと同じく claude.cmd だけを置く。
+ */
+function fakeClaudeDir(version) {
+  const dir = mkdtempSync(join(workRoot, 'fake-claude-'));
+
+  if (process.platform === 'win32') {
+    writeFileSync(join(dir, 'claude.cmd'), `@echo ${version} (Claude Code)\r\n`);
+  } else {
+    writeFileSync(join(dir, 'claude'), `#!/bin/sh\necho '${version} (Claude Code)'\n`);
+    chmodSync(join(dir, 'claude'), 0o755);
+  }
+
+  return dir;
 }
 
 before(() => {
@@ -61,25 +78,38 @@ test('setup-env: 開発環境を表で示し、コマンドが 1 つも無くて
   const result = runSetupEnv(repo, []);
 
   assert.equal(result.status, 0, result.stderr);
-  for (const row of ['OS', 'Node.js', 'npm', 'Git', 'GitHub CLI（gh）', 'Docker']) {
+  for (const row of ['OS', 'Node.js', 'npm', 'Claude Code', 'Git', 'GitHub CLI（gh）', 'Docker']) {
     assert.match(result.stdout, new RegExp(`^\\| ${row.replace(/[.()（）]/g, '\\$&')} \\| .+ \\|$`, 'm'), row);
   }
   assert.match(
     result.stdout,
     new RegExp(`^\\| Node\\.js \\| ${process.versions.node.replaceAll('.', '\\.')} \\|`, 'm'),
   );
-  for (const row of ['npm', 'Git', 'GitHub CLI（gh）', 'Docker']) {
+  for (const row of ['npm', 'Claude Code', 'Git', 'GitHub CLI（gh）', 'Docker']) {
     assert.match(
       result.stdout,
       new RegExp(`^\\| ${row.replace(/[()（）]/g, '\\$&')} \\| 見つかりません \\|`, 'm'),
       row,
     );
   }
+  assert.match(result.stdout, /^\| Claude Code \| 見つかりません \| 版を確かめられません。.*2\.1\.283 以上/m);
   // PostgreSQL の候補もこれまでどおり出す
   assert.match(result.stdout, /## ローカルの PostgreSQL/);
   assert.match(result.stdout, /採用: 環境変数 DATABASE_URL の接続先/);
   assert.equal(existsSync(join(repo, 'docs')), false);
 });
+
+for (const [version, expected] of [
+  ['2.1.283', /^\| Claude Code \| 2\.1\.283 \| 満たしています \|$/m],
+  ['2.1.282', /^\| Claude Code \| 2\.1\.282 \| 2\.1\.283 以上にしてください（`claude update`）/m],
+]) {
+  test(`setup-env: Claude Code の ${version} を前提の版と比べる`, () => {
+    const result = runSetupEnv(makeEnvRepo(), [], { PATH: fakeClaudeDir(version) });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, expected);
+  });
+}
 
 test('setup-env --write: docs/env.md には PostgreSQL の節だけを追記し、2 回目は書かない', () => {
   const repo = makeEnvRepo();

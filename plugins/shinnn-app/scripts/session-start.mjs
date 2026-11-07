@@ -137,13 +137,23 @@ function readVersion(path) {
   }
 }
 
+/** 規約 git-workflow.md に「`auto-merge` のとき」の節があるか。読めなければ無いものとする。 */
+function hasAutoMergeRule(workflowRulePath) {
+  try {
+    return readFileSync(workflowRulePath, 'utf8').includes('## `auto-merge` のとき');
+  } catch {
+    return false;
+  }
+}
+
 /**
  * セットアップの節。setupCompletedAt が空なら、まだ /shinnn-app:setup を終えていないものとして案内する。
  *
  * @param setupPath - .shinnn/setup.json の絶対パス
  * @param installed - リポジトリに入っている標準のバージョン（.claude/rules/.standards-version の中身。無ければ null）
+ * @param workflowRulePath - 規約 git-workflow.md の絶対パス
  */
-function setupSection(setupPath, installed) {
+function setupSection(setupPath, installed, workflowRulePath) {
   let setup;
   try {
     setup = JSON.parse(readFileSync(setupPath, 'utf8'));
@@ -161,12 +171,23 @@ function setupSection(setupPath, installed) {
   }
 
   const profile = setup.profile ?? '不明';
-  const mergePolicy = setup.mergePolicy ?? 'human';
+  // self-review は、標準を取り込む前の記録に残る値。update-rules で auto-merge に揃う。
+  // 止まる条件は規約の「auto-merge のとき」にある。その節が入るまでは、確認を挟まない進め方にしない
+  const recorded = setup.mergePolicy ?? 'human';
+  const mergePolicy = recorded === 'self-review' && hasAutoMergeRule(workflowRulePath) ? 'auto-merge' : recorded;
   const standards = installed ?? '不明';
-  return section(
-    'セットアップ',
-    `プロファイル: ${profile} / マージ方針: ${mergePolicy} / 標準バージョン: ${standards}`,
-  );
+  const lines = [`プロファイル: ${profile} / マージ方針: ${mergePolicy} / 標準バージョン: ${standards}`];
+  if (mergePolicy === 'auto-merge') {
+    lines.push(
+      '利用者は、Issue の作成から PR のマージまでを任せています。確認を挟まずに作りきります（規約 git-workflow.md の「`auto-merge` のとき」）。',
+    );
+  }
+  if (mergePolicy === 'self-review') {
+    lines.push(
+      '標準を取り込むまでは、PR のマージだけを Claude が行い、ほかは確認を挟んで進めます。`/shinnn-app:update-rules` で取り込むと auto-merge になります。',
+    );
+  }
+  return section('セットアップ', lines.join('\n'));
 }
 
 /**
@@ -245,7 +266,13 @@ const distributed = readVersion(
 );
 const installed = readVersion(fromRoot(root, '.claude', 'rules', '.standards-version'));
 
-out.push(setupSection(fromRoot(root, '.shinnn', 'setup.json'), installed));
+out.push(
+  setupSection(
+    fromRoot(root, '.shinnn', 'setup.json'),
+    installed,
+    fromRoot(root, '.claude', 'rules', 'git-workflow.md'),
+  ),
+);
 
 const dependencies = dependencySection(root);
 if (dependencies !== null) {
