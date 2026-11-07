@@ -201,8 +201,11 @@ PR に付いた指摘には、さらに次の決まりを当てる。
 gh pr ready <番号>
 gh pr checks <番号> --watch --fail-fast
 gh pr merge <番号> --merge --delete-branch
-git switch main && git pull --ff-only
+git switch main
+git pull --ff-only
 ```
+
+コマンドは上から 1 つずつ実行する。失敗したら次に進まない。
 
 - CI が落ちたら（step が動いて落ちたら）、直してからやり直す。検査を飛ばさない（`--admin` の禁止は規約 `git-workflow.md` の「やらないこと」）
 - リポジトリが auto-merge を許可しているなら、ready の直後に `gh pr merge <番号> --auto --merge --delete-branch` としてもよい
@@ -244,11 +247,9 @@ git switch main && git pull --ff-only
 3. 「引き継ぎメモ」Issue（番号は `.shinnn/setup.json` の `handoverIssue`）の本文に、見出し `## CI で確かめていないマージ` の下へ
    `- #<PR 番号>（<YYYY-MM-DD>）` の 1 行を足す。見出しが無ければ、本文の末尾に見出しごと足す。ほかの見出しの下は変えない。
 
-   ```
-   gh issue view <Issue 番号> --json body --jq .body > <ファイル>
-   （ファイルを書き換える）
-   gh issue edit <Issue 番号> --body-file <ファイル>
-   ```
+   今の本文は `gh issue view <Issue 番号> --json body --jq .body` で読む。
+   書き換えた本文は、Write ツールで scratchpad の `issue-body.md` に書き、`gh issue edit <Issue 番号> --body-file <そのファイル>` に渡す。
+   リダイレクトでファイルに書くと、確認が出るか、リポジトリの中にファイルが残る。Windows PowerShell 5.1 では、本文の先頭に BOM（文字コードを示す印）も入る。
 4. 必須のチェックがあるかを確かめて、マージを進める。次の 1 つ目で 1 以上が出るか、2 つ目に `required_status_checks` の行が出れば、必須のチェックがある。
 
    ```
@@ -277,12 +278,13 @@ git switch main && git pull --ff-only
 3. `main` の CI を、2 つのワークフローとも手で走らせ、その実行を取る。`gh workflow run` は実行の番号を返さないので、走らせる前の時刻（UTC）を控え、それ以降に作られた実行だけを取る。
 
    ```
-   date -u +%Y-%m-%dT%H:%M:%SZ
+   node -p "new Date().toISOString().slice(0, 19) + 'Z'"
    gh workflow run ci.yaml --ref main
    gh workflow run policy.yaml --ref main
    gh run list --branch main --event workflow_dispatch --created ">=<控えた時刻>" --json databaseId,workflowName,headSha
    ```
 
+   時刻は秒までで控える。実行の `createdAt` は秒までなので、ミリ秒を付けると、同じ秒に作られた実行が外れる。
    実行が出るまで数秒かかる。2 つ出るまで待ってから取る。2 つの実行の `headSha` が `origin/main` のコミットと同じことを確かめる。
 4. 実行ごとに `gh run watch <実行の番号> --exit-status` で結果を待つ（時間がかかるので、Bash の `run_in_background` で動かす）。
 5. 結果で分ける。
