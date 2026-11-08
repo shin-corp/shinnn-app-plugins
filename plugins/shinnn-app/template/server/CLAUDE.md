@@ -17,7 +17,7 @@ Express 5 + PostgreSQL 16（Drizzle ORM）の API サーバー。TypeScript の 
 | `npm run token -w server`       | 開発中に画面へ持たせる JWT を 1 つ発行        |
 
 `dev` / `db:migrate` / `seed` は `--env-file-if-exists=.env` で起動するので、`server/.env`（`.env.example` をコピーしたもの）が
-あれば自動で読み込む。無い場合でも、必要な値が既定値だけで足りるなら起動する。
+あれば自動で読み込む。無い場合は、`config.ts` の検査で止まる（`DATABASE_URL`・`JWT_SECRET` などに既定値が無い）。
 
 `check` は先に `@app/shared` のビルドが要る（`npm run build` か `npm run build -w shared`）。
 

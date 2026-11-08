@@ -12,7 +12,7 @@ description: 作りたいことを受け取り（1 つでも、まとめてい�
 無いとき、または「続き」と言われたときは「続きから始める」に進む。続きも無ければ、作りたいことを最初に聞く。
 「画面を見ながら調整したい」と頼まれたときは「9. 画面を見ながら調整する」に進む。
 
-`.shinnn/setup.json` の `mergePolicy` が `auto-merge` のときは、規約 `git-workflow.md` の「`auto-merge` のとき」に従い、
+`.shinnn/setup.json` の `mergePolicy` が `auto-merge` のときは（`setupCompletedAt` が `null` のときを除く）、規約 `git-workflow.md` の「`auto-merge` のとき」に従い、
 利用者に聞かずに、進められる Issue が無くなるまで作りきる。動く画面を見ながらの調整は、その後に行う。
 `self-review` は、規約 `git-workflow.md` に「`auto-merge` のとき」の節があれば、`auto-merge` と同じに扱う。
 このスキルから呼ぶスキル（`plan.md`・`add-screen`・`check` など）の `auto-merge` の分かれ目でも同じ。
@@ -165,11 +165,11 @@ gh issue edit <Issue 番号> --remove-label status:next --add-label status:doing
 
 ## 7. 次の Issue へ進む（計画があるとき）
 
-PR を出したあとの動きは `.shinnn/setup.json` の `mergePolicy` で決まる（キーが無ければ `human`）。
+PR を出したあとの動きは `.shinnn/setup.json` の `mergePolicy` で決まる（キーが無いとき、または `setupCompletedAt` が `null` のときは `human` として扱う）。
 
 | `mergePolicy` | PR を出したあと |
 |:--|:--|
-| `human`（既定） | PR はドラフトのまま人に渡す。**今の PR を待たずに作れる** `status:next` の Issue があれば、それを 2 から進める |
+| `human` | PR はドラフトのまま人に渡す。**今の PR を待たずに作れる** `status:next` の Issue があれば、それを 2 から進める |
 | `auto-merge` | `pr` がマージまで済ませたら、`git switch main` を実行し、成功したら `git pull --ff-only` を実行する。失敗したら、次に進まずに報告する。成功したら `plan.md` の「依存が解けた Issue を進める」を行い、`status:next` の先頭を 2 から進める。`pr` がマージせずに人に渡したときは、下の「Issue を止める」を行う |
 
 どちらでも、次の Issue を選ぶ前に「続きから始める」の 1 の後半（待っている PR への `main` の取り込み）を行う。

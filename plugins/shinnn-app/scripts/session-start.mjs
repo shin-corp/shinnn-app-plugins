@@ -177,6 +177,7 @@ function setupSection(setupPath, installed, workflowRulePath) {
   const profile = setup.profile ?? '不明';
   // self-review は、標準を取り込む前の記録に残る値。update-rules で auto-merge に揃う。
   // 止まる条件は規約の「auto-merge のとき」にある。その節が入るまでは、確認を挟まない進め方にしない
+  // キーの無い記録は、人がマージする動きで作られている。テンプレートの既定ではなく human として扱う（apply-setup.mjs も human で埋める）
   const recorded = setup.mergePolicy ?? 'human';
   const mergePolicy = recorded === 'self-review' && hasAutoMergeRule(workflowRulePath) ? 'auto-merge' : recorded;
   const standards = installed ?? '不明';

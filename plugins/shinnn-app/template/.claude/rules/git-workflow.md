@@ -28,7 +28,7 @@ Issue から PR までの手順です。**paths を持たないので常に読�
 
 作った worktree には、依存と git のフックが入っていません。そのため、最初に `npm install` を実行します。
 
-PR をマージするのは、既定では人です（`.shinnn/setup.json` の `mergePolicy` が `human`）。`/shinnn-app:setup` で `auto-merge` を選んだリポジトリでは、`/shinnn-app:pr` が、セルフレビューの収束と CI の通過を確かめます。確かめたら、PR を ready にしてマージします。ただし、CI が始まらないときは「CI が始まらないとき」に従います。どちらの場合も `main` へ直接コミットしません（「やらないこと」）。`auto-merge` での進め方は「`auto-merge` のとき」にあります。
+PR を誰がマージするかは、`.shinnn/setup.json` の `mergePolicy` で決まります（`/shinnn-app:setup` で選びます）。`setupCompletedAt` が `null` の記録（setup が済んでいない）は、`mergePolicy` の値にかかわらず `human` として扱います。`/shinnn-app:setup` を実行している間は、「`auto-merge` のとき」に従わず、setup の手順の質問と確認に従います。`human` のリポジトリでは、人が PR を ready にしてマージします。`auto-merge` のリポジトリでは、`/shinnn-app:pr` が、セルフレビューの収束と CI の通過を確かめます。確かめたら、PR を ready にしてマージします。ただし、CI が始まらないときは「CI が始まらないとき」に従います。どちらの場合も `main` へ直接コミットしません（「やらないこと」）。`auto-merge` での進め方は「`auto-merge` のとき」にあります。
 
 Dependabot（依存更新の bot）が作る PR に対応する Issue（`[依存] …`、ラベル `type:deps`）は、ワークフロー `dependabot-issue.yaml` が自動で作ります。ワークフローは、PR の本文に `Closes #n` を足します。PR が閉じると、Issue も閉じます。CI は、ワークフローが本文を書き換える前に走ります。そのため、CI の `Closes #n` の確認は、bot の PR では免除しています。人と Claude の PR は、Issue を先に作ってから出します。
 
@@ -191,7 +191,12 @@ setup が設定するブランチ保護は管理者にも当たるので、GitHu
 
 Issue を 1 つだけ止めて別の Issue に移るのは、1 つの人待ちで残りの作業まで止めないためです。
 
-確認を挟まずにマージしてよいのは、セルフレビューの収束と CI とブランチ保護が歯止めになるからです。
+確認を挟まずにマージしてよいのは、セルフレビューの収束と CI が歯止めになるからです。
+使えるプランでは、ブランチ保護も歯止めになります。
+
+setup が済んでいない記録を `human` として扱うのは、利用者が選ぶ前に、テンプレートの値（`auto-merge`）で確認なしのマージに進まないためです。
+
+setup の間に setup の手順に従うのは、マージの方針などを利用者に聞く質問を、「`auto-merge` のとき」の決まりで飛ばさないためです。
 
 同じ計画の中で足したテーブルと列を消すときに止めないのは、人が入れたデータがまだ無いからです。
 

@@ -57,6 +57,12 @@ const MERGE_POLICIES = ['human', 'auto-merge'];
 /** 標準を取り込む前の記録に残る値と、揃えた後の値。記録を揃えるときに置き換える。 */
 const RENAMED_MERGE_POLICIES = { 'self-review': 'auto-merge' };
 
+/**
+ * 記録に mergePolicy のキーが無いときに入れる値。キーの無い記録は、人がマージする動きで作られている。
+ * テンプレートの値（auto-merge）で埋めると、記録を揃えただけで確認なしのマージに変わるので、テンプレートの値を使わない。
+ */
+const MERGE_POLICY_WHEN_MISSING = 'human';
+
 /** プラグインに同梱のテンプレートの setup.json。リポジトリの記録をこの形に揃える。 */
 const TEMPLATE_SETUP_PATH = new URL('../template/.shinnn/setup.json', import.meta.url);
 
@@ -77,6 +83,7 @@ const REVIEWER_PLACEHOLDER = '@SHINNN_REVIEWER';
  * - リポジトリで決めた値（担当者・DB の用意方法・選択項目の値など）は残す
  * - 説明（`$` で始まるキー）と必須項目（`mandatory`）は、テンプレートのものにする
  * - 選択項目（`optional`）はテンプレートのキーだけにし、無いキーはテンプレートの既定値で足す
+ * - そのほかの無いキーもテンプレートの値で足す。ただし、`mergePolicy` は `MERGE_POLICY_WHEN_MISSING` で足す
  * - テンプレートにも `KEYS_ADDED_BY_SETUP` にも無いキーは消す
  *
  * @param current - リポジトリの記録
@@ -121,8 +128,9 @@ function alignWithTemplate(current, template) {
     if (Object.hasOwn(current, key)) {
       aligned[key] = current[key];
     } else {
-      aligned[key] = templateValue;
-      notes.push(`${key}: 追加（${templateValue}）`);
+      const value = key === 'mergePolicy' ? MERGE_POLICY_WHEN_MISSING : templateValue;
+      aligned[key] = value;
+      notes.push(`${key}: 追加（${value}）`);
     }
   }
 

@@ -75,6 +75,10 @@ test('setup.json: 選択項目は有効にすると何かが動くものだけ',
   assert.deepEqual(Object.keys(templateSetup().optional), OPTIONAL_KEYS);
 });
 
+test('setup.json: 選択項目はどれも既定で入れない（費用を使うものを、選ばずに入れない）', () => {
+  assert.deepEqual(templateSetup().optional, Object.fromEntries(OPTIONAL_KEYS.map((key) => [key, false])));
+});
+
 test('外した選択項目のキーを渡すと止まり、何も書き換えない', () => {
   for (const key of REMOVED_KEYS) {
     const repo = makeRepo();
@@ -230,11 +234,65 @@ test('--align-only: 記録の self-review を auto-merge に揃える', () => {
   assert.equal(JSON.parse(readFileSync(join(repo, SETUP), 'utf8')).mergePolicy, 'auto-merge');
 });
 
-test('--merge-policy: auto-merge を受け付け、self-review は止める', () => {
+test('--align-only: mergePolicy のキーが無い記録は、テンプレートの値ではなく human で埋める', () => {
+  const repo = makeRepo();
+  const { mergePolicy, ...withoutMergePolicy } = templateSetup();
+  assert.equal(mergePolicy, 'auto-merge');
+  writeFileSync(join(repo, SETUP), `${JSON.stringify(withoutMergePolicy, null, 2)}\n`);
+  writeStandardsVersion(repo, readFileSync(join(templateDir, '.claude', 'rules', '.standards-version'), 'utf8'));
+  const result = runApply(repo, ['--align-only']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /mergePolicy: 追加（human）/);
+  assert.equal(JSON.parse(readFileSync(join(repo, SETUP), 'utf8')).mergePolicy, 'human');
+});
+
+/** mergePolicy を human と明示した記録（テンプレートの既定と違う値を選んだリポジトリ） */
+function makeHumanSetup(repo) {
+  writeFileSync(join(repo, SETUP), `${JSON.stringify({ ...templateSetup(), mergePolicy: 'human' }, null, 2)}\n`);
+}
+
+test('--align-only: human と明示した記録は、テンプレートの既定（auto-merge）に変えない', () => {
+  const repo = makeRepo();
+  makeHumanSetup(repo);
+  writeStandardsVersion(repo, readFileSync(join(templateDir, '.claude', 'rules', '.standards-version'), 'utf8'));
+  const result = runApply(repo, ['--align-only']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /mergePolicy/);
+  assert.equal(JSON.parse(readFileSync(join(repo, SETUP), 'utf8')).mergePolicy, 'human');
+});
+
+test('--merge-policy を渡さない setup の実行は、human と明示した記録を変えない', () => {
+  const repo = makeRepo();
+  makeHumanSetup(repo);
+  const result = runApply(repo, ['--database', 'pglite']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /mergePolicy/);
+  assert.equal(JSON.parse(readFileSync(join(repo, SETUP), 'utf8')).mergePolicy, 'human');
+});
+
+test('--merge-policy: キーが無い記録でも、渡した値を入れる', () => {
+  const repo = makeRepo();
+  const withoutMergePolicy = templateSetup();
+  delete withoutMergePolicy.mergePolicy;
+  writeFileSync(join(repo, SETUP), `${JSON.stringify(withoutMergePolicy, null, 2)}\n`);
+  const result = runApply(repo, ['--merge-policy', 'auto-merge']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /mergePolicy: 追加（human）/);
+  assert.match(result.stdout, /mergePolicy: human → auto-merge/);
+  assert.equal(JSON.parse(readFileSync(join(repo, SETUP), 'utf8')).mergePolicy, 'auto-merge');
+});
+
+test('--merge-policy: テンプレートの既定と違う値（human）を受け付け、self-review は止める', () => {
   const accepted = makeRepo();
-  const ok = runApply(accepted, ['--merge-policy', 'auto-merge']);
+  assert.equal(templateSetup().mergePolicy, 'auto-merge');
+  const ok = runApply(accepted, ['--merge-policy', 'human']);
   assert.equal(ok.status, 0, ok.stderr);
-  assert.equal(JSON.parse(readFileSync(join(accepted, SETUP), 'utf8')).mergePolicy, 'auto-merge');
+  assert.match(ok.stdout, /mergePolicy: auto-merge → human/);
+  assert.equal(JSON.parse(readFileSync(join(accepted, SETUP), 'utf8')).mergePolicy, 'human');
 
   const refused = makeRepo();
   const before = readFileSync(join(refused, SETUP), 'utf8');

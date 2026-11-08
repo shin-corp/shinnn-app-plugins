@@ -4,7 +4,7 @@
   "setupCompletedAt": null,
   "profile": "full",
   "reviewer": "@SHINNN_REVIEWER",
-  "mergePolicy": "human",
+  "mergePolicy": "auto-merge",
   "$mergePolicyComment": "human: 人が ready にしてマージする / auto-merge: Claude が確認を挟まずに作りきり、/shinnn-app:pr がセルフレビューと CI の通過後にマージする（CI が始まらないときは手元の確かめで代える）。/shinnn-app:setup の --merge-policy で変えます。",
   "database": {
     "mode": "undecided",

@@ -309,6 +309,25 @@ test('マージ方針: human では任せている旨を出さない', () => {
   assert.ok(!result.stdout.includes('確認を挟まずに作りきります'), result.stdout);
 });
 
+test('マージ方針: キーが無い記録は、テンプレートの既定ではなく human として出し、作りきる案内を出さない', () => {
+  // JSON に書くときに undefined のキーは落ちるので、mergePolicy の無い記録になる
+  const result = runHook(createRepo({ mergePolicy: undefined }));
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(section(result.stdout, 'セットアップ'), /マージ方針: human/);
+  assert.ok(!result.stdout.includes('確認を挟まずに作りきります'), result.stdout);
+});
+
+test('マージ方針: setup が済んでいない記録は、auto-merge でも作りきる案内を出さず、setup を案内する', () => {
+  const result = runHook(createRepo({ setupCompletedAt: null, mergePolicy: 'auto-merge' }));
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /^## セットアップが未完了$/m);
+  assert.match(result.stdout, /最初に `\/shinnn-app:setup` を実行して/);
+  assert.ok(!result.stdout.includes('確認を挟まずに作りきります'), result.stdout);
+  assert.ok(!result.stdout.includes('マージ方針: auto-merge'), result.stdout);
+});
+
 test('マージ方針: auto-merge では、確認を挟まずに作りきることと規約の節を出す', () => {
   const result = runHook(createRepo({ mergePolicy: 'auto-merge' }));
 

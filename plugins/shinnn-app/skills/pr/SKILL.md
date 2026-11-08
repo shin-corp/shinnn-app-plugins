@@ -7,12 +7,12 @@ description: 変更をコミットし、push の前に /shinnn-app:code-review �
 
 push の前にセルフレビューで指摘を Critical / Warning = 0 にしてから、`main` 向けのドラフト PR を作る（直しきれなければ、PR を作って人に渡す。2 の終わり）。
 PR に付いた指摘も、Critical / Warning = 0 になるまで回す。
-その先は `.shinnn/setup.json` の `mergePolicy` で決まる（キーが無ければ `human`。`self-review` の扱いは `feature` の冒頭と同じ）。
+その先は `.shinnn/setup.json` の `mergePolicy` で決まる（キーが無いとき、または `setupCompletedAt` が `null` のときは `human` として扱う。`self-review` の扱いは `feature` の冒頭と同じ）。
 `auto-merge` では、規約 `git-workflow.md` の「`auto-merge` のとき」に従い、利用者に聞かずに進める。
 
 | `mergePolicy` | 収束したあと |
 |:--|:--|
-| `human`（既定） | **ready にするのもマージするのも人。** Claude はドラフトのまま渡し、収束したこと（2 で直しきれなかったときは、残った指摘）を報告する |
+| `human` | **ready にするのもマージするのも人。** Claude はドラフトのまま渡し、収束したこと（2 で直しきれなかったときは、残った指摘）を報告する |
 | `auto-merge` | Claude が ready にし、CI の通過を待ってマージする（「7. マージする」）。CI が始まらないときは、CI の通過を「8. CI が始まらないとき」の手元の確かめで代える |
 
 「9. CI で確かめていないマージを確かめる」だけを行うときは、0〜8 を飛ばす。
