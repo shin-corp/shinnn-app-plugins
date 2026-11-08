@@ -4,8 +4,8 @@
  * 一時フォルダに送り先（bare リポジトリ）と手元のリポジトリを作り、husky と同じ呼び方（`sh -e <フック>`）で
  * pre-push を動かして、本物の git push の結果を確かめる。
  * - GitHub にまだ main が無いとき（リポジトリを作った直後の最初の push）は通す
- * - 送り先の main にテンプレートがまだ無いとき（作成画面で付けた README.md などだけ）は、テンプレートを取り込む push だけを通す
- * - テンプレートの入った main への push（更新・別名での送り込み・削除）と、送り先のコミットが手元に無い push は断る
+ * - 送り先の main のファイルが作成画面で付けられる README.md・LICENSE・.gitignore だけのときは、テンプレートを取り込む push だけを通す
+ * - ほかのファイルがある main への push（更新・別名での送り込み・削除）と、送り先のコミットが手元に無い push は断る
  * - 作業ブランチへの push は通す
  * あわせて .claude/settings.json で、push が確認なしで、フックを飛ばす指定が deny されていることを確かめる。
  */
@@ -47,7 +47,7 @@ function git(cwd, ...args) {
 /** テンプレートから作ったリポジトリには必ず入っているファイル */
 const MARKER = '.claude/rules/.standards-version';
 
-/** テンプレートの目印を足したコミットを作る */
+/** テンプレートを取り込むコミットのつもりで、テンプレートの目印を足したコミットを作る */
 function commitMarker(local) {
   mkdirSync(join(local, '.claude', 'rules'), { recursive: true });
   writeFileSync(join(local, MARKER), '0.0.0\n');
@@ -55,11 +55,19 @@ function commitMarker(local) {
   assert.equal(git(local, 'commit', '-m', 'template').status, 0);
 }
 
+/** GitHub の作成画面で README.md と LICENSE を付けたリポジトリと同じく、その 2 つだけのコミットを作る */
+function commitRepositoryFiles(local) {
+  writeFileSync(join(local, 'README.md'), '# app\n');
+  writeFileSync(join(local, 'LICENSE'), 'MIT License\n');
+  assert.equal(git(local, 'add', '.').status, 0);
+  assert.equal(git(local, 'commit', '-m', 'Initial commit').status, 0);
+}
+
 /**
  * 送り先と手元のリポジトリを作り、手元に husky と同じ呼び方でフックを入れる。最初のコミットは main にある。
- * 最初のコミットにはテンプレートの目印を入れる（`withMarker: false` なら入れない）
+ * `repositoryFilesOnly` なら、最初のコミットを作成画面のファイルだけにする
  */
-function setupRepos({ withMarker = true } = {}) {
+function setupRepos({ repositoryFilesOnly = false } = {}) {
   const root = mkdtempSync(join(workRoot, 'case-'));
   const remote = join(root, 'remote.git');
   const local = join(root, 'local');
@@ -70,8 +78,8 @@ function setupRepos({ withMarker = true } = {}) {
   writeFileSync(join(hooksDir, 'pre-push'), `#!/bin/sh\nsh -e "${prePush}" "$@"\n`, { mode: 0o755 });
   assert.equal(git(local, 'config', 'core.hooksPath', hooksDir).status, 0);
   assert.equal(git(local, 'remote', 'add', 'origin', remote).status, 0);
-  if (withMarker) {
-    commitMarker(local);
+  if (repositoryFilesOnly) {
+    commitRepositoryFiles(local);
   } else {
     commit(local, 'first');
   }
@@ -98,9 +106,8 @@ test('送り先にまだ main が無いときは、main への最初の push を
   assert.notEqual(remoteHead(remote, 'refs/heads/main'), null);
 });
 
-test('送り先の main にテンプレートがまだ無いときは、テンプレートを取り込む push を通し、取り込んだ後は断る', () => {
-  // GitHub の作成画面で README.md などを付けたリポジトリと同じく、送り先の main にはテンプレートの無いコミットがある
-  const { local, remote } = setupRepos({ withMarker: false });
+test('送り先の main が作成画面のファイルだけのときは、テンプレートを取り込む push を通し、取り込んだ後は断る', () => {
+  const { local, remote } = setupRepos({ repositoryFilesOnly: true });
   assert.equal(git(local, 'push', '-u', 'origin', 'main').status, 0);
 
   commitMarker(local);
@@ -115,8 +122,8 @@ test('送り先の main にテンプレートがまだ無いときは、テン�
   assert.equal(remoteHead(remote, 'refs/heads/main'), imported);
 });
 
-test('送り先の main にテンプレートが無くても、テンプレートを含まない push は断る', () => {
-  const { local, remote } = setupRepos({ withMarker: false });
+test('送り先の main が作成画面のファイルだけでも、テンプレートを含まない push は断る', () => {
+  const { local, remote } = setupRepos({ repositoryFilesOnly: true });
   assert.equal(git(local, 'push', '-u', 'origin', 'main').status, 0);
   const mainBefore = remoteHead(remote, 'refs/heads/main');
 
@@ -126,12 +133,26 @@ test('送り先の main にテンプレートが無くても、テンプレー�
   assert.equal(remoteHead(remote, 'refs/heads/main'), mainBefore);
 });
 
+test('送り先の main に作成画面のほかのファイルがあれば、テンプレートの目印が無くても、取り込む push を断る', () => {
+  // 送り先の main には first.txt があり、目印は無い。送るコミットには目印がある
+  const { local, remote } = setupRepos();
+  assert.equal(git(local, 'push', '-u', 'origin', 'main').status, 0);
+  const mainBefore = remoteHead(remote, 'refs/heads/main');
+
+  commitMarker(local);
+  const result = git(local, 'push', 'origin', 'main');
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /main には直接 push できません/);
+  assert.equal(remoteHead(remote, 'refs/heads/main'), mainBefore);
+});
+
 test('送り先の main のコミットが手元に無いときは、中身を確かめられないので断る', () => {
   const { root, local, remote } = setupRepos();
-  // 別の手元から、テンプレートの無いコミットを送り先の main に置く（こちらの手元には取ってこない）
+  commitMarker(local);
+  // 別の手元から、作成画面のファイルだけのコミットを送り先の main に置く（こちらの手元には取ってこない）
   const other = join(root, 'other');
   assert.equal(git(root, 'init', '--initial-branch=main', other).status, 0);
-  commit(other, 'readme');
+  commitRepositoryFiles(other);
   assert.equal(git(other, 'push', remote, 'main').status, 0);
   const mainBefore = remoteHead(remote, 'refs/heads/main');
 

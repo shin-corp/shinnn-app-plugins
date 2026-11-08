@@ -254,13 +254,10 @@ test('手順 0: テンプレートを取り込むコミットと push は、規�
   const doNot = rule.slice(rule.indexOf('## やらないこと'));
 
   assert.match(templateStep, /規約 `git-workflow\.md` の「やらないこと」のただし書きに当たる/);
+  // 許すのは、決定 #100 の「空とみなす」と同じ 2 つの場合だけ
   assert.match(
     doNot,
-    /^- ただし、GitHub の `main` にテンプレートがまだ無いときは、テンプレートを取り込むコミットを `main` に作って push してよい/m,
-  );
-  assert.match(
-    doNot,
-    /`main` が無いときと、GitHub の作成画面で付けた `README\.md`・`LICENSE`・`\.gitignore` だけがあるとき/,
+    /^- ただし、GitHub の `main` が無いときと、`main` のファイルが GitHub の作成画面で付けた `README\.md`・`LICENSE`・`\.gitignore` だけのときは、\n {2}テンプレートを取り込むコミットを `main` に作って push してよい/m,
   );
 });
 

@@ -39,26 +39,11 @@ function git(cwd, ...args) {
   return { status: result.status, stderr: result.stderr };
 }
 
-/** テンプレートから作ったリポジトリには必ず入っているファイル */
-const MARKER = '.claude/rules/.standards-version';
-
-/** テンプレートの目印を作業ツリーに書く */
-function writeMarker(local) {
-  mkdirSync(join(local, '.claude', 'rules'), { recursive: true });
-  writeFileSync(join(local, MARKER), '0.0.0\n');
-}
-
-/**
- * 手元のリポジトリを作り、husky と同じ呼び方でフックを入れる。コミットはまだ無い。
- * 作業ツリーにはテンプレートの目印を置く（`withMarker: false` なら置かない）
- */
-function setupEmptyRepo({ withMarker = true } = {}) {
+/** 手元のリポジトリを作り、husky と同じ呼び方でフックを入れる。コミットはまだ無い */
+function setupEmptyRepo() {
   const root = mkdtempSync(join(workRoot, 'case-'));
   const local = join(root, 'local');
   assert.equal(git(root, 'init', '--initial-branch=main', local).status, 0);
-  if (withMarker) {
-    writeMarker(local);
-  }
   mkdirSync(join(local, 'scripts'));
   copyFileSync(
     join(templateDir, 'scripts', 'check-commit-message.mjs'),
@@ -98,13 +83,22 @@ test('リポジトリの最初のコミットは、接頭辞が無くても通�
   assert.equal(result.status, 0, result.stderr);
 });
 
-test('GitHub の作成画面で付けたファイルだけのコミットの上では、テンプレートを取り込むコミットを接頭辞が無くても通す', () => {
-  const local = setupEmptyRepo({ withMarker: false });
-  writeFileSync(join(local, 'README.md'), '# app\n');
-  assert.equal(git(local, 'add', 'README.md').status, 0);
-  assert.equal(git(local, 'commit', '-m', 'Initial commit').status, 0);
+/** GitHub の作成画面で付けられる 3 つ */
+const REPOSITORY_FILES = { 'README.md': '# app\n', LICENSE: 'MIT License\n', '.gitignore': '.env\n' };
 
-  writeMarker(local);
+/** 渡したファイルだけを書いて、最初のコミットにする（作業ツリーのほかのファイルは入れない） */
+function commitOnly(local, files, message) {
+  for (const [path, content] of Object.entries(files)) {
+    writeFileSync(join(local, path), content);
+  }
+  assert.equal(git(local, 'add', '--', ...Object.keys(files)).status, 0);
+  assert.equal(git(local, 'commit', '-m', message).status, 0);
+}
+
+test('GitHub の作成画面で付けたファイルだけのコミットの上では、テンプレートを取り込むコミットを接頭辞が無くても通す', () => {
+  const local = setupEmptyRepo();
+  commitOnly(local, REPOSITORY_FILES, 'Initial commit');
+
   assert.equal(git(local, 'add', '.').status, 0);
   const result = git(local, 'commit', '-m', 'テンプレートの取り込み');
   assert.equal(result.status, 0, result.stderr);
@@ -113,6 +107,28 @@ test('GitHub の作成画面で付けたファイルだけのコミットの上�
   const after = commitWith(local, 'テンプレートの更新');
   assert.notEqual(after.status, 0);
   assert.match(after.stderr, /1 行目が `\[<対象>\]<要約>` の形ではありません/);
+});
+
+test('作成画面のファイルのほかにもファイルがあるコミットの上では、テンプレートの目印が無くても見る', () => {
+  const local = setupEmptyRepo();
+  commitOnly(local, { 'README.md': '# app\n', 'package.json': '{}\n' }, 'Initial commit');
+
+  const result = commitWith(local, 'テンプレートの取り込み');
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /1 行目が `\[<対象>\]<要約>` の形ではありません/);
+});
+
+test('テンプレートの目印を消したリポジトリでも、見るのをやめない', () => {
+  const local = setupRepo();
+  mkdirSync(join(local, '.claude', 'rules'), { recursive: true });
+  writeFileSync(join(local, '.claude', 'rules', '.standards-version'), '0.0.0\n');
+  assert.equal(commitWith(local, '[docs]標準の版の追加').status, 0);
+  assert.equal(git(local, 'rm', '-q', '.claude/rules/.standards-version').status, 0);
+  assert.equal(git(local, 'commit', '-m', '[docs]標準の版の削除').status, 0);
+
+  const result = commitWith(local, '在庫の一覧の追加');
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /1 行目が `\[<対象>\]<要約>` の形ではありません/);
 });
 
 for (const message of [

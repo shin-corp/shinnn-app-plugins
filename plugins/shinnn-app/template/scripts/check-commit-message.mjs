@@ -8,8 +8,8 @@
 //   文字列だけで判定できる範囲を見る（規約 .claude/rules/git-workflow.md の「コミットメッセージ」）。
 //   見るのは、1 行目の形と <対象>、1 行目の長さ、要約の語尾、AI の帰属行、Test plan の節。
 //   AI のモデルは呼ばない。呼ぶと、オフラインや未ログインの環境でコミットできなくなる。
-//   テンプレートを取り込むまでのコミット（直前のコミットにテンプレートの目印が無いとき。リポジトリの最初のコミットを含む）と、
-//   git merge・git revert が作るメッセージは見ない。
+//   空のリポジトリでのコミット（まだコミットが無いときと、直前のコミットのファイルが GitHub の作成画面で付けられる
+//   README.md・LICENSE・.gitignore だけのとき）と、git merge・git revert が作るメッセージは見ない。
 
 import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -44,8 +44,8 @@ const SCISSORS = /^# -+ >8 -+$/m;
 /** 定型の節。`-F` で渡した本文の `#` は消えないので、見出しの形も見る */
 const TEST_PLAN = /^#*\s*test plan\s*:?\s*$/im;
 
-/** テンプレートから作ったリポジトリには必ず入っているファイル。直前のコミットにこれが無ければ、テンプレートの取り込みの前 */
-const TEMPLATE_MARKER = '.claude/rules/.standards-version';
+/** GitHub の作成画面で付けられるファイル。直前のコミットのファイルがこれだけなら、空のリポジトリとみなす */
+const REPOSITORY_FILES = new Set(['README.md', 'LICENSE', '.gitignore']);
 
 /** 最上位のフォルダの名前 */
 function listTopLevelFolders() {
@@ -61,15 +61,34 @@ function listTopLevelFolders() {
 }
 
 /**
- * テンプレートを取り込む前か。まだコミットが 1 つも無いときと、直前のコミットに目印が無いとき
- * （GitHub の作成画面で付けた README.md などだけのとき）。取り込むコミットには <対象> に当たるパッケージが無い。
+ * 空のリポジトリか。まだコミットが 1 つも無いときと、直前のコミットのファイルが作成画面の 3 つだけのとき。
+ * このときのコミットはテンプレートを取り込むもので、<対象> に当たるパッケージが無い。
+ * テンプレートの目印では見ない。目印が消えたリポジトリで、検査が止まり続けないようにするため。
  */
-function isBeforeTemplate() {
-  const result = spawnSync('git', ['rev-parse', '--verify', '--quiet', `HEAD:${TEMPLATE_MARKER}`], {
+function isEmptyRepository() {
+  const head = spawnSync('git', ['rev-parse', '--verify', '--quiet', 'HEAD'], { cwd: repositoryRoot });
+
+  if (head.status !== 0) {
+    return true;
+  }
+
+  const tree = spawnSync('git', ['ls-tree', '-r', '--name-only', '-z', 'HEAD'], {
     cwd: repositoryRoot,
+    encoding: 'utf8',
   });
 
-  return result.status !== 0;
+  // 読めなければ、空とみなさずに検査する
+  if (tree.status !== 0) {
+    return false;
+  }
+
+  for (const path of tree.stdout.split('\0')) {
+    if (path !== '' && !REPOSITORY_FILES.has(path)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /** 1 行目の問題を「何が / どう直す」で返す。問題が無ければ空。 */
@@ -139,7 +158,7 @@ const message = readFileSync(messagePath, 'utf8').split(SCISSORS)[0];
 const subject = message.split('\n').find((line) => line.trim() !== '' && !line.startsWith('#')) ?? '';
 
 // 空のメッセージは、git が自分で断る
-if (subject === '' || GENERATED_SUBJECT.test(subject) || isBeforeTemplate()) {
+if (subject === '' || GENERATED_SUBJECT.test(subject) || isEmptyRepository()) {
   process.exit(0);
 }
 
