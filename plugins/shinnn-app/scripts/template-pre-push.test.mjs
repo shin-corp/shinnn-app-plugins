@@ -138,6 +138,8 @@ test('送り先の main のコミットが手元に無いときは、中身を�
   const result = git(local, 'push', 'origin', 'main');
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /main には直接 push できません/);
+  // PR にできない別の履歴のこともあるので、取ってきてから setup の手順に従う道も示す
+  assert.match(result.stderr, /git fetch origin main の後に \/shinnn-app:setup の手順に従ってください/);
   assert.equal(remoteHead(remote, 'refs/heads/main'), mainBefore);
 });
 
@@ -149,6 +151,8 @@ test('既にある main への push は断り、送り先の main は変わら�
   const result = git(local, 'push', 'origin', 'main');
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /main には直接 push できません/);
+  // 送り先のコミットは手元にあるので、取ってくる案内は出さない
+  assert.doesNotMatch(result.stderr, /git fetch origin main/);
   assert.equal(remoteHead(remote, 'refs/heads/main'), mainBefore);
 });
 

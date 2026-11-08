@@ -6,7 +6,7 @@
 ## サーバー（server）
 
 `server/.env` に置きます。雛形は `server/.env.example` です。
-DB を PGlite にしたときは、`/shinnn-app:setup` が雛形を写して `server/.env` を作ります（`DB_DRIVER=pglite`。`JWT_SECRET` はランダムな値）。
+DB を PGlite（API サーバーの中で動く PostgreSQL）にしたときは、`/shinnn-app:setup` が雛形を写して `server/.env` を作ります（`DB_DRIVER=pglite`。`JWT_SECRET` はランダムな値）。
 
 | 名前           | 用途                                                             | 置き場所                      | 必須                                |
 | :------------- | :--------------------------------------------------------------- | :---------------------------- | :---------------------------------- |

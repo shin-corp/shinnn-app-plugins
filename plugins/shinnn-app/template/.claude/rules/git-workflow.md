@@ -78,7 +78,8 @@ Dependabot（依存更新の bot）が作る PR に対応する Issue（`[依存
 - コミットが lint-staged の `Failed to back up original state!` で止まったときに、lint-staged が案内する `git apply --index <git-hash>` で戻さない
   （戻し方は `/shinnn-app:pr` の手順 2）
 - `main` へ直接コミットも push もしない。`main` へは、作業ブランチからの PR でだけ入れる（検査: git のフック。
-  GitHub に既にある `main` への push だけを止める。テンプレートの無い `main` に、テンプレートを取り込むコミットを送る push は通す）
+  GitHub に既にある `main` への push だけを止める。テンプレートの無い `main` に、テンプレートを取り込むコミットを送る push は通す。
+  通すのは、送り先の `main` のコミットを手元に取ってあるときだけ。送り先のファイルが作成画面の 3 つだけかは見ない）
 - ただし、GitHub の `main` にテンプレートがまだ無いときは、テンプレートを取り込むコミットを `main` に作って push してよい（`/shinnn-app:setup` の手順 0）。
   `main` が無いときと、GitHub の作成画面で付けた `README.md`・`LICENSE`・`.gitignore` だけがあるときが、これに当たる
 - `gh pr merge` に `--admin` を付けない（検査: 権限の設定）
@@ -94,7 +95,7 @@ Dependabot（依存更新の bot）が作る PR に対応する Issue（`[依存
 `.shinnn/setup.json` の `mergePolicy` が `auto-merge` のリポジトリでは、利用者は、Issue の作成から PR のマージまでを Claude に任せています。
 Claude が作りきった後に、利用者が動く画面を見て調整します。
 
-`/shinnn-app:setup` の手順 1〜6 の質問と確認には、この節を当てません。setup の手順に従います。
+`/shinnn-app:setup` の実行の間（「進め方」と手順 0〜6）の質問と確認には、この節を当てません。setup の手順に従います。
 setup が手順 6 の最後に呼んだ `/shinnn-app:feature` からは、この節に従います。
 
 - 計画・Issue の作成・コミット・push・PR の作成・マージの前に、進めてよいかを利用者に聞かない
@@ -179,7 +180,8 @@ lint-staged が案内する `git apply --index <git-hash>` で戻さないのは
 中身の良し悪しは、コードを読まないと分かりません。代わりに、困ることを仕組みで止めます。
 
 GitHub に `main` がまだ無いときは、PR の送り先がありません。そのため、テンプレートを取り込むコミットと push だけは `main` に直接行います。
-GitHub の作成画面で付けた `README.md` などだけの `main` も、同じに扱います。テンプレートが入る前の `main` には、PR を確かめる CI がありません。
+GitHub の作成画面で付けた `README.md` などだけの `main` に直接 push してよいのは、守る中身がまだ無いためです。
+作成画面の `README.md` には、リポジトリの名前しか書かれていません。
 テンプレートを取り込むまでのコミットのメッセージをフックが見ないのは、取り込むコミットには `<対象>` に当たるパッケージが無いためです。
 
 `main` への push を確実に止めるのは、GitHub のブランチ保護です。使えるプランなら、setup が設定します（推奨）。
@@ -204,7 +206,7 @@ Issue を 1 つだけ止めて別の Issue に移るのは、1 つの人待ち�
 
 setup が済んでいない記録を `human` として扱うのは、利用者が選ぶ前に、テンプレートの値（`auto-merge`）で確認なしのマージに進まないためです。
 
-setup の手順 1〜6 でこの節を当てないのは、マージの方針などを利用者に聞く質問を、「`auto-merge` のとき」の決まりで飛ばさないためです。
+setup の実行の間にこの節を当てないのは、マージの方針などを利用者に聞く質問を、「`auto-merge` のとき」の決まりで飛ばさないためです。
 
 setup が呼んだ `feature` からこの節に従うのは、setup の後の実装を、確認を挟まずに作りきるためです。
 

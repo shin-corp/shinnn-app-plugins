@@ -19,6 +19,9 @@ while read -r local_ref local_oid remote_ref remote_oid; do
             ;;
         esac
         echo "main には直接 push できません。作業ブランチ（feature/<Issue 番号>-<slug>。不具合の修正は fix/）を切って PR にしてください。" >&2
+        if ! git cat-file -e "$remote_oid^{commit}" 2>/dev/null; then
+          echo "送り先の main のコミットが手元に無いので、中身を確かめられませんでした。テンプレートをまだ取り込んでいないリポジトリなら、git fetch origin main の後に /shinnn-app:setup の手順に従ってください。" >&2
+        fi
         exit 1
         ;;
     esac

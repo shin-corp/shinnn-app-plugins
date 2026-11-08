@@ -24,11 +24,16 @@ description: 開発用のサーバー群（PostgreSQL・API サーバー・画�
      起動していなければ人に伝える
    - `pglite`: 別に起動するものは無い。API サーバーの中で動く（`server/.env` の `DB_DRIVER=pglite`）。
      設定の仕方は `docs/env.md` の「ローカルの PostgreSQL」節（setup が書く）。
-     `server/.env` が無ければ（作ったばかりの worktree など）、setup と同じスクリプトで作る。既にあれば、スクリプトは上書きしない
+     API サーバーを起動する前に、毎回次のコマンドを実行する。`server/.env` が無ければ（作ったばかりの worktree など）、setup と同じ形で作る。
+     既にあれば上書きせず、PGlite で動く形になっているかだけを示す
 
      ```
      node ${CLAUDE_PLUGIN_ROOT}/scripts/setup-env.mjs --server-env --database pglite
      ```
+
+     「なっていません」か「値が空の項目」が出たら、API サーバーを起動する前に、出た項目を利用者に伝えて直してもらう（`.env` は Claude が読み書きしない）。
+     「作りました」と出たときは、`JWT_SECRET` が新しい値になる。前に発行した開発用の通行証は通らないので、画面を開く前に `npm run token -w server` で発行し直してもらう
+     （入れ方は `README.md` の「画面から API を呼ぶための通行証（開発中）」）
 
 2. **マイグレーションの適用**: `npm run db:migrate -w server`。`pglite` のときは実行しない（API サーバーが起動のたびに適用する。
    API サーバーが開いている間は、同じ DB を別のプロセスから開けない）

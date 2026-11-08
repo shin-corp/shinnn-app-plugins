@@ -246,7 +246,7 @@ test('手順 0: 手順 1 に進まないのは、展開したセッションだ�
   assert.match(templateStep, /その場合は起動し直しを伝えず、「進め方」の 3 に進む/);
 });
 
-test('手順 0: 最初のコミットと push は、規約の「やらないこと」のただし書きを名指しする', () => {
+test('手順 0: テンプレートを取り込むコミットと push は、規約の「やらないこと」のただし書きを名指しする', () => {
   const rule = readFileSync(
     fileURLToPath(new URL('../template/.claude/rules/git-workflow.md', import.meta.url)),
     'utf8',
@@ -684,7 +684,12 @@ test('進め方: args に答えがある項目は聞かず、「既定のまま�
   assert.match(progress, /^- 実行の前の確認（`--dry-run` の結果を見せて取る確認）は取らない$/m);
   assert.match(
     progress,
-    /^- シン株式会社の担当者のアカウントは、`args` に無ければ質問せずに、決まらなかったとき（手順 4）の扱いにする$/m,
+    /^- シン株式会社の担当者のアカウントは、`args` に無く、記録の `reviewer` が `@SHINNN_REVIEWER` のとき（初回など、既定が無いとき）は、質問せずに決まらなかったとき（手順 4）の扱いにする$/m,
+  );
+  // 再実行で記録に担当者があれば、それが既定になる（手順 4）。既定のある項目として扱い、未定に戻さない
+  assert.match(
+    skill,
+    /`\.shinnn\/setup\.json` の `reviewer` が `@SHINNN_REVIEWER` 以外なら、それを既定にして「変更しますか」と聞く/,
   );
   assert.match(progress, /^- そのほかの既定の無い項目は、質問する$/m);
 });
@@ -714,8 +719,11 @@ test('手順 6: 作り直しは、元のアプリのフォルダが作業フォ�
   );
 });
 
-test('手順 0 の 5: 起動し直すときは、同じ --add-dir と、setup の後ろに書いた同じ文を付ける', () => {
-  assert.match(templateStep, /このセッションに `--add-dir` で足したフォルダがあれば、同じ `--add-dir` を付ける/);
+test('手順 0 の 5: 起動し直すときは、作業フォルダの外のフォルダを --add-dir で付け、setup の後ろに書いた同じ文を付ける', () => {
+  assert.match(
+    templateStep,
+    /このセッションの作業フォルダの一覧に、このフォルダの外のフォルダがあれば、そのフォルダを `--add-dir` で付ける/,
+  );
   assert.match(templateStep, /今回 `\/shinnn-app:setup` の後ろに文を書いていれば、同じ文を付ける/);
 });
 
@@ -725,6 +733,13 @@ test('手順 0 の 1: GitHub の作成画面のファイルはあってよく、
     /GitHub でリポジトリを作る画面で付けられる `README\.md`・`LICENSE`・`\.gitignore` も、あってよい/,
   );
   assert.match(templateStep, /`README\.md` と `\.gitignore` はテンプレートのものに置き換わり、`LICENSE` は残る/);
+});
+
+test('手順 0 の 4: gh repo create で作ったほかのリポジトリに送る前に、公開範囲を見て公開なら聞く', () => {
+  assert.match(templateStep, /最初の `git push -u origin main` の前に公開範囲を見る/);
+  assert.match(templateStep, /^ *gh repo view --json visibility --jq \.visibility$/m);
+  assert.match(templateStep, /`args` に「質問せずに」とあっても聞く/);
+  assert.match(pushFailure, /手順 0 の 4 のとおり公開範囲を見てから、`git push -u origin main` を実行する/);
 });
 
 test('手順 5 の 5: pglite なら --server-env も付けて server/.env を作る', () => {

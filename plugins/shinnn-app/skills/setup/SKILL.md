@@ -62,7 +62,7 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
 
 - 既定のある項目は、質問せずに既定を採る
 - 実行の前の確認（`--dry-run` の結果を見せて取る確認）は取らない
-- シン株式会社の担当者のアカウントは、`args` に無ければ質問せずに、決まらなかったとき（手順 4）の扱いにする
+- シン株式会社の担当者のアカウントは、`args` に無く、記録の `reviewer` が `@SHINNN_REVIEWER` のとき（初回など、既定が無いとき）は、質問せずに決まらなかったとき（手順 4）の扱いにする
 - そのほかの既定の無い項目は、質問する
 
 ### 0. テンプレートの展開
@@ -70,7 +70,7 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
 `CLAUDE.md` と `.claude/rules/` はセッションの開始時に読み込まれるので、展開した直後のセッションには規約が入っていない。
 権限の設定（`.claude/settings.json`）も含めて確実に反映させるため、手順 0 の 2 で展開したセッションでは手順 1 に進まない。
 `node` と `git` が要る。無ければ導入を案内してから始める。
-3 と 4 は、テンプレートを `main` の最初のコミットにして GitHub に送る手順。規約 `git-workflow.md` の「やらないこと」のただし書きに当たる。
+3 と 4（と、「失敗したとき」の `git push -u origin main` の項目の重ね直し）は、テンプレートを取り込むコミットを `main` に作って GitHub に送る手順。規約 `git-workflow.md` の「やらないこと」のただし書きに当たる。
 
 1. **フォルダが空であることを確かめる。** `claude plugin install` が作った `.claude/` と `.git/` はあってよい。
    GitHub でリポジトリを作る画面で付けられる `README.md`・`LICENSE`・`.gitignore` も、あってよい（そのリポジトリを clone したフォルダなど）。
@@ -80,10 +80,11 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
      （規約と確認のスクリプトと CI は、テンプレートの構成を前提にしている）
    - 元のアプリを作り直すときは、空のフォルダで新しいアプリを作る。元のアプリのフォルダはそのまま残し、新しいフォルダにコピーしない。
      新しいフォルダで `claude --add-dir <元のアプリのフォルダ>` で起動してから setup を実行する。
-     最後の問い（手順 6）に `<元のアプリのフォルダ>にあるアプリを作り直したい` と答えると、起動し直さずに作り直しが始まる
+     最後の問い（手順 6）に `<元のアプリのフォルダ>にあるアプリを作り直したい` と答えると、起動し直さずに作り直しへ進む
+     （setup の PR がマージされていれば、そのまま始まる。マージされていなければ、マージした後に `feature` を打つ）
    - このフォルダでプラグインを入れたときに、`claude plugin install --scope project` が `.claude/settings.json` を書いている。
      元のアプリに要らなければ、利用者に git で元に戻すか消してもらう
-2. **展開する内容を見せてから展開する。** まず `--dry-run` で版とファイル数を示して確認を取り、`--dry-run` を外して実行する
+2. **展開する内容を見せてから展開する。** まず `--dry-run` で版とファイル数（置き換えるファイルと残すファイルも）を示して確認を取り、`--dry-run` を外して実行する
 
    ```
    node ${CLAUDE_PLUGIN_ROOT}/scripts/fetch-template.mjs --dry-run
@@ -104,7 +105,7 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
    | 引数 | 内容 |
    |:--|:--|
    | `--dest <パス>` | 展開先。既定はプロジェクトのフォルダ |
-   | `--dry-run` | 版とファイル数を示すだけで、書き込まない |
+   | `--dry-run` | 版・ファイル数・置き換えるファイル・残すファイルを示すだけで、書き込まない |
 
 3. **git に記録する。** `.git` が無ければ `git init -b main`。今のブランチが `main` でなければ `git branch -M main`。続けて `git add -A` →
    `git commit -m "テンプレートの取り込み"`。
@@ -118,14 +119,26 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
    gh repo create <置き場所>/<名前> --private --source . --remote origin --push
    ```
 
-   作れない場合（組織でリポジトリを作る権限が無い、`gh` が無い）は、GitHub の画面でリポジトリを作ってもらう
+   作れない場合（組織でリポジトリを作る権限が無い、`gh` が無い）は、GitHub の画面でリポジトリを非公開（Private）で作ってもらう
    （`README.md`・`LICENSE`・`.gitignore` は付けてもよい）。続けて、`git remote add origin <URL>` と `git push -u origin main` を実行する。
    `origin` があれば、リポジトリを作らずに `git push -u origin main` だけを実行する。
    clone したフォルダでは、手元の `main` が `origin` の `main` の続きになっているので、そのまま送れる。
-   `git push -u origin main` が断られたら、「失敗したとき」の `git push -u origin main` の項目に従う
+   `git push -u origin main` が断られたら、「失敗したとき」の `git push -u origin main` の項目に従う。
+
+   `gh repo create --private` で作ったリポジトリのほかに送るとき（`origin` が前からあったとき、画面で作ってもらったとき、
+   「失敗したとき」の同じ名前のリポジトリを使うとき）は、最初の `git push -u origin main` の前に公開範囲を見る
+
+   ```
+   gh repo view --json visibility --jq .visibility
+   ```
+
+   `PUBLIC` なら、送るとアプリのコードが誰にでも見えるようになることを伝える。
+   GitHub の画面で非公開（Private）にしてから進めるか、公開のまま進めるかを聞く（既定の無い項目なので、`args` に「質問せずに」とあっても聞く）。
+   `gh` が無くて見られないときは、GitHub の画面で公開範囲を確かめてもらう。
+   `gh repo view` は権限の設定の許可に無いので、実行の前に確認が出る。許可してもらって進める
 5. **起動し直してもらう。** このセッションで 2 の展開をしていなければ、規約は読み込まれている。
    その場合は起動し直しを伝えず、「進め方」の 3 に進む。2 の展開をしていれば、次の 4 点を**省かずに**伝えて、ここで終える
-   - `/exit` で終了し、同じフォルダで `claude` を起動し直す。このセッションに `--add-dir` で足したフォルダがあれば、同じ `--add-dir` を付ける
+   - `/exit` で終了し、同じフォルダで `claude` を起動し直す。このセッションの作業フォルダの一覧に、このフォルダの外のフォルダがあれば、そのフォルダを `--add-dir` で付ける
    - 起動したら、もう一度 `/shinnn-app:setup` を実行する。今回 `/shinnn-app:setup` の後ろに文を書いていれば、同じ文を付ける
    - 理由: 規約（`CLAUDE.md` と `.claude/rules/`）は起動時に読み込まれるため
    - 最後に次の 1 文をそのまま添える。
@@ -160,7 +173,7 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
 - PostgreSQL は検出順に従って選ぶ。Docker は `docker` コマンドが動けばよく、Docker Desktop でも WSL の Docker Engine でも構わない
   （WSL の中だけにある場合、Windows 側からは見えないので「使えません」になる。WSL でコンテナを起動すれば `localhost:5432` の検出で拾える）
 - Docker も PostgreSQL も無い場合は PGlite（API サーバーの中で動く PostgreSQL）を使う。入れるものは無い。
-  `server/.env` は、手順 5 の 5 でスクリプトが作る（`server/.env.example` を写して、`DB_DRIVER` を `pglite` にし、`JWT_SECRET` にランダムな値を入れる）。
+  `server/.env` は、手順 5 の 5 でスクリプトが作る（`server/.env.example` を写したもの。`DB_DRIVER` は `pglite`、`JWT_SECRET` はランダムな値）。
   Claude は `.env` の値を読み書きしない。スクリプトは値を書くだけで、出力に値を出さない。
   手で PostgreSQL を入れてもらう案内はしない。本番と同じ PostgreSQL で確かめたい利用者には、マネージドの無料枠（`managed`）も示す
 - 選んだ方式は手順 5 で `--database` に渡し、`docs/env.md` にも書く
@@ -340,7 +353,9 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
 
    `server/.env` が無ければ、スクリプトは `server/.env.example` を写して作る（`DB_DRIVER=pglite`、`JWT_SECRET` はランダムな値）。
    既にあれば上書きせず、`DB_DRIVER` と `JWT_SECRET` が PGlite で動く形になっているかだけを示す。
-   スクリプトが「なっていません」と示した項目と、「値が空の項目」に挙げた項目は、手順 6 の報告の「してほしいこと」に書く
+   スクリプトが「なっていません」と示した項目と、「値が空の項目」に挙げた項目は、手順 6 の報告の「してほしいこと」に書く。
+   再実行で方式を `pglite` からほかの方式に変えたときは、`server/.env` の `DB_DRIVER` が `pglite` のまま残る（API サーバーは PGlite で動き続ける）。
+   `DB_DRIVER` を `pg` にすること（行を消してもよい）と、接続先の `DATABASE_URL` を確かめることを、手順 6 の報告の「してほしいこと」に書く
 6. `README.md` の「有効な機能」表を、決めた内容で書き換える（マージの方針とブランチ保護の行も含める。ブランチ保護は 12 の結果を書く）
 7. `docs/decisions/` の**空いている次の番号**で `<番号>-setup.md` を作り、**選んだ理由と選ばなかった理由**を残す
    （テンプレートに `0001-template-stack.md`・`0002-package-manager.md`・`0003-node-version.md` が同梱されているので、初回は通常 `0004-setup.md`）。
@@ -529,7 +544,7 @@ Claude Code が Claude に知らせる作業フォルダの一覧に出るので
 setup の PR をマージした後に、表の `args` を付けた `/shinnn-app:feature` を打つよう伝える。
 
 作り直すと答え、元のアプリのフォルダがこのセッションの作業フォルダに入っていないときも、`feature` を呼ばない
-（`--add-dir` で足していないフォルダは、読むたびに確認が出る）。次の案内を示して終える。
+（作業フォルダに入っていないフォルダは、読むたびに確認が出る）。次の案内を示して終える。
 
 - `/exit` で終了する。ターミナルでこのフォルダに移り、`claude --add-dir <元のアプリのフォルダ>` で起動する
 - 起動したら、`/shinnn-app:feature <元のアプリのフォルダ>にあるアプリを作り直したい` と入力する（setup の PR が `MERGED` でなければ、マージした後に入力する）
@@ -543,10 +558,11 @@ setup の PR をマージした後に、表の `args` を付けた `/shinnn-app:
 - `git commit` が名前とメールアドレスの未設定で止まる: `git config --global user.name` と `user.email` の設定を案内する
 - 「進め方」の `git fetch origin main` が接続か認証の問題で失敗する: リポジトリを作らず、`origin` も変えない。
   `gh auth login` かネットワークの確認を案内する。直ったら setup を再実行する
-- `gh repo create` が失敗する（組織でリポジトリを作る権限が無い、`gh` が無い）: GitHub の画面でリポジトリを作ってもらう
+- `gh repo create` が失敗する（組織でリポジトリを作る権限が無い、`gh` が無い）: GitHub の画面でリポジトリを非公開（Private）で作ってもらう
   （`README.md`・`LICENSE`・`.gitignore` は付けてもよい）。続けて、`git remote add origin <URL>` と `git push -u origin main` を実行する
+  （その前に、手順 0 の 4 のとおり公開範囲を見る）
 - `git push -u origin main` が断られる、または `origin` の `main` にテンプレートが無い: 上書きしない（`--force` を付けない）。次の順に行う
-  1. `git push -u origin main` を実行する。手元の `main` が `origin` の `main` の続きなら（GitHub で作ったリポジトリを clone したフォルダなど）、これで送れる
+  1. 手順 0 の 4 のとおり公開範囲を見てから、`git push -u origin main` を実行する。手元の `main` が `origin` の `main` の続きなら（GitHub で作ったリポジトリを clone したフォルダなど）、これで送れる
   2. 断られたら、`origin` の `main` のファイルを見る
 
      ```
@@ -556,7 +572,8 @@ setup の PR をマージした後に、表の `args` を付けた `/shinnn-app:
 
   3. ファイルが `README.md`・`LICENSE`・`.gitignore` のほかに無ければ（GitHub の作成画面で付けたもの）、テンプレートのコミットを `origin` の `main` の上に重ね直す。
      `git reset --soft origin/main` は、手元の `main` を `origin` の `main` に合わせる。作業フォルダとステージした中身（テンプレート）は変えない。
-     `origin` の `main` に `LICENSE` があるときだけ、`git checkout origin/main -- LICENSE` でそれを戻す（手順 0 の 2 と同じく、利用者が選んだライセンスを残す）
+     `origin` の `main` に `LICENSE` があるときだけ、`git checkout origin/main -- LICENSE` でそれを戻す（手順 0 の 2 と同じく、利用者が選んだライセンスを残す）。
+     `git ls-tree`・`git reset`・`git checkout` は権限の設定の許可に無いので、実行の前に確認が出る。許可してもらって進める
 
      ```
      git reset --soft origin/main
@@ -565,7 +582,7 @@ setup の PR をマージした後に、表の `args` を付けた `/shinnn-app:
      git push -u origin main
      ```
 
-  4. ほかのファイルもあれば、`origin` は別のアプリのリポジトリを指している。GitHub の画面で空のリポジトリを作ってもらい、
+  4. ほかのファイルもあれば、`origin` は別のアプリのリポジトリを指している。GitHub の画面で空のリポジトリを非公開（Private）で作ってもらい、
      `git remote set-url origin <URL>` と `git push -u origin main` を実行する
 - `git merge origin/main` が衝突で止まる: `.shinnn/setup.json` の衝突は、`git checkout --theirs .shinnn/setup.json` → `git add .shinnn/setup.json` で `main` の側を取り、
   `git commit --no-edit` でマージを終える。そのあと、手順 5 の 4 を実行し直して選択を入れ直す。ほかのファイルが衝突したら、`git merge --abort` で戻して報告する

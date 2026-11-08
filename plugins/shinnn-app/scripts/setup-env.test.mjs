@@ -186,7 +186,10 @@ test('setup-env --server-env: .env.example を写し、DB_DRIVER を pglite に�
   const result = runSetupEnv(repo, ['--server-env', '--database', 'pglite']);
 
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /^server\/\.env を作りました。/m);
+  assert.match(
+    result.stdout,
+    /^server\/\.env を作りました（server\/\.env\.example を写したもの。DB_DRIVER は pglite、JWT_SECRET はランダムな値。値は出しません）。$/m,
+  );
 
   const written = readServerEnv(repo);
   const secret = envValue(written, 'JWT_SECRET');
@@ -251,6 +254,23 @@ test('setup-env --server-env: 既にある server/.env が PGlite で動く形�
   assert.equal(readServerEnv(repo), existing);
   assert.match(result.stdout, /DB_DRIVER: pglite になっています/);
   assert.match(result.stdout, /JWT_SECRET: 32 文字以上です/);
+});
+
+test('setup-env --server-env: 既にある server/.env は Node.js の --env-file と同じに読む', () => {
+  // 引用符の無い値は、最初の # から後ろを捨てる。Node.js では JWT_SECRET が「abc」になり、32 文字に足りない
+  const cut = makeServerRepo();
+  writeFileSync(join(cut, 'server', '.env'), `DB_DRIVER=pglite\nJWT_SECRET=abc#${'x'.repeat(40)}\n`);
+  const cutResult = runSetupEnv(cut, ['--server-env', '--database', 'pglite']);
+  assert.equal(cutResult.status, 0, cutResult.stderr);
+  assert.match(cutResult.stdout, /JWT_SECRET: 32 文字以上になっていません/);
+
+  // 行頭の空白と、= の前後の空白は、Node.js も読む
+  const indented = makeServerRepo();
+  writeFileSync(join(indented, 'server', '.env'), `  DB_DRIVER = pglite\n  JWT_SECRET=${'a'.repeat(40)}\n`);
+  const indentedResult = runSetupEnv(indented, ['--server-env', '--database', 'pglite']);
+  assert.equal(indentedResult.status, 0, indentedResult.stderr);
+  assert.match(indentedResult.stdout, /DB_DRIVER: pglite になっています/);
+  assert.match(indentedResult.stdout, /JWT_SECRET: 32 文字以上です/);
 });
 
 test('setup-env --server-env: .env.example に値の空の項目がほかにあれば、名前だけを示す', () => {

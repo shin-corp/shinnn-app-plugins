@@ -55,7 +55,7 @@ localStorage.setItem('token', '<発行された値>');
 
 これをしないと一覧が `認証されていません。（APP_UNAUTHORIZED）` になります。
 発行には `server/.env` の `JWT_SECRET` と `JWT_AUDIENCE` が必要です（`server/.env.example` が雛形）。
-データベースを PGlite にしたときは、`/shinnn-app:setup` が `server/.env` を作ります（`JWT_SECRET` にはランダムな値が入ります）。
+データベースを PGlite（API サーバーの中で動く PostgreSQL）にしたときは、`/shinnn-app:setup` が `server/.env` を作ります（`JWT_SECRET` にはランダムな値が入ります）。
 **本番では使いません。** ログイン API を作ったら、そちらが発行した値を入れる形に置き換えます。
 
 ## データベースの起動

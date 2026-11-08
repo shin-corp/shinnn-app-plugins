@@ -456,17 +456,18 @@ function emptyEnvNames(body) {
 }
 
 /**
- * .env の形の文の値。同じ名前が 2 回あれば後ろの行の値（Node.js の `--env-file` と同じ）。
- * 引用符で囲んだ値は、閉じる引用符までの中身にする。引用符で囲まない値は、後ろの ` # コメント` を除く。
+ * .env の形の文の値。読み方は Node.js の `--env-file` に合わせる（API サーバーが読む値と同じにするため）。
+ * 同じ名前が 2 回あれば後ろの行の値。行頭の空白と `export `、`=` の前後の空白は許す。
+ * 引用符で囲んだ値は、閉じる引用符までの中身にする。引用符で囲まない値は、最初の `#` から後ろを捨てる。
  */
 function readEnvValues(body) {
   const values = new Map();
 
-  for (const match of body.matchAll(/^(?:export[ \t]+)?([A-Z][A-Z0-9_]*)=(.*)$/gm)) {
+  for (const match of body.matchAll(/^[ \t]*(?:export[ \t]+)?([A-Z][A-Z0-9_]*)[ \t]*=(.*)$/gm)) {
     const raw = match[2].replace(/\r$/, '').trim();
     const quoted = raw.match(/^(["'`])(.*?)\1/);
 
-    values.set(match[1], quoted === null ? raw.replace(/[ \t]+#.*$/, '') : quoted[2]);
+    values.set(match[1], quoted === null ? raw.replace(/#.*$/, '').trim() : quoted[2]);
   }
 
   return values;
@@ -517,7 +518,7 @@ function createServerEnv() {
   writeFileSync(serverEnvPath, body, { flag: 'wx', mode: 0o600 });
 
   console.log(
-    'server/.env を作りました。server/.env.example を写し、DB_DRIVER を pglite に、JWT_SECRET をランダムな値にしました（値は出しません）。',
+    'server/.env を作りました（server/.env.example を写したもの。DB_DRIVER は pglite、JWT_SECRET はランダムな値。値は出しません）。',
   );
 
   const empty = emptyEnvNames(body);
