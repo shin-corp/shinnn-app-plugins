@@ -563,7 +563,7 @@ setup の PR をマージした後に、表の `args` を付けた `/shinnn-app:
   （その前に、手順 0 の 4 のとおり公開範囲を見る）
 - `git push -u origin main` が断られる、または `origin` の `main` にテンプレートが無い: 上書きしない（`--force` を付けない）。次の順に行う
   1. 手順 0 の 4 のとおり公開範囲を見てから、`git push -u origin main` を実行する。手元の `main` が `origin` の `main` の続きなら（GitHub で作ったリポジトリを clone したフォルダなど）、これで送れる
-  2. 断られたら、`origin` の `main` のファイルを見る
+  2. 断られたら、`origin` の `main` のファイルを見る。`git ls-tree` は権限の設定の許可に無いので、実行の前に確認が出る。許可してもらって進める
 
      ```
      git fetch origin main
@@ -573,7 +573,7 @@ setup の PR をマージした後に、表の `args` を付けた `/shinnn-app:
   3. ファイルが `README.md`・`LICENSE`・`.gitignore` のほかに無ければ（GitHub の作成画面で付けたもの）、テンプレートのコミットを `origin` の `main` の上に重ね直す。
      `git reset --soft origin/main` は、手元の `main` を `origin` の `main` に合わせる。作業フォルダとステージした中身（テンプレート）は変えない。
      `origin` の `main` に `LICENSE` があるときだけ、`git checkout origin/main -- LICENSE` でそれを戻す（手順 0 の 2 と同じく、利用者が選んだライセンスを残す）。
-     `git ls-tree`・`git reset`・`git checkout` は権限の設定の許可に無いので、実行の前に確認が出る。許可してもらって進める
+     `git reset`・`git checkout` は権限の設定の許可に無いので、実行の前に確認が出る。許可してもらって進める
 
      ```
      git reset --soft origin/main
@@ -583,12 +583,13 @@ setup の PR をマージした後に、表の `args` を付けた `/shinnn-app:
      ```
 
   4. ほかのファイルもあれば、`origin` は別のアプリのリポジトリを指している。GitHub の画面で空のリポジトリを非公開（Private）で作ってもらい、
-     `git remote set-url origin <URL>` と `git push -u origin main` を実行する
+     `git remote set-url origin <URL>` と `git push -u origin main` を実行する（その前に、手順 0 の 4 のとおり公開範囲を見る）
 - `git merge origin/main` が衝突で止まる: `.shinnn/setup.json` の衝突は、`git checkout --theirs .shinnn/setup.json` → `git add .shinnn/setup.json` で `main` の側を取り、
   `git commit --no-edit` でマージを終える。そのあと、手順 5 の 4 を実行し直して選択を入れ直す。ほかのファイルが衝突したら、`git merge --abort` で戻して報告する
 - `gh repo create` が、同じ名前のリポジトリが既にあると言って失敗する: `gh repo view <置き場所>/<名前> --json isEmpty,url` で中身を見る。
-  空なら、`git remote add origin <URL>` と `git push -u origin main` を実行する。
+  空なら、`git remote add origin <URL>` と `git push -u origin main` を実行する（その前に、手順 0 の 4 のとおり公開範囲を見る）。
   空でなければ、`gh api "repos/<置き場所>/<名前>/contents" --jq '.[].name'` で、いちばん上のファイルとフォルダの名前を見る。
+  `gh api` は権限の設定の許可に無いので、実行の前に確認が出る。許可してもらって進める。
   `README.md`・`LICENSE`・`.gitignore` のほかに無ければ、`git remote add origin <URL>` を実行してから、上の `git push -u origin main` の項目に従う。
   ほかにもあれば、別の名前を聞く
 - `gh` の認証が切れている: `gh auth login` を案内する。ログインできなければ、手順 5 の 3 の `gh` が無い場合と同じく

@@ -735,7 +735,7 @@ test('手順 0 の 1: GitHub の作成画面のファイルはあってよく、
   assert.match(templateStep, /`README\.md` と `\.gitignore` はテンプレートのものに置き換わり、`LICENSE` は残る/);
 });
 
-test('手順 0 の 4: gh repo create で作ったほかのリポジトリに送る前に、公開範囲を見て公開なら聞く', () => {
+test('手順 0 の 4: gh repo create で作ったもののほかのリポジトリに送る前に、公開範囲を見て公開なら聞く', () => {
   assert.match(templateStep, /最初の `git push -u origin main` の前に公開範囲を見る/);
   assert.match(templateStep, /^ *gh repo view --json visibility --jq \.visibility$/m);
   assert.match(templateStep, /`args` に「質問せずに」とあっても聞く/);

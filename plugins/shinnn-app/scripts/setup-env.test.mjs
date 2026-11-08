@@ -264,9 +264,9 @@ test('setup-env --server-env: 既にある server/.env は Node.js の --env-fil
   assert.equal(cutResult.status, 0, cutResult.stderr);
   assert.match(cutResult.stdout, /JWT_SECRET: 32 文字以上になっていません/);
 
-  // 行頭の空白と、= の前後の空白は、Node.js も読む
+  // 行頭の空白、前に付けた export、= の前後の空白は、Node.js も読む
   const indented = makeServerRepo();
-  writeFileSync(join(indented, 'server', '.env'), `  DB_DRIVER = pglite\n  JWT_SECRET=${'a'.repeat(40)}\n`);
+  writeFileSync(join(indented, 'server', '.env'), `  DB_DRIVER = pglite\nexport JWT_SECRET=${'a'.repeat(40)}\n`);
   const indentedResult = runSetupEnv(indented, ['--server-env', '--database', 'pglite']);
   assert.equal(indentedResult.status, 0, indentedResult.stderr);
   assert.match(indentedResult.stdout, /DB_DRIVER: pglite になっています/);
