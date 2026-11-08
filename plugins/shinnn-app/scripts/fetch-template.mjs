@@ -2,7 +2,7 @@
 /**
  * /shinnn-app:setup の手順 0。プラグインに同梱されたテンプレートを、対象のフォルダに展開する。
  *
- * 取得元はいつもプラグインの中の `template`（`${CLAUDE_PLUGIN_ROOT}/template`）。ダウンロードしない理由:
+ * 取得元はいつもプラグインの中の `template`。このスクリプトの置き場所から探す。ダウンロードしない理由:
  * - 版がずれない。スキルと hooks は、同じプラグインに入っているテンプレートの構成を前提にしている
  * - ネットワークが要らない。通信が制限された環境でも、入れたプラグインだけで展開できる
  *
@@ -22,6 +22,24 @@
  *   `README.md` と `.gitignore` は、テンプレートのものに置き換える。テンプレートの構成の説明と、無視するファイルの顔ぶれ
  *   （`.env` や `.pglite/` など）を、テンプレートのものにそろえるため。
  *   `LICENSE` は書かずに残す。利用者がリポジトリを作るときに選んだライセンスなので。
+ *
+ * Claude Code を起動する前に、外の仕組み（ブラウザで Claude Code を動かすサービスなど）がこのスクリプトを直接呼んでよい。
+ * 規約と権限の設定は、Claude Code の起動のときに読み込まれる。起動の前に展開しておけば、setup は起動し直しを求めずに進む。
+ * 外から呼ぶ側との約束は次の 4 つ。変えるときは、呼ぶ側と合わせる。
+ * - 置き場所は、プラグインのフォルダの `scripts/fetch-template.mjs`。
+ * - 呼び方は `node <プラグインのフォルダ>/scripts/fetch-template.mjs --dest <作業フォルダの絶対パス>`。環境変数は要らない。
+ *   作業フォルダが無ければ作る。`--dest` の値が空なら、何も書かずに 0 以外で終わる。
+ * - 終了コードは、展開したときと、`.claude/rules/.standards-version` が既にあって何もしないときに 0。
+ *   同じパスのファイルで止まったときは 0 以外。そのときは何も書いていない。
+ *   書く途中で失敗したときも 0 以外。そのときは書いた分が残る。
+ *   `.claude/rules/.standards-version` は最後に書く。そのため、目印より前で失敗したフォルダは取得済みと扱われない。
+ * - 展開したフォルダで setup を実行すると、git と GitHub の用意から行う（setup の「進め方」の 2）。
+ *   そのセッションでは展開していないので、setup は起動し直しを求めない（setup の手順 0 の 5）。
+ * 展開先が空かどうかは見ない。空かを見るのは、setup の手順 0 の 1 だけ。先に展開したフォルダでは、この確かめが動かない。
+ * 呼ぶ側は、空のフォルダを渡す。
+ * ただし、`.git/` と、`claude plugin install` が書いた `.claude/` と、GitHub の作成画面の 3 つはあってよい。
+ * この決まりは、setup の手順 0 の 1 と同じ。手順 0 の 1 を変えるときも、呼ぶ側と合わせる。
+ * 約束は `fetch-template.test.mjs` と `skill-setup.test.mjs` の、名前が「外から先に展開」で始まるテストで確かめる。
  *
  * 実行例:
  *   node <プラグイン>/scripts/fetch-template.mjs
@@ -115,7 +133,7 @@ function parseArgs(argv) {
 
     const value = argv[i + 1];
 
-    if (value === undefined || value.startsWith('--')) {
+    if (value === undefined || value === '' || value.startsWith('--')) {
       fail(`${key} の値が指定されていません。`);
     }
     i += 1;
@@ -298,6 +316,11 @@ function main() {
     files.delete(path);
   }
 
+  // 目印は最後に書く。書く途中で失敗したときに、書きかけのフォルダを取得済みと取り違えないため
+  const marker = files.get(TEMPLATE_MARKER);
+  files.delete(TEMPLATE_MARKER);
+  files.set(TEMPLATE_MARKER, marker);
+
   if (options.dryRun === true) {
     console.log('[shinnn-app:setup] 展開する内容（--dry-run。何も書いていません）:');
     console.log(`  版: ${version}`);
@@ -309,7 +332,14 @@ function main() {
     process.exit(0);
   }
 
-  writeFiles(files, dest);
+  try {
+    writeFiles(files, dest);
+  } catch (error) {
+    fail(
+      `展開の途中で書き込みに失敗しました（${error.message}）。書いた分のファイルが ${dest} に残っています。`,
+      '展開先を空にし直してから実行し直す',
+    );
+  }
 
   console.log(`[shinnn-app:setup] ${version}のテンプレートを ${dest} に展開しました（${files.size} ファイル）。`);
   if (replaced.length > 0) {

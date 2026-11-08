@@ -4,6 +4,8 @@
  * 展開するのは同梱のテンプレートそのものなので、作り物の取得元は用意せず、実物を空のフォルダに展開して確かめる。
  * 展開されるべきファイルの一覧は、同じフォルダで git が挙げるファイル（無視するものを除いたもの）と同じになる。
  * どのパスを除くかは、判定の関数 isExcluded を直接呼んで確かめる。
+ * Claude Code を起動する前に外から呼ぶときの約束（置き場所・`--dest`・終了コード）は、外から呼ぶのと同じ形で確かめる。
+ * 約束の中身はスクリプトの冒頭のコメントにある。
  */
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -77,6 +79,24 @@ function makeDest() {
 /** スクリプトを実行し、終了コードと出力を返す */
 function runFetch(args) {
   const result = spawnSync(process.execPath, [script, ...args], { encoding: 'utf8' });
+  return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+}
+
+/** プラグインのフォルダ。外から呼ぶ仕組みは、ここからの置き場所でスクリプトを探す */
+const pluginRoot = fileURLToPath(new URL('..', import.meta.url));
+
+/**
+ * Claude Code を起動する前に外から呼ぶのと同じ形で実行する。
+ * スクリプトは、プラグインのフォルダからの置き場所で呼ぶ。
+ * Claude Code が渡す環境変数（CLAUDE_PLUGIN_ROOT・CLAUDE_PROJECT_DIR）は除く。
+ * カレントは、展開先と別のフォルダにする。
+ */
+function runFromOutside(dest, cwd = workRoot) {
+  const env = { ...process.env };
+  delete env.CLAUDE_PLUGIN_ROOT;
+  delete env.CLAUDE_PROJECT_DIR;
+  const outsideScript = join(pluginRoot, 'scripts', 'fetch-template.mjs');
+  const result = spawnSync(process.execPath, [outsideScript, '--dest', dest], { cwd, env, encoding: 'utf8' });
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
 
@@ -305,4 +325,79 @@ test('setup.json: templateVersion だけをプラグインの版にし、ほか�
 
   // 同梱のテンプレートのファイルは書き換えない
   assert.equal(readFileSync(join(templateDir, SETUP), 'utf8'), template);
+});
+
+test('外から先に展開するときの約束: 空のフォルダを --dest に渡すと、目印と setup の記録を作って 0 で終わる', () => {
+  const dest = makeDest();
+  const result = runFromOutside(dest);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(existsSync(join(dest, MARKER)), true, MARKER);
+  assert.equal(existsSync(join(dest, SETUP)), true, SETUP);
+});
+
+test('外から先に展開するときの約束: 作業フォルダが無ければ作って展開し、0 で終わる', () => {
+  const dest = join(workRoot, 'outside-missing', 'app');
+  const result = runFromOutside(dest);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(existsSync(join(dest, MARKER)), true, MARKER);
+});
+
+test('外から先に展開するときの約束: --dest の値が空なら、カレントにも何も書かずに 0 以外で終わる', () => {
+  const cwd = makeDest();
+  const result = runFromOutside('', cwd);
+
+  assert.notEqual(result.status, 0);
+  assert.deepEqual(listFiles(cwd), []);
+});
+
+test('外から先に展開するときの約束: GitHub の作成画面の 3 つだけのフォルダにも展開して 0 で終わる', () => {
+  const dest = makeDest();
+  writeFiles(dest, REPOSITORY_FILES);
+  const result = runFromOutside(dest);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(existsSync(join(dest, MARKER)), true, MARKER);
+  assert.equal(readFileSync(join(dest, 'LICENSE'), 'utf8'), REPOSITORY_FILES.LICENSE);
+});
+
+test('外から先に展開するときの約束: もう一度呼ぶと、何もせずに 0 で終わる', () => {
+  const dest = makeDest();
+  assert.equal(runFromOutside(dest).status, 0);
+  // 展開した記録を書き換えておき、2 回目の呼び出しで書き戻されないことを見る
+  const edited = `${readFileSync(join(dest, SETUP), 'utf8')}\n`;
+  writeFileSync(join(dest, SETUP), edited);
+
+  const result = runFromOutside(dest);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(readFileSync(join(dest, SETUP), 'utf8'), edited);
+});
+
+test('外から先に展開するときの約束: 同じパスのファイルがあれば、何も書かずに 0 以外で終わる', () => {
+  const dest = makeDest();
+  writeFiles(dest, { 'package.json': '{}\n' });
+  const result = runFromOutside(dest);
+
+  assert.notEqual(result.status, 0);
+  assert.deepEqual(listFiles(dest), ['package.json']);
+});
+
+test('外から先に展開するときの約束: 書く途中で失敗したときは、目印を残さずに 0 以外で終わり、呼び直しも 0 以外で終わる', () => {
+  const dest = makeDest();
+  // テンプレートのフォルダ server と同じ名前のファイルを置き、その下のファイルを書くところで失敗させる
+  writeFiles(dest, { server: '' });
+  const first = runFromOutside(dest);
+
+  assert.notEqual(first.status, 0);
+  assert.ok(listFiles(dest).length > 1, '失敗の前に書いたファイルがありません。途中の失敗になっていません');
+  assert.equal(existsSync(join(dest, MARKER)), false, MARKER);
+  assert.match(first.stderr, /書いた分のファイルが .* に残っています/);
+  assert.match(first.stderr, /どう直す: 展開先を空にし直してから実行し直す/);
+
+  const second = runFromOutside(dest);
+
+  assert.notEqual(second.status, 0);
+  assert.equal(existsSync(join(dest, MARKER)), false, MARKER);
 });
