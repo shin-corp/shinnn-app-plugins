@@ -37,7 +37,7 @@
    - エラーを再現するための切り替え（`mock-data.ts` の定数）を用意する
 6. `.claude/rules/` から `server-architecture.md` / `server-coding-conventions.md` / `db.md` / `messages.md` を削除する
 7. `docs/env.md` の「サーバー」と「ローカルの PostgreSQL」の節を削除する
-8. `README.md` の構成表から `server/` の行を削除する
+8. `README.md` の構成表から `server/` の行を削除する。「必要なもの」の PostgreSQL の行と、「データベースの起動」の節も削除する
 9. `.shinnn/setup.json` の `profile` を `client-only`、`optional.client-only-profile` を `true` にする
 
 ## あとからサーバーを足すとき

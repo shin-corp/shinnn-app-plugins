@@ -13,11 +13,11 @@
 
 ## 必要なもの
 
-| もの          | 版                                |
-| ------------- | --------------------------------- |
-| Node.js       | 24 系（24.15 以上）               |
-| npm           | 11 系（Node.js 24 に同梱）        |
-| PostgreSQL 16 | Docker またはローカルインストール |
+| もの       | 版                                           |
+| ---------- | -------------------------------------------- |
+| Node.js    | 24 系（24.15 以上）                          |
+| npm        | 11 系（Node.js 24 に同梱）                   |
+| PostgreSQL | 16（用意の仕方は下の「データベースの起動」） |
 
 npm は Node.js に同梱されるものをそのまま使います。別に入れるものはありません
 （理由は `docs/decisions/0003-node-version.md`）。
@@ -59,13 +59,13 @@ localStorage.setItem('token', '<発行された値>');
 
 ## データベースの起動
 
-Docker が使える場合は次のコマンドで PostgreSQL を立ち上げます。
+PostgreSQL の用意の仕方は、`/shinnn-app:setup` でこのパソコンを調べてから選びます。
+選んだ方式と、起動と停止の手順は、`docs/env.md` の「ローカルの PostgreSQL」節にあります。
 
-```sh
-docker compose --profile dev up -d
-```
-
-Docker が使えない場合の選択肢は `docs/env.md` に記録されています。
+- Docker: `docker compose --profile dev up -d` で立ち上げます
+- このパソコンで動いている PostgreSQL: そのまま使います
+- PGlite（API サーバーの中で動く PostgreSQL）: 入れるものも、別に立ち上げるものもありません。本番では使いません。PostgreSQL 16 とは版が違うので、本番の前に 16 で動作を確かめます
+- マネージドの PostgreSQL（提供元が動かす PostgreSQL。Neon などの無料枠）: 接続先を `server/.env` の `DATABASE_URL` に書きます
 
 ## リポジトリの構成
 
