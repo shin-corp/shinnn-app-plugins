@@ -16,7 +16,7 @@
 // 外部のコマンドはシェルを介さずに呼ぶ（Windows の claude.cmd だけは cmd を介す）。見つからないものは「見つかりません」として続ける。
 //
 // PostgreSQL の検出の順番（先に見つかったものを採用する）:
-//   1. DATABASE_URL が設定済み          → そのまま使う
+//   1. 環境変数 DATABASE_URL が設定済み → そのまま使う（server/.env は見ない）
 //   2. localhost:5432 に接続できる      → 既に動いている PostgreSQL を使う
 //   3. docker info が成功する           → docker compose --profile dev up -d
 //   4. いずれも無い                     → PGlite（API サーバーの中で動く。入れるものが無い）
@@ -407,8 +407,10 @@ const databaseModes = {
   pglite: {
     label: 'PGlite（API サーバーの中で動く PostgreSQL。Docker も PostgreSQL も要りません）',
     howToStart: [
-      '設定: `server/.env` の `DB_DRIVER` を `pglite` にします（`.env.example` の `# DB_DRIVER=pg` の行）。`DATABASE_URL` は使われません',
+      '設定: `server/.env` の `DB_DRIVER` を `pglite` にします（`.env.example` の `# DB_DRIVER=pg` の行）',
+      '`DATABASE_URL`: 接続には使いません。消すと起動のときの検査で止まるので、`.env.example` の値のまま残します',
       '起動と停止: API サーバー（`npm run dev -w server`）と一緒に動きます。起動のたびにマイグレーションを適用するので、`db:migrate` は実行しません',
+      '初期データ: `npm run seed -w server` で入れます。`seed` がテーブルが無いと言って落ちたときは、先に API サーバーを 1 回起動して止めます。そのあと、もう一度流します',
       'データ: `server/.pglite/` に残ります（git の管理外）。消すと空の DB からやり直せます',
       '注意: API サーバーを動かしている間は、`seed` など同じ DB を開く別のコマンドを実行しません。本番では使わず、本番の前に PostgreSQL で動作を確かめます',
     ],
@@ -435,6 +437,7 @@ console.log(formatEnvironment(environment.rows));
 const results = [];
 let detected = null;
 
+// server/.env は読まない。.env.example を写した server/.env には既定の接続先が入っているので、検出の手がかりにならない。
 if (typeof process.env.DATABASE_URL === 'string' && process.env.DATABASE_URL.length > 0) {
   results.push('DATABASE_URL: 設定済み');
   detected = 'database-url';
@@ -501,7 +504,7 @@ const summary = [
   '',
   '- テストは常に PGlite（Postgres の WASM 版）を使うので、上のどれが選ばれても実行できます。',
   '- 本番と同じ PostgreSQL で確かめたいときは、マネージドの PostgreSQL の無料枠（Neon など）も使えます。',
-  '  接続先を `DATABASE_URL` に設定すれば、このスクリプトは 1 番目の候補として認識します。',
+  '  `/shinnn-app:setup` の環境の検出は、ターミナルで設定した環境変数 `DATABASE_URL` を 1 番目の候補として認識します（`server/.env` の値は見ません）。',
   '',
 ].join('\n');
 

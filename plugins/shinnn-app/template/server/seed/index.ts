@@ -1,7 +1,9 @@
 /**
  * @file 初期データの投入（`npm run seed -w server`）。
  *
- * 動かして確かめるための最小限のデータだけを入れる。実行前にマイグレーションを済ませておく。
+ * 動かして確かめるための最小限のデータだけを入れる。`DB_DRIVER=pg` では、実行前に `db:migrate` を済ませておく。
+ * `DB_DRIVER=pglite` では、API サーバーを一度も起動していない DB にもテーブルを作るため、ここでマイグレーションを
+ * 適用する（適用済みのものは飛ばされる）。
  * 同じ持ち主に同じ name の item が既にあれば何もしないので、何度実行しても結果は変わらない。
  *
  * item は利用者ごとのデータなので、`npm run token -w server` が既定で発行するトークンの利用者を持ち主にする。
@@ -9,6 +11,7 @@
  */
 
 import { createDb } from '../src/db/client.js';
+import { applyMigrations } from '../src/db/migrate.js';
 import { items, type NewItemRow } from '../src/db/schema/items.js';
 import { Log } from '../src/util/log.js';
 import { MessageKeys } from '../src/util/message/index.js';
@@ -26,6 +29,11 @@ const seedItems: NewItemRow[] = [
 
 const handle = await createDb();
 try {
+  if (handle.driver === 'pglite') {
+    await applyMigrations(handle);
+    logger.message(MessageKeys.APP_DB_MIGRATION_APPLIED);
+  }
+
   const inserted = await handle.db
     .insert(items)
     .values(seedItems)

@@ -7,17 +7,17 @@
 
 `server/.env` に置きます。雛形は `server/.env.example` です。
 
-| 名前           | 用途                                                             | 置き場所                      | 必須                       |
-| :------------- | :--------------------------------------------------------------- | :---------------------------- | :------------------------- |
-| `DATABASE_URL` | PostgreSQL の接続先                                              | `server/.env` / CI は secret  | はい                       |
-| `JWT_SECRET`   | JWT（署名付きの通行証）の署名鍵。32 文字以上                     | `server/.env` / 本番は secret | はい                       |
-| `JWT_AUDIENCE` | JWT の受け取り手。`aud` がこの値と一致しないと通さない           | `server/.env`                 | はい                       |
-| `CORS_ORIGIN`  | 画面を配信するオリジン（カンマ区切り。`*` は使えない）           | `server/.env`                 | はい                       |
-| `TRUST_PROXY`  | `X-Forwarded-For` を信頼する範囲（`false` / `true` / 段数 / IP） | `server/.env`                 | いいえ（既定 `false`）     |
-| `PORT`         | サーバーが待ち受けるポート                                       | `server/.env`                 | いいえ（既定 3000）        |
-| `NODE_ENV`     | 実行モード（`development` / `test` / `production`）              | 実行環境                      | いいえ（既定 development） |
-| `LOG_LEVEL`    | ログの下限レベル（`trace`〜`fatal` / `silent`）                  | 実行環境                      | いいえ（既定 info）        |
-| `DB_DRIVER`    | DB の接続方式（`pg` / `pglite`）。`pglite` は本番で使わない      | 実行環境                      | いいえ（既定 pg）          |
+| 名前           | 用途                                                             | 置き場所                      | 必須                                |
+| :------------- | :--------------------------------------------------------------- | :---------------------------- | :---------------------------------- |
+| `DATABASE_URL` | PostgreSQL の接続先                                              | `server/.env` / CI は secret  | はい（`DB_DRIVER=pglite` でも要る） |
+| `JWT_SECRET`   | JWT（署名付きの通行証）の署名鍵。32 文字以上                     | `server/.env` / 本番は secret | はい                                |
+| `JWT_AUDIENCE` | JWT の受け取り手。`aud` がこの値と一致しないと通さない           | `server/.env`                 | はい                                |
+| `CORS_ORIGIN`  | 画面を配信するオリジン（カンマ区切り。`*` は使えない）           | `server/.env`                 | はい                                |
+| `TRUST_PROXY`  | `X-Forwarded-For` を信頼する範囲（`false` / `true` / 段数 / IP） | `server/.env`                 | いいえ（既定 `false`）              |
+| `PORT`         | サーバーが待ち受けるポート                                       | `server/.env`                 | いいえ（既定 3000）                 |
+| `NODE_ENV`     | 実行モード（`development` / `test` / `production`）              | 実行環境                      | いいえ（既定 development）          |
+| `LOG_LEVEL`    | ログの下限レベル（`trace`〜`fatal` / `silent`）                  | 実行環境                      | いいえ（既定 info）                 |
+| `DB_DRIVER`    | DB の接続方式（`pg` / `pglite`）。`pglite` は本番で使わない      | `server/.env`                 | いいえ（既定 pg）                   |
 
 テストは常に PGlite（Postgres の WASM 版）を使うので、テスト用の接続先は要りません。
 開発で `DB_DRIVER=pglite` にすると、DB は API サーバーの中で動き、データは `server/.pglite/`（git 管理外）に残ります。
