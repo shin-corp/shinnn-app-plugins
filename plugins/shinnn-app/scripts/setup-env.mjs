@@ -321,7 +321,7 @@ function detectEnvironment() {
 
       if (gh.scopes.length > 0 && !gh.scopes.includes('workflow')) {
         verdict =
-          '使えます。`workflow` スコープが無いので、ワークフローを変える PR を gh からマージできません' +
+          '使えます。`workflow` スコープが無いので、ワークフローを変える PR の push とマージができません' +
           '（足すには `gh auth refresh -h github.com -s workflow`）';
       }
 

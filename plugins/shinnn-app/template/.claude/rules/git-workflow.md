@@ -28,7 +28,7 @@ Issue から PR までの手順です。**paths を持たないので常に読�
 
 作った worktree には、依存と git のフックが入っていません。そのため、最初に `npm install` を実行します。
 
-PR を誰がマージするかは、`.shinnn/setup.json` の `mergePolicy` で決まります（`/shinnn-app:setup` で選びます）。`setupCompletedAt` が `null` の記録（setup が済んでいない）は、`mergePolicy` の値にかかわらず `human` として扱います。`/shinnn-app:setup` を実行している間は、「`auto-merge` のとき」に従わず、setup の手順の質問と確認に従います。`human` のリポジトリでは、人が PR を ready にしてマージします。`auto-merge` のリポジトリでは、`/shinnn-app:pr` が、セルフレビューの収束と CI の通過を確かめます。確かめたら、PR を ready にしてマージします。ただし、CI が始まらないときは「CI が始まらないとき」に従います。どちらの場合も `main` へ直接コミットしません（「やらないこと」）。`auto-merge` での進め方は「`auto-merge` のとき」にあります。
+PR を誰がマージするかは、`.shinnn/setup.json` の `mergePolicy` で決まります（`/shinnn-app:setup` で選びます）。`setupCompletedAt` が `null` の記録（setup が済んでいない）は、`mergePolicy` の値にかかわらず `human` として扱います。`human` のリポジトリでは、人が PR を ready にしてマージします。`auto-merge` のリポジトリでは、`/shinnn-app:pr` が、セルフレビューの収束と CI の通過を確かめます。確かめたら、PR を ready にしてマージします。ただし、CI が始まらないときは「CI が始まらないとき」に従います。どちらの場合も `main` へ直接コミットしません（「やらないこと」）。`auto-merge` での進め方は「`auto-merge` のとき」にあります。
 
 Dependabot（依存更新の bot）が作る PR に対応する Issue（`[依存] …`、ラベル `type:deps`）は、ワークフロー `dependabot-issue.yaml` が自動で作ります。ワークフローは、PR の本文に `Closes #n` を足します。PR が閉じると、Issue も閉じます。CI は、ワークフローが本文を書き換える前に走ります。そのため、CI の `Closes #n` の確認は、bot の PR では免除しています。人と Claude の PR は、Issue を先に作ってから出します。
 
@@ -92,6 +92,9 @@ Dependabot（依存更新の bot）が作る PR に対応する Issue（`[依存
 
 `.shinnn/setup.json` の `mergePolicy` が `auto-merge` のリポジトリでは、利用者は、Issue の作成から PR のマージまでを Claude に任せています。
 Claude が作りきった後に、利用者が動く画面を見て調整します。
+
+`/shinnn-app:setup` の手順 1〜6 の質問と確認には、この節を当てません。setup の手順に従います。
+setup が手順 6 の最後に呼んだ `/shinnn-app:feature` からは、この節に従います。
 
 - 計画・Issue の作成・コミット・push・PR の作成・マージの前に、進めてよいかを利用者に聞かない
 - 決まっていないことは、仮置きして進める
@@ -198,7 +201,9 @@ Issue を 1 つだけ止めて別の Issue に移るのは、1 つの人待ち�
 
 setup が済んでいない記録を `human` として扱うのは、利用者が選ぶ前に、テンプレートの値（`auto-merge`）で確認なしのマージに進まないためです。
 
-setup の間に setup の手順に従うのは、マージの方針などを利用者に聞く質問を、「`auto-merge` のとき」の決まりで飛ばさないためです。
+setup の手順 1〜6 でこの節を当てないのは、マージの方針などを利用者に聞く質問を、「`auto-merge` のとき」の決まりで飛ばさないためです。
+
+setup が呼んだ `feature` からこの節に従うのは、setup の後の実装を、確認を挟まずに作りきるためです。
 
 同じ計画の中で足したテーブルと列を消すときに止めないのは、人が入れたデータがまだ無いからです。
 
