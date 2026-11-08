@@ -194,6 +194,60 @@ test('settings.json: 他のキーもあれば衝突として失敗し、何も�
   assert.equal(readFileSync(join(dest, '.claude', 'settings.json'), 'utf8'), original);
 });
 
+/** GitHub でリポジトリを作る画面で付けられる 3 つ。中身はテンプレートのものと違う */
+const REPOSITORY_FILES = {
+  'README.md': '# app\n',
+  '.gitignore': 'node_modules\n',
+  LICENSE: 'Apache License\n',
+};
+
+test('GitHub の作成画面のファイル: README.md と .gitignore はテンプレートのものに置き換え、LICENSE は残す', () => {
+  const dest = makeDest();
+  writeFiles(dest, REPOSITORY_FILES);
+  const result = runFetch(['--dest', dest]);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(listFiles(dest), templatePaths().sort());
+  for (const path of ['README.md', '.gitignore']) {
+    assert.equal(readFileSync(join(dest, path), 'utf8'), readFileSync(join(templateDir, path), 'utf8'), path);
+  }
+  assert.equal(readFileSync(join(dest, 'LICENSE'), 'utf8'), REPOSITORY_FILES.LICENSE);
+
+  // 書いたファイルの数には、残した LICENSE を数えない
+  assert.match(result.stdout, new RegExp(`（${templatePaths().length - 1} ファイル）`));
+  assert.match(result.stdout, /置き換えたファイル: .*README\.md/);
+  assert.match(result.stdout, /置き換えたファイル: .*\.gitignore/);
+  assert.match(result.stdout, /残したファイル: LICENSE$/m);
+});
+
+test('GitHub の作成画面のファイル: --dry-run は置き換えるファイルと残すファイルを出し、何も書かない', () => {
+  const dest = makeDest();
+  writeFiles(dest, REPOSITORY_FILES);
+  const result = runFetch(['--dest', dest, '--dry-run']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, new RegExp(`ファイル数: ${templatePaths().length - 1}$`, 'm'));
+  assert.match(result.stdout, /置き換えるファイル: .*README\.md/);
+  assert.match(result.stdout, /置き換えるファイル: .*\.gitignore/);
+  assert.match(result.stdout, /残すファイル: LICENSE$/m);
+  assert.deepEqual(listFiles(dest), Object.keys(REPOSITORY_FILES).sort());
+  for (const [path, content] of Object.entries(REPOSITORY_FILES)) {
+    assert.equal(readFileSync(join(dest, path), 'utf8'), content, path);
+  }
+});
+
+test('GitHub の作成画面のファイル: ほかに同じパスのファイルがあれば、それだけを衝突として挙げ、何も書かない', () => {
+  const dest = makeDest();
+  writeFiles(dest, { ...REPOSITORY_FILES, 'package.json': '{}\n' });
+  const result = runFetch(['--dest', dest]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /- package\.json/);
+  assert.doesNotMatch(result.stderr, /- (README\.md|\.gitignore|LICENSE)$/m);
+  assert.deepEqual(listFiles(dest), [...Object.keys(REPOSITORY_FILES), 'package.json'].sort());
+  assert.equal(readFileSync(join(dest, 'README.md'), 'utf8'), REPOSITORY_FILES['README.md']);
+});
+
 test('取得済み: 目印が既にあれば何もしない', () => {
   const dest = makeDest();
   writeFiles(dest, { [MARKER]: '0.0.0\n' });

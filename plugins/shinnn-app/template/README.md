@@ -55,6 +55,7 @@ localStorage.setItem('token', '<発行された値>');
 
 これをしないと一覧が `認証されていません。（APP_UNAUTHORIZED）` になります。
 発行には `server/.env` の `JWT_SECRET` と `JWT_AUDIENCE` が必要です（`server/.env.example` が雛形）。
+データベースを PGlite にしたときは、`/shinnn-app:setup` が `server/.env` を作ります（`JWT_SECRET` にはランダムな値が入ります）。
 **本番では使いません。** ログイン API を作ったら、そちらが発行した値を入れる形に置き換えます。
 
 ## データベースの起動
@@ -64,7 +65,7 @@ PostgreSQL の用意の仕方は、`/shinnn-app:setup` でこのパソコンを�
 
 - Docker: `docker compose --profile dev up -d` で立ち上げます
 - このパソコンで動いている PostgreSQL: そのまま使います
-- PGlite（API サーバーの中で動く PostgreSQL）: 入れるものも、別に立ち上げるものもありません。本番では使いません。PostgreSQL 16 とは版が違うので、本番の前に 16 で動作を確かめます
+- PGlite（API サーバーの中で動く PostgreSQL）: 入れるものも、別に立ち上げるものもありません。`server/.env` は `/shinnn-app:setup` が作ります。本番では使いません。PostgreSQL 16 とは版が違うので、本番の前に 16 で動作を確かめます
 - マネージドの PostgreSQL（提供元が動かす PostgreSQL。Neon などの無料枠）: 接続先を `server/.env` の `DATABASE_URL` に書きます
 
 ## リポジトリの構成
@@ -87,4 +88,4 @@ PostgreSQL の用意の仕方は、`/shinnn-app:setup` でこのパソコンを�
 
 ## ライセンス
 
-MIT License. 詳細は [LICENSE](./LICENSE) を参照してください。
+[LICENSE](./LICENSE) を参照してください。

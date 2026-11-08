@@ -1,15 +1,23 @@
 #!/usr/bin/env node
-// 開発環境を調べ、ローカルの PostgreSQL をどう用意するかを決める。検出だけを行う。
+// 開発環境を調べ、ローカルの PostgreSQL をどう用意するかを決める。
 //
 // 実行例:
 //   node <プラグイン>/scripts/setup-env.mjs             検出して結果を表示する
 //   node <プラグイン>/scripts/setup-env.mjs --write      PostgreSQL の検出結果を docs/env.md に追記する
+//   node <プラグイン>/scripts/setup-env.mjs --server-env --database pglite   PGlite で動かす server/.env を作る
 //
 // 引数:
-//   --repo-dir <パス>  対象のリポジトリ（既定は CLAUDE_PROJECT_DIR、無ければカレント）。docs/env.md はこの下
+//   --repo-dir <パス>  対象のリポジトリ（既定は CLAUDE_PROJECT_DIR、無ければカレント）。docs/env.md と server/.env はこの下
 //   --write            PostgreSQL の検出結果を docs/env.md に追記する
 //   --database <方式>  検出の結果に関わらず、この方式の手順を出す（setup で利用者が選んだ方式を書くため）。
 //                      database-url / local-postgres / docker / pglite / managed
+//   --server-env       server/.env が無ければ、server/.env.example を写して作る。`--database pglite` のときだけ使える。
+//                      DB_DRIVER を pglite にし、JWT_SECRET にランダムな値を入れる。既にあれば上書きしない。
+//                      値は出力に出さない（Claude が値を読まずに済むように、スクリプトが書くだけにする）。
+//                      `--write` が無ければ、開発環境の検出をせずに終わる
+//
+// PGlite に限るのは、ほかの方式では接続先（DATABASE_URL）を利用者が決めるため。
+// PGlite では、.env.example の値のまま動かないのは JWT_SECRET だけで、これはランダムな値でよい。
 //
 // 開発環境として、OS / Node.js / npm / Claude Code / Git / GitHub CLI（gh。ログインの状態とスコープ）/ Docker を表で示す。
 // 使う人のパソコンごとに違うので、この表は docs/env.md に書かない。
@@ -22,10 +30,11 @@
 //   4. いずれも無い                     → PGlite（API サーバーの中で動く。入れるものが無い）
 // 本番と同じ PostgreSQL で確かめたい場合は、マネージドの無料枠（managed）も選べる。
 //
-// このスクリプトは検出と案内だけを行う。導入の実行は /shinnn-app:setup が行う。
+// このスクリプトが書くのは、--write の docs/env.md と、--server-env の server/.env だけ。導入の実行は /shinnn-app:setup が行う。
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { createConnection } from 'node:net';
 import { release, version as osVersion } from 'node:os';
@@ -39,7 +48,13 @@ function readOption(name) {
 
 const repositoryRoot = resolve(readOption('--repo-dir') || process.env.CLAUDE_PROJECT_DIR || process.cwd());
 const envDocumentPath = join(repositoryRoot, 'docs', 'env.md');
+const serverEnvPath = join(repositoryRoot, 'server', '.env');
+const serverEnvExamplePath = join(repositoryRoot, 'server', '.env.example');
 const shouldWrite = process.argv.includes('--write');
+const shouldWriteServerEnv = process.argv.includes('--server-env');
+
+/** JWT の署名鍵の最短の長さ。テンプレートの server/src/config.ts の検査（32 文字以上）と同じ */
+const minJwtSecretLength = 32;
 const postgresPort = 5432;
 const connectTimeoutMs = 1500;
 const commandTimeoutMs = 15000;
@@ -407,7 +422,7 @@ const databaseModes = {
   pglite: {
     label: 'PGlite（API サーバーの中で動く PostgreSQL。Docker も PostgreSQL も要りません）',
     howToStart: [
-      '設定: `server/.env` の `DB_DRIVER` を `pglite` にします（`.env.example` の `# DB_DRIVER=pg` の行）',
+      '設定: `server/.env` の `DB_DRIVER` を `pglite` にします（`.env.example` の `# DB_DRIVER=pg` の行）。`/shinnn-app:setup` は、`server/.env` が無ければ、`.env.example` を写してこの形で作ります。`JWT_SECRET` には、ランダムな値を入れます',
       '`DATABASE_URL`: 接続には使いません。消すと起動のときの検査で止まるので、`.env.example` の値のまま残します',
       '起動と停止: API サーバー（`npm run dev -w server`）と一緒に動きます。起動のたびにマイグレーションを適用するので、`db:migrate` は実行しません',
       '初期データ: `npm run seed -w server` で入れます。`seed` がテーブルが無いと言って落ちたときは、先に API サーバーを 1 回起動して止めます。そのあと、もう一度流します',
@@ -421,6 +436,99 @@ const databaseModes = {
   },
 };
 
+/**
+ * .env の形の文の、`名前=値` の行の値を置き換える。コメントにした行（`# 名前=…`）も、外して置き換える。
+ * 行が無ければ末尾に足す。
+ */
+function setEnvValue(body, name, value) {
+  const line = new RegExp(`^#?[ \\t]*${name}=.*$`, 'gm');
+
+  if (body.search(line) !== -1) {
+    return body.replace(line, () => `${name}=${value}`);
+  }
+
+  return `${body.endsWith('\n') ? body : `${body}\n`}${name}=${value}\n`;
+}
+
+/** .env の形の文で、値が空の `名前=` の行の名前（コメントの行は見ない） */
+function emptyEnvNames(body) {
+  return [...body.matchAll(/^([A-Z][A-Z0-9_]*)=[ \t]*\r?$/gm)].map((match) => match[1]);
+}
+
+/**
+ * .env の形の文の値。同じ名前が 2 回あれば後ろの行の値（Node.js の `--env-file` と同じ）。
+ * 引用符で囲んだ値は、閉じる引用符までの中身にする。引用符で囲まない値は、後ろの ` # コメント` を除く。
+ */
+function readEnvValues(body) {
+  const values = new Map();
+
+  for (const match of body.matchAll(/^(?:export[ \t]+)?([A-Z][A-Z0-9_]*)=(.*)$/gm)) {
+    const raw = match[2].replace(/\r$/, '').trim();
+    const quoted = raw.match(/^(["'`])(.*?)\1/);
+
+    values.set(match[1], quoted === null ? raw.replace(/[ \t]+#.*$/, '') : quoted[2]);
+  }
+
+  return values;
+}
+
+/**
+ * 既にある server/.env を上書きせずに、PGlite で動かすのに要る 2 つが入っているかだけを示す。値は出さない。
+ */
+function describeExistingServerEnv() {
+  const values = readEnvValues(readFileSync(serverEnvPath, 'utf8'));
+  const driverOk = values.get('DB_DRIVER') === 'pglite';
+  const secretOk = (values.get('JWT_SECRET') ?? '').length >= minJwtSecretLength;
+
+  console.log('server/.env は既にあります。上書きしません（値は出しません）。');
+  console.log(
+    driverOk
+      ? '  DB_DRIVER: pglite になっています'
+      : '  DB_DRIVER: pglite になっていません。利用者に、server/.env の DB_DRIVER を pglite にしてもらってください',
+  );
+  console.log(
+    secretOk
+      ? `  JWT_SECRET: ${minJwtSecretLength} 文字以上です`
+      : `  JWT_SECRET: ${minJwtSecretLength} 文字以上になっていません。利用者に、server/.env の JWT_SECRET へ ${minJwtSecretLength} 文字以上のランダムな文字列を入れてもらってください`,
+  );
+}
+
+/**
+ * PGlite で動かす server/.env を、server/.env.example から作る。既にあれば上書きしない。
+ * 作った値は出力に出さない。値が空のまま残った項目があれば、名前だけを示す。
+ */
+function createServerEnv() {
+  if (existsSync(serverEnvPath)) {
+    describeExistingServerEnv();
+    return;
+  }
+  if (!existsSync(serverEnvExamplePath)) {
+    console.error('server/.env.example がありません。server/.env を作れませんでした（何も書いていません）。');
+    process.exit(1);
+  }
+
+  let body = readFileSync(serverEnvExamplePath, 'utf8');
+
+  body = setEnvValue(body, 'DB_DRIVER', 'pglite');
+  // 48 バイトを base64url にすると 64 文字。.env にそのまま書ける文字（英数字と - _）だけになる
+  body = setEnvValue(body, 'JWT_SECRET', randomBytes(48).toString('base64url'));
+
+  // 既にあれば書かない（同時に別の手順が作っていても、上書きしない）。中身は署名鍵なので、ほかの利用者から読めなくする
+  writeFileSync(serverEnvPath, body, { flag: 'wx', mode: 0o600 });
+
+  console.log(
+    'server/.env を作りました。server/.env.example を写し、DB_DRIVER を pglite に、JWT_SECRET をランダムな値にしました（値は出しません）。',
+  );
+
+  const empty = emptyEnvNames(body);
+
+  if (empty.length > 0) {
+    console.log(
+      `  値が空の項目があります: ${empty.join(', ')}。利用者に、server/.env へ値を書いてもらってください（.env.example の説明に従う）`,
+    );
+  }
+}
+
 const databaseArgument = readOption('--database');
 
 if (databaseArgument !== undefined && !Object.hasOwn(databaseModes, databaseArgument)) {
@@ -428,6 +536,21 @@ if (databaseArgument !== undefined && !Object.hasOwn(databaseModes, databaseArgu
     `--database に指定できるのは ${Object.keys(databaseModes).join(' / ')} です（指定: ${databaseArgument}）`,
   );
   process.exit(1);
+}
+
+if (shouldWriteServerEnv) {
+  if (databaseArgument !== 'pglite') {
+    console.error(
+      '--server-env は --database pglite と一緒に指定します。ほかの方式では、接続先（DATABASE_URL）を利用者が決めます（何も書いていません）。',
+    );
+    process.exit(1);
+  }
+
+  createServerEnv();
+
+  if (!shouldWrite) {
+    process.exit(0);
+  }
 }
 
 const environment = detectEnvironment();

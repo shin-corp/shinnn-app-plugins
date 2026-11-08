@@ -39,11 +39,26 @@ function git(cwd, ...args) {
   return { status: result.status, stderr: result.stderr };
 }
 
-/** 手元のリポジトリを作り、husky と同じ呼び方でフックを入れる。コミットはまだ無い */
-function setupEmptyRepo() {
+/** テンプレートから作ったリポジトリには必ず入っているファイル */
+const MARKER = '.claude/rules/.standards-version';
+
+/** テンプレートの目印を作業ツリーに書く */
+function writeMarker(local) {
+  mkdirSync(join(local, '.claude', 'rules'), { recursive: true });
+  writeFileSync(join(local, MARKER), '0.0.0\n');
+}
+
+/**
+ * 手元のリポジトリを作り、husky と同じ呼び方でフックを入れる。コミットはまだ無い。
+ * 作業ツリーにはテンプレートの目印を置く（`withMarker: false` なら置かない）
+ */
+function setupEmptyRepo({ withMarker = true } = {}) {
   const root = mkdtempSync(join(workRoot, 'case-'));
   const local = join(root, 'local');
   assert.equal(git(root, 'init', '--initial-branch=main', local).status, 0);
+  if (withMarker) {
+    writeMarker(local);
+  }
   mkdirSync(join(local, 'scripts'));
   copyFileSync(
     join(templateDir, 'scripts', 'check-commit-message.mjs'),
@@ -81,6 +96,23 @@ test('リポジトリの最初のコミットは、接頭辞が無くても通�
   assert.equal(git(local, 'add', '.').status, 0);
   const result = git(local, 'commit', '-m', 'テンプレートの取り込み');
   assert.equal(result.status, 0, result.stderr);
+});
+
+test('GitHub の作成画面で付けたファイルだけのコミットの上では、テンプレートを取り込むコミットを接頭辞が無くても通す', () => {
+  const local = setupEmptyRepo({ withMarker: false });
+  writeFileSync(join(local, 'README.md'), '# app\n');
+  assert.equal(git(local, 'add', 'README.md').status, 0);
+  assert.equal(git(local, 'commit', '-m', 'Initial commit').status, 0);
+
+  writeMarker(local);
+  assert.equal(git(local, 'add', '.').status, 0);
+  const result = git(local, 'commit', '-m', 'テンプレートの取り込み');
+  assert.equal(result.status, 0, result.stderr);
+
+  // 取り込んだ後のコミットは見る
+  const after = commitWith(local, 'テンプレートの更新');
+  assert.notEqual(after.status, 0);
+  assert.match(after.stderr, /1 行目が `\[<対象>\]<要約>` の形ではありません/);
 });
 
 for (const message of [

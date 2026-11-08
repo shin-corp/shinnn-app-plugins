@@ -157,6 +157,153 @@ test('setup-env: server/.env の DATABASE_URL は検出に使わない', () => {
   assert.match(result.stdout, /^- DATABASE_URL: 未設定$/m);
 });
 
+/** テンプレートの server/.env.example。--server-env はこれを写す */
+const templateEnvExample = readFileSync(
+  fileURLToPath(new URL('../template/server/.env.example', import.meta.url)),
+  'utf8',
+);
+
+/** server/.env.example を置いた対象のリポジトリ */
+function makeServerRepo(example = templateEnvExample) {
+  const repo = makeEnvRepo();
+  mkdirSync(join(repo, 'server'));
+  writeFileSync(join(repo, 'server', '.env.example'), example);
+  return repo;
+}
+
+/** 作った server/.env の中身 */
+function readServerEnv(repo) {
+  return readFileSync(join(repo, 'server', '.env'), 'utf8');
+}
+
+/** `名前=値` の行の値。無ければ undefined */
+function envValue(body, name) {
+  return body.match(new RegExp(`^${name}=(.*)$`, 'm'))?.[1];
+}
+
+test('setup-env --server-env: .env.example を写し、DB_DRIVER を pglite に、JWT_SECRET をランダムな値にする', () => {
+  const repo = makeServerRepo();
+  const result = runSetupEnv(repo, ['--server-env', '--database', 'pglite']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /^server\/\.env を作りました。/m);
+
+  const written = readServerEnv(repo);
+  const secret = envValue(written, 'JWT_SECRET');
+
+  assert.equal(envValue(written, 'DB_DRIVER'), 'pglite');
+  assert.doesNotMatch(written, /^# DB_DRIVER=/m);
+  // テンプレートの server/src/config.ts の検査（32 文字以上）を通る。.env にそのまま書ける文字だけ
+  assert.match(secret, /^[A-Za-z0-9_-]{64}$/);
+
+  // 置き換えた 2 行のほかは、.env.example のまま
+  const unchanged = (body) =>
+    body
+      .split('\n')
+      .filter((line) => !/^(# )?(DB_DRIVER|JWT_SECRET)=/.test(line))
+      .join('\n');
+  assert.equal(unchanged(written), unchanged(templateEnvExample));
+
+  // 値の空の行は残らない（テンプレートの config.ts が必須にする値は、すべて埋まる）
+  assert.doesNotMatch(written, /^[A-Z][A-Z0-9_]*=$/m);
+  for (const name of ['DATABASE_URL', 'JWT_AUDIENCE', 'CORS_ORIGIN']) {
+    assert.ok((envValue(written, name) ?? '') !== '', name);
+  }
+
+  // 値は出力に出さない。開発環境の検出もしない
+  assert.ok(!result.stdout.includes(secret), result.stdout);
+  assert.doesNotMatch(result.stdout, /## 開発環境/);
+  assert.equal(existsSync(join(repo, 'docs')), false);
+  assert.doesNotMatch(result.stdout, /値が空の項目/);
+});
+
+test('setup-env --server-env: JWT_SECRET は作るたびに違う', () => {
+  const secrets = [makeServerRepo(), makeServerRepo()].map((repo) => {
+    const result = runSetupEnv(repo, ['--server-env', '--database', 'pglite']);
+    assert.equal(result.status, 0, result.stderr);
+    return envValue(readServerEnv(repo), 'JWT_SECRET');
+  });
+
+  assert.notEqual(secrets[0], secrets[1]);
+});
+
+test('setup-env --server-env: 既にある server/.env は上書きせず、足りないものの名前だけを示す', () => {
+  const repo = makeServerRepo();
+  const existing = 'DB_DRIVER=pg\nJWT_SECRET=short-secret-value\n';
+  writeFileSync(join(repo, 'server', '.env'), existing);
+  const result = runSetupEnv(repo, ['--server-env', '--database', 'pglite']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(readServerEnv(repo), existing);
+  assert.match(result.stdout, /server\/\.env は既にあります。上書きしません/);
+  assert.match(result.stdout, /DB_DRIVER: pglite になっていません/);
+  assert.match(result.stdout, /JWT_SECRET: 32 文字以上になっていません/);
+  assert.ok(!result.stdout.includes('short-secret-value'), result.stdout);
+});
+
+test('setup-env --server-env: 既にある server/.env が PGlite で動く形なら、そう示す', () => {
+  const repo = makeServerRepo();
+  const existing = `DB_DRIVER="pglite" # コメント\nJWT_SECRET=${'a'.repeat(32)}\n`;
+  writeFileSync(join(repo, 'server', '.env'), existing);
+  const result = runSetupEnv(repo, ['--server-env', '--database', 'pglite']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(readServerEnv(repo), existing);
+  assert.match(result.stdout, /DB_DRIVER: pglite になっています/);
+  assert.match(result.stdout, /JWT_SECRET: 32 文字以上です/);
+});
+
+test('setup-env --server-env: .env.example に値の空の項目がほかにあれば、名前だけを示す', () => {
+  const repo = makeServerRepo(`${templateEnvExample}\n# 外部サービスの鍵。\nEXTERNAL_API_KEY=\n`);
+  const result = runSetupEnv(repo, ['--server-env', '--database', 'pglite']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /値が空の項目があります: EXTERNAL_API_KEY。/);
+  assert.equal(envValue(readServerEnv(repo), 'EXTERNAL_API_KEY'), '');
+});
+
+test('setup-env --server-env: .env.example に DB_DRIVER の行が無ければ、末尾に足す', () => {
+  const repo = makeServerRepo('DATABASE_URL=postgres://app:app@localhost:5432/app\nJWT_SECRET=');
+  const result = runSetupEnv(repo, ['--server-env', '--database', 'pglite']);
+
+  assert.equal(result.status, 0, result.stderr);
+  const written = readServerEnv(repo);
+  assert.match(
+    written,
+    /^DATABASE_URL=postgres:\/\/app:app@localhost:5432\/app\nJWT_SECRET=[A-Za-z0-9_-]{64}\nDB_DRIVER=pglite\n$/,
+  );
+});
+
+test('setup-env --server-env: pglite のほかの方式と、方式の指定が無いときは、何も書かずに止める', () => {
+  for (const args of [['--database', 'docker'], ['--database', 'managed'], []]) {
+    const repo = makeServerRepo();
+    const result = runSetupEnv(repo, ['--server-env', ...args]);
+
+    assert.equal(result.status, 1, args.join(' '));
+    assert.match(result.stderr, /--server-env は --database pglite と一緒に指定します/);
+    assert.equal(existsSync(join(repo, 'server', '.env')), false);
+  }
+});
+
+test('setup-env --server-env: server/.env.example が無ければ、何も書かずに止める', () => {
+  const repo = makeEnvRepo();
+  const result = runSetupEnv(repo, ['--server-env', '--database', 'pglite']);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /server\/\.env\.example がありません/);
+  assert.equal(existsSync(join(repo, 'server')), false);
+});
+
+test('setup-env --server-env --write: server/.env を作り、docs/env.md にも PGlite の手順を書く', () => {
+  const repo = makeServerRepo();
+  const result = runSetupEnv(repo, ['--write', '--database', 'pglite', '--server-env']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(envValue(readServerEnv(repo), 'DB_DRIVER'), 'pglite');
+  assert.match(readFileSync(join(repo, 'docs', 'env.md'), 'utf8'), /^- 採用: PGlite/m);
+  assert.match(result.stdout, /## 開発環境/);
+});
+
 test('setup-env --database: 知らない方式は、何も書かずに止める', () => {
   const repo = makeEnvRepo();
   const result = runSetupEnv(repo, ['--write', '--database', 'embedded-postgres']);

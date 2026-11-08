@@ -5,6 +5,7 @@
  * 一時フォルダの本物の git（送り先は bare リポジトリ）で、setup が止まった場所ごとの結果を確かめる。
  * - 手順 0 の続き: テンプレートをコミットしていないか、origin が無いか、origin の main が無いか、
  *   origin の main にテンプレートが無ければ、コマンドの結果で分かる
+ * - origin の main が GitHub の作成画面のファイル（README.md・LICENSE・.gitignore）だけなら、上書きせずにその上へ重ねて送れる
  * - 手順 5 の続き: 適用のブランチが手元か origin にあれば移れる。無ければ失敗し、main の最新から切れる
  * - main の取り込み: 未コミットの変更と重なると断られ、記録の衝突は main の側を取ると解ける
  * どの状態で何をするかはスキルの文なので、順番と名指しだけを見る。
@@ -255,7 +256,11 @@ test('手順 0: 最初のコミットと push は、規約の「やらないこ�
   assert.match(templateStep, /規約 `git-workflow\.md` の「やらないこと」のただし書きに当たる/);
   assert.match(
     doNot,
-    /^- ただし、GitHub に `main` がまだ無いときは、テンプレートの最初のコミットを `main` に作って push してよい/m,
+    /^- ただし、GitHub の `main` にテンプレートがまだ無いときは、テンプレートを取り込むコミットを `main` に作って push してよい/m,
+  );
+  assert.match(
+    doNot,
+    /`main` が無いときと、GitHub の作成画面で付けた `README\.md`・`LICENSE`・`\.gitignore` だけがあるとき/,
   );
 });
 
@@ -273,10 +278,11 @@ test('手順 0 の 3: 今のブランチが main でなければ、名前を変�
   assert.equal(runLine(folder, remoteCheck).status, 0);
 });
 
-test('手順 0 の 4: origin があって main が無ければ、リポジトリを作らずに push する', () => {
+test('手順 0 の 4: origin があれば、リポジトリを作らずに push し、断られたら失敗の項目に従う', () => {
+  assert.match(templateStep, /`origin` があれば、リポジトリを作らずに `git push -u origin main` だけを実行する/);
   assert.match(
     templateStep,
-    /`origin` があって `main` をまだ push していなければ、リポジトリを作らずに `git push -u origin main`/,
+    /`git push -u origin main` が断られたら、「失敗したとき」の `git push -u origin main` の項目に従う/,
   );
 });
 
@@ -371,6 +377,125 @@ test('手順 0 の残り: origin の main が別の履歴なら、push は断ら
 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, '');
+});
+
+/** 失敗したときの、`git push -u origin main` の項目 */
+const pushFailure = failures.slice(
+  failures.indexOf('- `git push -u origin main` が断られる'),
+  failures.indexOf('- `git merge origin/main` が衝突で止まる'),
+);
+
+/** その項目のコマンド。origin の main のファイルを見る 2 つと、重ね直す 4 つ */
+const [fetchForStack, listOriginFiles, ...stackCommands] = codeLines(pushFailure);
+
+/** GitHub の作成画面で付けられる 3 つ */
+const REPOSITORY_FILES = ['README.md', 'LICENSE', '.gitignore'];
+
+/** スキルの 1 行を実行する。`git commit -m "…"` の行だけは、引用符の中を 1 つの引数にする */
+function runStackLine(cwd, line) {
+  const message = line.match(/^git commit -m "(.+)"$/)?.[1];
+  return message === undefined ? runLine(cwd, line) : git(cwd, 'commit', '-m', message);
+}
+
+/** 展開したテンプレートのつもりのフォルダ。README.md・.gitignore・LICENSE はテンプレートのもの */
+function expandedFolderWithRepositoryFiles() {
+  const folder = expandedFolder();
+  writeFileSync(join(folder, 'README.md'), 'template readme\n');
+  writeFileSync(join(folder, '.gitignore'), '.env\n');
+  writeFileSync(join(folder, 'LICENSE'), 'MIT License\n');
+  return folder;
+}
+
+/**
+ * GitHub の作成画面で README.md と LICENSE を付けたリポジトリと同じく、main にその 2 つだけのコミットがある送り先を、
+ * フォルダの隣に作る
+ */
+function remoteWithRepositoryFiles(folder) {
+  const remote = join(dirname(folder), 'remote.git');
+  gitOk(dirname(folder), 'init', '--bare', '--initial-branch=main', remote);
+  const other = join(dirname(folder), 'other');
+  gitOk(dirname(folder), 'clone', remote, other);
+  gitOk(other, 'symbolic-ref', 'HEAD', 'refs/heads/main');
+  writeFileSync(join(other, 'README.md'), '# app\n');
+  writeFileSync(join(other, 'LICENSE'), 'Apache License\n');
+  gitOk(other, 'add', '-A');
+  gitOk(other, 'commit', '-m', 'Initial commit');
+  gitOk(other, 'push', 'origin', 'main');
+  return remote;
+}
+
+/** フォルダの origin に、作成画面のファイルだけの送り先を足す */
+function addOriginWithRepositoryFiles(folder) {
+  const remote = remoteWithRepositoryFiles(folder);
+  gitOk(folder, 'remote', 'add', 'origin', remote);
+  return remote;
+}
+
+test('失敗したとき: origin の main を見る 2 つと、重ね直す 4 つのコマンドがこの順にある', () => {
+  assert.equal(fetchForStack, 'git fetch origin main');
+  assert.equal(listOriginFiles, 'git ls-tree -r --name-only origin/main');
+  assert.deepEqual(stackCommands, [
+    'git reset --soft origin/main',
+    'git checkout origin/main -- LICENSE',
+    'git commit -m "テンプレートの取り込み"',
+    'git push -u origin main',
+  ]);
+  assert.match(pushFailure, /上書きしない（`--force` を付けない）/);
+  assert.match(pushFailure, /`origin` の `main` に `LICENSE` があるときだけ、`git checkout origin\/main -- LICENSE`/);
+  assert.match(pushFailure, /ほかのファイルもあれば、`origin` は別のアプリのリポジトリを指している/);
+});
+
+test('手順 0 の 4: GitHub で作ったリポジトリを clone したフォルダでは、テンプレートのコミットがそのまま送れる', () => {
+  const folder = expandedFolderWithRepositoryFiles();
+  const remote = remoteWithRepositoryFiles(folder);
+  // clone したフォルダに、テンプレートを展開してコミットしたのと同じ状態
+  const cloned = join(dirname(folder), 'cloned');
+  gitOk(dirname(folder), 'clone', remote, cloned);
+  mkdirSync(dirname(join(cloned, MARKER)), { recursive: true });
+  writeFileSync(join(cloned, MARKER), '0.0.0\n');
+  writeFileSync(join(cloned, 'README.md'), 'template readme\n');
+  gitOk(cloned, 'add', '-A');
+  gitOk(cloned, 'commit', '-m', 'テンプレートの取り込み');
+
+  assert.equal(runStackLine(cloned, stackCommands.at(-1)).status, 0);
+  assert.match(runLine(cloned, templateOnRemoteCheck).stdout, /テンプレートの取り込み/);
+});
+
+test('失敗したとき: origin の main が作成画面のファイルだけなら、その上にテンプレートのコミットを重ね直して送れる', () => {
+  const folder = expandedFolderWithRepositoryFiles();
+  gitOk(folder, 'init', '--initial-branch=main');
+  gitOk(folder, 'add', '-A');
+  gitOk(folder, 'commit', '-m', 'テンプレートの取り込み');
+  addOriginWithRepositoryFiles(folder);
+  const originMain = () => gitOk(folder, 'rev-parse', 'origin/main').stdout.trim();
+
+  // 別の履歴なので、そのままでは断られる
+  assert.notEqual(runStackLine(folder, stackCommands.at(-1)).status, 0);
+
+  assert.equal(runLine(folder, fetchForStack).status, 0);
+  const files = runLine(folder, listOriginFiles)
+    .stdout.split('\n')
+    .filter((line) => line !== '');
+  assert.ok(
+    files.every((file) => REPOSITORY_FILES.includes(file)),
+    files.join(', '),
+  );
+  const base = originMain();
+
+  for (const line of stackCommands) {
+    const result = runStackLine(folder, line);
+    assert.equal(result.status, 0, `${line}\n${result.stderr}`);
+  }
+
+  // origin の main は上書きされず、テンプレートのコミットの親になる
+  assert.equal(gitOk(folder, 'rev-parse', 'HEAD~1').stdout.trim(), base);
+  assert.equal(originMain(), gitOk(folder, 'rev-parse', 'HEAD').stdout.trim());
+  // README.md はテンプレートのもの、LICENSE は origin のもの。テンプレートの目印も入る
+  assert.equal(gitOk(folder, 'show', 'HEAD:README.md').stdout, 'template readme\n');
+  assert.equal(gitOk(folder, 'show', 'HEAD:LICENSE').stdout, 'Apache License\n');
+  assert.equal(gitOk(folder, 'show', 'HEAD:.gitignore').stdout, '.env\n');
+  assert.match(runLine(folder, templateOnRemoteCheck).stdout, /テンプレートの取り込み/);
+  assert.equal(gitOk(folder, 'status', '--porcelain').stdout, '');
 });
 
 test('進め方の 3: origin/main の標準の版が進んでいるときだけ、比べる前のコマンドにコミットが出る', () => {
@@ -544,4 +669,69 @@ test('feature の続きから始める: 初回の適用の Issue のブランチ
       `その Issue の題が \`${APPLY_ISSUE_TITLE}\` なら、このスキルでは進めず、\`/shinnn-app:setup\` を実行する`,
     ),
   );
+});
+
+/** 手順 6 の節 */
+const nextStep = section('### 6. 次の一手');
+
+test('進め方: args に答えがある項目は聞かず、「既定のまま」「質問せずに」では既定を採って確認も取らない', () => {
+  assert.match(
+    progress,
+    /`args`（setup を呼んだときに `\/shinnn-app:setup` の後ろに書いた文）に答えがある項目は、質問せずにその答えを使う/,
+  );
+  assert.match(progress, /`args` に「既定のまま」か「質問せずに」とあれば、次のとおりに進める/);
+  assert.match(progress, /^- 既定のある項目は、質問せずに既定を採る$/m);
+  assert.match(progress, /^- 実行の前の確認（`--dry-run` の結果を見せて取る確認）は取らない$/m);
+  assert.match(
+    progress,
+    /^- シン株式会社の担当者のアカウントは、`args` に無ければ質問せずに、決まらなかったとき（手順 4）の扱いにする$/m,
+  );
+  assert.match(progress, /^- そのほかの既定の無い項目は、質問する$/m);
+});
+
+test('手順 6: args に最後の問いの答えがあれば、問わずにその答えで feature を呼ぶ', () => {
+  assert.match(nextStep, /初回でも、`args` に 4 の問いの答えがあれば.*問わずにその答えを使う/);
+  assert.match(
+    nextStep,
+    /答え（`args` にあった答えを含む）を受けたら、報告の前と同じコマンドで、setup の PR をもう一度見る/,
+  );
+  assert.match(nextStep, /`state` が `MERGED` なら、Skill ツールで `shinnn-app:feature` を呼ぶ/);
+});
+
+test('手順 6: 作り直しは、元のアプリのフォルダが作業フォルダに入っているときだけ、起動し直さずに feature を呼ぶ', () => {
+  assert.match(
+    nextStep,
+    /^\| 元のアプリを作り直す（元のアプリのフォルダが、このセッションの作業フォルダに入っている） \| `<元のアプリのフォルダ>にあるアプリを作り直したい` \|$/m,
+  );
+  assert.match(nextStep, /起動のときの `--add-dir` と、設定の `additionalDirectories` で足したフォルダを含む/);
+  assert.match(
+    nextStep,
+    /作り直すと答え、元のアプリのフォルダがこのセッションの作業フォルダに入っていないときも、`feature` を呼ばない/,
+  );
+  assert.match(
+    nextStep,
+    /^- `\/exit` で終了する。ターミナルでこのフォルダに移り、`claude --add-dir <元のアプリのフォルダ>` で起動する$/m,
+  );
+});
+
+test('手順 0 の 5: 起動し直すときは、同じ --add-dir と、setup の後ろに書いた同じ文を付ける', () => {
+  assert.match(templateStep, /このセッションに `--add-dir` で足したフォルダがあれば、同じ `--add-dir` を付ける/);
+  assert.match(templateStep, /今回 `\/shinnn-app:setup` の後ろに文を書いていれば、同じ文を付ける/);
+});
+
+test('手順 0 の 1: GitHub の作成画面のファイルはあってよく、README.md と .gitignore は置き換わり LICENSE は残る', () => {
+  assert.match(
+    templateStep,
+    /GitHub でリポジトリを作る画面で付けられる `README\.md`・`LICENSE`・`\.gitignore` も、あってよい/,
+  );
+  assert.match(templateStep, /`README\.md` と `\.gitignore` はテンプレートのものに置き換わり、`LICENSE` は残る/);
+});
+
+test('手順 5 の 5: pglite なら --server-env も付けて server/.env を作る', () => {
+  assert.ok(
+    codeLines(applyStep).includes(
+      'node ${CLAUDE_PLUGIN_ROOT}/scripts/setup-env.mjs --write --database pglite --server-env',
+    ),
+  );
+  assert.match(applyStep, /方式が `pglite` なら、`--server-env` も付けて、`server\/\.env` も作る/);
 });

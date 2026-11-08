@@ -15,9 +15,13 @@
  * どの版のテンプレートから作ったかが残るように、展開する `.shinnn/setup.json` の `templateVersion` をプラグインの版にする。
  * 書き換えるのは展開先に書く内容だけで、同梱のテンプレートのファイルはそのまま。
  *
- * 展開先に既にあるファイルは上書きしない。同じパスのファイルが 1 つでもあれば、何も書かずに終わる。
- * 例外は `.claude/settings.json` で、トップレベルのキーが `enabledPlugins` と `extraKnownMarketplaces` だけなら置き換える。
- * `claude plugin install --scope project` が書いたもので、テンプレート側の同じファイルがその内容を含むため。
+ * 展開先に既にあるファイルは上書きしない。同じパスのファイルが 1 つでもあれば、何も書かずに終わる。例外は次の 2 つ。
+ * - `.claude/settings.json` は、トップレベルのキーが `enabledPlugins` と `extraKnownMarketplaces` だけなら置き換える。
+ *   `claude plugin install --scope project` が書いたもので、テンプレート側の同じファイルがその内容を含むため。
+ * - GitHub でリポジトリを作る画面で付けられる `README.md`・`.gitignore`・`LICENSE` は、衝突にしない。
+ *   `README.md` と `.gitignore` は、テンプレートのものに置き換える。テンプレートの構成の説明と、無視するファイルの顔ぶれ
+ *   （`.env` や `.pglite/` など）を、テンプレートのものにそろえるため。
+ *   `LICENSE` は書かずに残す。利用者がリポジトリを作るときに選んだライセンスなので。
  *
  * 実行例:
  *   node <プラグイン>/scripts/fetch-template.mjs
@@ -25,7 +29,7 @@
  *
  * 引数:
  *   --dest <パス>  展開先（既定は CLAUDE_PROJECT_DIR、無ければカレント）。無ければ作る
- *   --dry-run      何も書かずに、版・ファイル数・置き換えるファイルだけを出す
+ *   --dry-run      何も書かずに、版・ファイル数・置き換えるファイル・残すファイルだけを出す
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -78,6 +82,12 @@ const LOG_FILE = /\.log$/;
 /** 展開先に既にあっても置き換えてよいファイルと、置き換えてよいときに持っていてよいトップレベルのキー */
 const INSTALL_SETTINGS_PATH = '.claude/settings.json';
 const INSTALL_SETTINGS_KEYS = new Set(['enabledPlugins', 'extraKnownMarketplaces']);
+
+/** GitHub でリポジトリを作る画面で付けられるファイルのうち、展開先にあればテンプレートのものに置き換えるもの */
+const REPOSITORY_FILES_TO_REPLACE = new Set(['README.md', '.gitignore']);
+
+/** GitHub でリポジトリを作る画面で付けられるファイルのうち、展開先にあれば書かずに残すもの */
+const REPOSITORY_FILES_TO_KEEP = new Set(['LICENSE']);
 
 /** 続けられない理由を出して終わる。 */
 function fail(message, how) {
@@ -211,10 +221,11 @@ function isWrittenByPluginInstall(path) {
   return Object.keys(settings).every((key) => INSTALL_SETTINGS_KEYS.has(key));
 }
 
-/** 展開先に既にあるファイルを、置き換えてよいものと衝突に分ける */
+/** 展開先に既にあるファイルを、置き換えてよいもの・残すもの・衝突に分ける */
 function classifyExisting(paths, dest) {
   const conflicts = [];
   const replaced = [];
+  const kept = [];
   for (const path of paths) {
     const target = join(dest, path);
     if (!existsSync(target)) {
@@ -224,9 +235,17 @@ function classifyExisting(paths, dest) {
       replaced.push(path);
       continue;
     }
+    if (REPOSITORY_FILES_TO_REPLACE.has(path)) {
+      replaced.push(path);
+      continue;
+    }
+    if (REPOSITORY_FILES_TO_KEEP.has(path)) {
+      kept.push(path);
+      continue;
+    }
     conflicts.push(path);
   }
-  return { conflicts, replaced };
+  return { conflicts, replaced, kept };
 }
 
 /** ファイルを展開先に書く。ディレクトリは無ければ作る */
@@ -265,7 +284,7 @@ function main() {
   const version = `プラグイン v${pluginVersion}（標準 ${readStandardsVersion(files)}）`;
   files.set(SETUP_PATH, stampSetup(pluginVersion));
 
-  const { conflicts, replaced } = classifyExisting(files.keys(), dest);
+  const { conflicts, replaced, kept } = classifyExisting(files.keys(), dest);
 
   if (conflicts.length > 0) {
     const lines = [`展開先 ${dest} に、テンプレートと同じパスのファイルがあります。何も書いていません。`];
@@ -275,6 +294,10 @@ function main() {
     fail(lines.join('\n'), '空のフォルダで実行し直す');
   }
 
+  for (const path of kept) {
+    files.delete(path);
+  }
+
   if (options.dryRun === true) {
     console.log('[shinnn-app:setup] 展開する内容（--dry-run。何も書いていません）:');
     console.log(`  版: ${version}`);
@@ -282,6 +305,7 @@ function main() {
     console.log(`  展開先: ${dest}`);
     console.log(`  ファイル数: ${files.size}`);
     console.log(`  置き換えるファイル: ${replaced.length > 0 ? replaced.join(', ') : 'なし'}`);
+    console.log(`  残すファイル: ${kept.length > 0 ? kept.join(', ') : 'なし'}`);
     process.exit(0);
   }
 
@@ -290,6 +314,9 @@ function main() {
   console.log(`[shinnn-app:setup] ${version}のテンプレートを ${dest} に展開しました（${files.size} ファイル）。`);
   if (replaced.length > 0) {
     console.log(`  置き換えたファイル: ${replaced.join(', ')}`);
+  }
+  if (kept.length > 0) {
+    console.log(`  残したファイル: ${kept.join(', ')}`);
   }
 }
 

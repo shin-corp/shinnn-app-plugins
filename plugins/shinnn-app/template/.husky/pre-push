@@ -1,11 +1,23 @@
 # main への push を止める。変更は作業ブランチから PR にする（.claude/rules/git-workflow.md）。
-# GitHub にまだ main が無いとき（リポジトリを作った直後の最初の push）だけは通す。
+# GitHub にまだ main が無いとき（リポジトリを作った直後の最初の push）は通す。
+# GitHub の main にテンプレートがまだ無いとき（作成画面で付けた README.md などだけのとき）も、テンプレートを取り込む push だけは通す。
+# 送り先のコミットが手元に無いときは、中身を確かめられないので断る。main を消す push も断る。
 # 標準入力の 1 行が送る ref 1 つ: <手元の ref> <手元のコミット> <送り先の ref> <送り先のコミット>
-# 送り先に無い ref のコミットは 0 だけが並ぶ。
+# 送り先に無い ref のコミットと、消す ref の手元のコミットは 0 だけが並ぶ。
+template_marker=".claude/rules/.standards-version"
 while read -r local_ref local_oid remote_ref remote_oid; do
   if [ "$remote_ref" = "refs/heads/main" ]; then
     case "$remote_oid" in
       *[!0]*)
+        case "$local_oid" in
+          *[!0]*)
+            if git cat-file -e "$remote_oid^{commit}" 2>/dev/null &&
+              ! git cat-file -e "$remote_oid:$template_marker" 2>/dev/null &&
+              git cat-file -e "$local_oid:$template_marker" 2>/dev/null; then
+              continue
+            fi
+            ;;
+        esac
         echo "main には直接 push できません。作業ブランチ（feature/<Issue 番号>-<slug>。不具合の修正は fix/）を切って PR にしてください。" >&2
         exit 1
         ;;

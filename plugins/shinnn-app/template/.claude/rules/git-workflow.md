@@ -43,7 +43,7 @@ Dependabot（依存更新の bot）が作る PR に対応する Issue（`[依存
 
 - 1 行目は `[<対象>]<要約>` の形にする（検査: git のフック。`<対象>` が `shared`・`server`・`client`・`docs`・`ci`・`deps`・最上位のフォルダの名前のどれかであることも見る）
 - 要約は体言止めにする（検査: git のフック。語尾の「した」「する」「です」「ます」だけを見る）
-- ただし、リポジトリの最初のコミットと、`git merge`・`git revert` が作るメッセージ（`Merge `・`Revert ` で始まるもの）は、1 行目の形・要約の語尾・1 行目の長さ・本文の言語の決まりに従わなくてよい（git のフックは、これらのメッセージを丸ごと見ない）
+- ただし、テンプレートを取り込むまでのコミット（直前のコミットに `.claude/rules/.standards-version` が無いとき。リポジトリの最初のコミットを含む）と、`git merge`・`git revert` が作るメッセージ（`Merge `・`Revert ` で始まるもの）は、1 行目の形・要約の語尾・1 行目の長さ・本文の言語の決まりに従わなくてよい（git のフックは、これらのメッセージを丸ごと見ない）
 - `<対象>` は、変更したパッケージ（`shared` / `server` / `client`）にする。文書だけの変更は `docs`、CI の設定の変更は `ci` にする
 - ただし、依存の変更（`package.json` の依存の欄と `overrides`（依存の依存の版を差し替える指定）、`package-lock.json`）は、どのパッケージでも `deps` にする
 - パッケージにも文書にも CI の設定にも当たらない、案件で足したフォルダ（例: サーバーに置く設定やスクリプトの `deploy/`）の変更は、最上位のフォルダの名前（例: `deploy`）にする
@@ -78,8 +78,9 @@ Dependabot（依存更新の bot）が作る PR に対応する Issue（`[依存
 - コミットが lint-staged の `Failed to back up original state!` で止まったときに、lint-staged が案内する `git apply --index <git-hash>` で戻さない
   （戻し方は `/shinnn-app:pr` の手順 2）
 - `main` へ直接コミットも push もしない。`main` へは、作業ブランチからの PR でだけ入れる（検査: git のフック。
-  GitHub に既にある `main` への push だけを止める）
-- ただし、GitHub に `main` がまだ無いときは、テンプレートの最初のコミットを `main` に作って push してよい（`/shinnn-app:setup` の手順 0）
+  GitHub に既にある `main` への push だけを止める。テンプレートの無い `main` に、テンプレートを取り込むコミットを送る push は通す）
+- ただし、GitHub の `main` にテンプレートがまだ無いときは、テンプレートを取り込むコミットを `main` に作って push してよい（`/shinnn-app:setup` の手順 0）。
+  `main` が無いときと、GitHub の作成画面で付けた `README.md`・`LICENSE`・`.gitignore` だけがあるときが、これに当たる
 - `gh pr merge` に `--admin` を付けない（検査: 権限の設定）
 - `server` と `shared` の `.ts` に `prettier --write` を掛けない
 - prettier で整えるのは、画面（`client`）の `.ts` と json・md・yaml だけにする
@@ -177,7 +178,9 @@ lint-staged が案内する `git apply --index <git-hash>` で戻さないのは
 作業ブランチへの push を確認なしで実行するのは、確認を求めても、コードを読まない人には判断できないためです。push の
 中身の良し悪しは、コードを読まないと分かりません。代わりに、困ることを仕組みで止めます。
 
-GitHub に `main` がまだ無いときは、PR の送り先がありません。そのため、テンプレートの最初のコミットと push だけは `main` に直接行います。
+GitHub に `main` がまだ無いときは、PR の送り先がありません。そのため、テンプレートを取り込むコミットと push だけは `main` に直接行います。
+GitHub の作成画面で付けた `README.md` などだけの `main` も、同じに扱います。テンプレートが入る前の `main` には、PR を確かめる CI がありません。
+テンプレートを取り込むまでのコミットのメッセージをフックが見ないのは、取り込むコミットには `<対象>` に当たるパッケージが無いためです。
 
 `main` への push を確実に止めるのは、GitHub のブランチ保護です。使えるプランなら、setup が設定します（推奨）。
 `.husky/pre-push` は、誤って push したときに止める安全網です。ただし、フックを飛ばす書き方があるので、これだけには

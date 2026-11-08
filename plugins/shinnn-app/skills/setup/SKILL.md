@@ -1,6 +1,6 @@
 ---
 name: setup
-description: アプリの初回セットアップを対話で行う。空のフォルダでは同梱のテンプレートを展開して git と GitHub のリポジトリを用意する。テンプレートを展開した後は、テンプレートの選択・環境の検出・必須項目の確認・選択項目の決定・適用までを 1 回で通す。最後に作りたいアプリを聞き、続けて /shinnn-app:feature を始める。再実行すると選択の変更を差分の PR にする。初回のセットアップが途中で止まったときは、再実行で済んでいないところから続ける。「セットアップ」「初期設定」「最初に何をすればいい」「セットアップの選択を変えたい」「セットアップの続き」「前の担当者の権限を決めたい」で起動
+description: アプリの初回セットアップを対話で行う。空のフォルダでは同梱のテンプレートを展開して git と GitHub のリポジトリを用意する。テンプレートを展開した後は、テンプレートの選択・環境の検出・必須項目の確認・選択項目の決定・適用までを 1 回で通す。最後に作りたいアプリ（既にあるアプリの作り直しを含む）を聞き、続けて /shinnn-app:feature を始める。再実行すると選択の変更を差分の PR にする。初回のセットアップが途中で止まったときは、再実行で済んでいないところから続ける。「セットアップ」「初期設定」「最初に何をすればいい」「セットアップの選択を変えたい」「セットアップの続き」「前の担当者の権限を決めたい」で起動
 ---
 
 # 初回セットアップ
@@ -56,7 +56,14 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
    `gh` が無い・ログインできないときは、適用の Issue を既に作ったかを聞く
 5. **どれでもない**: 手順 1〜6 を順に行う。ただし、「前の担当者の権限を決めたい」と頼まれたときは、手順 1〜5 を行わず手順 6 に進む
 
-各手順の結果を短くまとめてから次に進み、**利用者が決める項目は必ず質問する**。
+各手順の結果を短くまとめてから次に進み、**利用者が決める項目は質問する**。
+ただし、`args`（setup を呼んだときに `/shinnn-app:setup` の後ろに書いた文）に答えがある項目は、質問せずにその答えを使う。
+`args` に「既定のまま」か「質問せずに」とあれば、次のとおりに進める。
+
+- 既定のある項目は、質問せずに既定を採る
+- 実行の前の確認（`--dry-run` の結果を見せて取る確認）は取らない
+- シン株式会社の担当者のアカウントは、`args` に無ければ質問せずに、決まらなかったとき（手順 4）の扱いにする
+- そのほかの既定の無い項目は、質問する
 
 ### 0. テンプレートの展開
 
@@ -66,12 +73,14 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
 3 と 4 は、テンプレートを `main` の最初のコミットにして GitHub に送る手順。規約 `git-workflow.md` の「やらないこと」のただし書きに当たる。
 
 1. **フォルダが空であることを確かめる。** `claude plugin install` が作った `.claude/` と `.git/` はあってよい。
+   GitHub でリポジトリを作る画面で付けられる `README.md`・`LICENSE`・`.gitignore` も、あってよい（そのリポジトリを clone したフォルダなど）。
+   2 の展開で、`README.md` と `.gitignore` はテンプレートのものに置き換わり、`LICENSE` は残る。
    ほかのファイルがあれば、次の 3 つを伝えて止める
    - 空のフォルダで始め直す。setup は、この道具を使わずに作ったアプリ（以下「元のアプリ」）のフォルダに標準を当てない
      （規約と確認のスクリプトと CI は、テンプレートの構成を前提にしている）
    - 元のアプリを作り直すときは、空のフォルダで新しいアプリを作る。元のアプリのフォルダはそのまま残し、新しいフォルダにコピーしない。
-     新しいアプリの setup を終えたら `/exit` で終了し、ターミナルで新しいアプリのフォルダに移って
-     `claude --add-dir <元のアプリのフォルダ>` で起動する。起動したら `/shinnn-app:feature <元のアプリのフォルダ>にあるアプリを作り直したい` と入力する
+     新しいフォルダで `claude --add-dir <元のアプリのフォルダ>` で起動してから setup を実行する。
+     最後の問い（手順 6）に `<元のアプリのフォルダ>にあるアプリを作り直したい` と答えると、起動し直さずに作り直しが始まる
    - このフォルダでプラグインを入れたときに、`claude plugin install --scope project` が `.claude/settings.json` を書いている。
      元のアプリに要らなければ、利用者に git で元に戻すか消してもらう
 2. **展開する内容を見せてから展開する。** まず `--dry-run` で版とファイル数を示して確認を取り、`--dry-run` を外して実行する
@@ -82,8 +91,10 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
 
    スクリプトは、プラグインに同梱されたテンプレート（`${CLAUDE_PLUGIN_ROOT}/template/`）を今のフォルダにコピーして展開する。
    ダウンロードしないので、ネットワークにも認証にも依存しない。既にファイルがあれば上書きせずに止まる。
-   例外は、`claude plugin install --scope project` が書いた `.claude/settings.json`
-   （`enabledPlugins` と `extraKnownMarketplaces` だけのもの）。スクリプトはこのファイルをテンプレートの同じファイルに置き換える
+   例外の 1 つ目は、`claude plugin install --scope project` が書いた `.claude/settings.json`
+   （`enabledPlugins` と `extraKnownMarketplaces` だけのもの）。スクリプトはこのファイルをテンプレートの同じファイルに置き換える。
+   例外の 2 つ目は、GitHub の作成画面で付けられる 3 つ。スクリプトは、`README.md` と `.gitignore` をテンプレートのものに置き換え、
+   `LICENSE` は書かずに残す（`--dry-run` の「置き換えるファイル」と「残すファイル」に出る）
 
    版は、プラグインの版に標準の版を添えて `プラグイン v<プラグインの版>（標準 <標準の版>）` の形で示される。
    テンプレートはプラグインに同梱して配るので、テンプレートの版はプラグインの版と同じ。展開した `.shinnn/setup.json` の
@@ -97,7 +108,8 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
 
 3. **git に記録する。** `.git` が無ければ `git init -b main`。今のブランチが `main` でなければ `git branch -M main`。続けて `git add -A` →
    `git commit -m "テンプレートの取り込み"`。
-   最初のコミットには対象のパッケージが無いので、コミットの接頭辞（`[server]` など）を付けない
+   テンプレートを取り込むコミットには対象のパッケージが無いので、コミットの接頭辞（`[server]` など）を付けない。
+   GitHub で作ったリポジトリを clone したフォルダでは、`README.md` などの最初のコミットの上に、このコミットが重なる
 4. **GitHub にリポジトリを作る。** リモートが無ければ、置き場所（組織かアカウント）とリポジトリ名を聞いて実行する。
    置き場所の既定は、`gh` にログインしているアカウントにする（次の 1 つ目のコマンドが出す名前）。リポジトリ名の既定は、フォルダ名にする
 
@@ -106,13 +118,15 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
    gh repo create <置き場所>/<名前> --private --source . --remote origin --push
    ```
 
-   作れない場合（組織でリポジトリを作る権限が無い、`gh` が無い）は、GitHub の画面で空のリポジトリ（README なし）を
-   作ってもらい、`git remote add origin <URL>` と `git push -u origin main` を実行する。
-   `origin` があって `main` をまだ push していなければ、リポジトリを作らずに `git push -u origin main` だけを実行する
+   作れない場合（組織でリポジトリを作る権限が無い、`gh` が無い）は、GitHub の画面でリポジトリを作ってもらう
+   （`README.md`・`LICENSE`・`.gitignore` は付けてもよい）。続けて、`git remote add origin <URL>` と `git push -u origin main` を実行する。
+   `origin` があれば、リポジトリを作らずに `git push -u origin main` だけを実行する。
+   clone したフォルダでは、手元の `main` が `origin` の `main` の続きになっているので、そのまま送れる。
+   `git push -u origin main` が断られたら、「失敗したとき」の `git push -u origin main` の項目に従う
 5. **起動し直してもらう。** このセッションで 2 の展開をしていなければ、規約は読み込まれている。
    その場合は起動し直しを伝えず、「進め方」の 3 に進む。2 の展開をしていれば、次の 4 点を**省かずに**伝えて、ここで終える
-   - `/exit` で終了し、同じフォルダで `claude` を起動し直す
-   - 起動したら、もう一度 `/shinnn-app:setup` を実行する
+   - `/exit` で終了し、同じフォルダで `claude` を起動し直す。このセッションに `--add-dir` で足したフォルダがあれば、同じ `--add-dir` を付ける
+   - 起動したら、もう一度 `/shinnn-app:setup` を実行する。今回 `/shinnn-app:setup` の後ろに文を書いていれば、同じ文を付ける
    - 理由: 規約（`CLAUDE.md` と `.claude/rules/`）は起動時に読み込まれるため
    - 最後に次の 1 文をそのまま添える。
      「画面の別の場所に、英語で同じ内容の案内（`restart claude` など）が出ることがあります。Claude Code が自動で作る要約なので、上の手順のとおりに進めてください。」
@@ -145,8 +159,9 @@ update-rules は、標準を写した後に setup と同じ適用のスクリプ
   入るまでは Issue と PR を GitHub の画面で扱ってもらう。GitHub 自体を使えない顧客は対象外（手順 0 から GitHub のリポジトリを前提にしている）
 - PostgreSQL は検出順に従って選ぶ。Docker は `docker` コマンドが動けばよく、Docker Desktop でも WSL の Docker Engine でも構わない
   （WSL の中だけにある場合、Windows 側からは見えないので「使えません」になる。WSL でコンテナを起動すれば `localhost:5432` の検出で拾える）
-- Docker も PostgreSQL も無い場合は PGlite（API サーバーの中で動く PostgreSQL）を使う。入れるものは無く、
-  利用者に、`server/.env.example` を写した `server/.env` の `DB_DRIVER` を `pglite` にしてもらうだけでよい（`.env` は Claude が読み書きしない）。
+- Docker も PostgreSQL も無い場合は PGlite（API サーバーの中で動く PostgreSQL）を使う。入れるものは無い。
+  `server/.env` は、手順 5 の 5 でスクリプトが作る（`server/.env.example` を写して、`DB_DRIVER` を `pglite` にし、`JWT_SECRET` にランダムな値を入れる）。
+  Claude は `.env` の値を読み書きしない。スクリプトは値を書くだけで、出力に値を出さない。
   手で PostgreSQL を入れてもらう案内はしない。本番と同じ PostgreSQL で確かめたい利用者には、マネージドの無料枠（`managed`）も示す
 - 選んだ方式は手順 5 で `--database` に渡し、`docs/env.md` にも書く
 - GitHub 側は、シン株式会社の担当者のアカウントが招待されているかを確認する。招待は手順 5 の 9 で行う。
@@ -316,7 +331,16 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
    node ${CLAUDE_PLUGIN_ROOT}/scripts/setup-env.mjs --write --database <選んだ方式>
    ```
 
-   節が既にあれば、スクリプトは書き足さない。再実行で方式を変えたときは、出力された節で既にある節を置き換える
+   節が既にあれば、スクリプトは書き足さない。再実行で方式を変えたときは、出力された節で既にある節を置き換える。
+   方式が `pglite` なら、`--server-env` も付けて、`server/.env` も作る
+
+   ```
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/setup-env.mjs --write --database pglite --server-env
+   ```
+
+   `server/.env` が無ければ、スクリプトは `server/.env.example` を写して作る（`DB_DRIVER=pglite`、`JWT_SECRET` はランダムな値）。
+   既にあれば上書きせず、`DB_DRIVER` と `JWT_SECRET` が PGlite で動く形になっているかだけを示す。
+   スクリプトが「なっていません」と示した項目と、「値が空の項目」に挙げた項目は、手順 6 の報告の「してほしいこと」に書く
 6. `README.md` の「有効な機能」表を、決めた内容で書き換える（マージの方針とブランチ保護の行も含める。ブランチ保護は 12 の結果を書く）
 7. `docs/decisions/` の**空いている次の番号**で `<番号>-setup.md` を作り、**選んだ理由と選ばなかった理由**を残す
    （テンプレートに `0001-template-stack.md`・`0002-package-manager.md`・`0003-node-version.md` が同梱されているので、初回は通常 `0004-setup.md`）。
@@ -463,7 +487,8 @@ gh pr view <setup の PR の番号> --json state
 最後に、利用者の言葉で、次の順に 1 回だけ報告する。
 
 1. **決めた内容**: プロファイル、DB の用意方法、マージの方針、選択項目、シン株式会社の担当者のアカウント
-2. **してほしいこと**: 利用者にしかできないこと（setup の PR のマージ（`state` が `MERGED` でないとき）、担当者のアカウントを聞くこと、`server/.env` の書き換え、費用が発生する項目の secret の入力など）。無ければ書かない
+2. **してほしいこと**: 利用者にしかできないこと（setup の PR のマージ（`state` が `MERGED` でないとき）、担当者のアカウントを聞くこと、`server/.env` の作成と書き換え、費用が発生する項目の secret の入力など）。無ければ書かない。
+   方式が `pglite` のときの `server/.env` は、手順 5 の 5 のスクリプトが示した項目だけを書く
 3. **入らなかったもの**: 入れられなかったものを 1 行ずつ書く。ブランチ保護は、手順 5 の 12 の結果に 1 行で触れるだけにする（詳しくは「有効な機能」表と記録に書いてある）
 4. **次の問い**: 「作りたいアプリの目的と、最初に作る画面を教えてください」の 1 つだけ
 
@@ -473,29 +498,43 @@ GitHub の自動マージの機能（手順 5 の 10）は、報告に入れな�
 「進め方」の 4 で続けた実行も、この Issue で進めるので初回に当たる。
 再実行では、1〜3 を報告して終える（すでに作り始めたアプリで、作りたいアプリを聞き直さない）。
 
+初回でも、`args` に 4 の問いの答えがあれば（例: `最後の問いの答えは <場所> にあるアプリを作り直したい`）、問わずにその答えを使う。
+そのときは、報告の 4 に、問いの代わりに使う答えを書く。下の 2 つも添えない。
+
 問いの後ろに、次の 2 つを添える。
 
-- 元のアプリ（手順 0 の 1）を作り直すときは、`/exit` で終了する。ターミナルでこのフォルダに移り、`claude --add-dir <元のアプリのフォルダ>` で起動する。
-  起動したら、`/shinnn-app:feature <元のアプリのフォルダ>にあるアプリを作り直したい` と入力する
+- 元のアプリ（手順 0 の 1）を作り直すときは、`<元のアプリのフォルダ>にあるアプリを作り直したい` と答える
 - 普段の進め方と画面の開き方は、`docs/アプリ作り方ガイド.md` にある
 
-アプリの目的と画面の答えが来たら、報告の前と同じコマンドで、setup の PR をもう一度見る。
-`state` が `MERGED` なら、答えを `args` に渡して、Skill ツールで `shinnn-app:feature` を呼ぶ。
+答え（`args` にあった答えを含む）を受けたら、報告の前と同じコマンドで、setup の PR をもう一度見る。
+`state` が `MERGED` なら、Skill ツールで `shinnn-app:feature` を呼ぶ。`args` には、答えに合わせて次の表のものを渡す。
 利用者にコマンドを打たせず、このセッションで続けて行う。
 
-```
-/shinnn-app:feature <答え（アプリの目的と、最初に作る画面）>
-```
+| 答え | `feature` に渡す `args` |
+|:--|:--|
+| アプリの目的と、最初に作る画面 | 答えのまま |
+| 元のアプリを作り直す（元のアプリのフォルダが、このセッションの作業フォルダに入っている） | `<元のアプリのフォルダ>にあるアプリを作り直したい` |
+
+このセッションの作業フォルダは、起動のときの `--add-dir` と、設定の `additionalDirectories` で足したフォルダを含む。
+Claude Code が Claude に知らせる作業フォルダの一覧に出るので、それと答えの場所を比べる。
+答えの場所が `~` で始まるときは、`~` をホームのフォルダに置き換えて比べる。
+`args` の `<元のアプリのフォルダ>` には、作業フォルダの一覧に出ている形のパスを書く。
+作り直すという答えに場所が無ければ、場所を聞く。
 
 `feature` を呼んだら、setup はそこで終わる。その後は `feature` の手順に従う。
 
 `MERGED` でなければ（`human` で人のマージを待つとき、`workflow` スコープの不足でマージが失敗したときなど）、`feature` を呼ばない。
 マージされる前の `main` の記録は、`setupCompletedAt` が `null` のテンプレートの値のままである。
 そのため、`feature` は setup で選んだ方針にかかわらず `human` として動く。
-setup の PR をマージした後に、上の形のコマンドを答えを入れて打つよう伝える。
+setup の PR をマージした後に、表の `args` を付けた `/shinnn-app:feature` を打つよう伝える。
 
-作り直すと答えたときは、`feature` を呼ばずに、上の作り直しの案内をもう一度示して終える（`--add-dir` を付けて起動し直さないと、元のアプリを読めない）。
-マージの方針が `human` なら、`auto-merge` に変えると確認を挟まずに最後まで作りきることも伝える。
+作り直すと答え、元のアプリのフォルダがこのセッションの作業フォルダに入っていないときも、`feature` を呼ばない
+（`--add-dir` で足していないフォルダは、読むたびに確認が出る）。次の案内を示して終える。
+
+- `/exit` で終了する。ターミナルでこのフォルダに移り、`claude --add-dir <元のアプリのフォルダ>` で起動する
+- 起動したら、`/shinnn-app:feature <元のアプリのフォルダ>にあるアプリを作り直したい` と入力する（setup の PR が `MERGED` でなければ、マージした後に入力する）
+
+作り直すと答えて `feature` を呼ばずに終えるとき、マージの方針が `human` なら、`auto-merge` に変えると確認を挟まずに最後まで作りきることも伝える。
 変えたいと言われたら、setup を再実行し、「マージの方針（`mergePolicy`）」の質問のとおりに進める。
 
 ## 失敗したとき
@@ -504,14 +543,37 @@ setup の PR をマージした後に、上の形のコマンドを答えを入�
 - `git commit` が名前とメールアドレスの未設定で止まる: `git config --global user.name` と `user.email` の設定を案内する
 - 「進め方」の `git fetch origin main` が接続か認証の問題で失敗する: リポジトリを作らず、`origin` も変えない。
   `gh auth login` かネットワークの確認を案内する。直ったら setup を再実行する
-- `gh repo create` が失敗する（組織でリポジトリを作る権限が無い、`gh` が無い）: GitHub の画面で空のリポジトリ（README なし）を
-  作ってもらい、`git remote add origin <URL>` と `git push -u origin main` を実行する
-- `git push -u origin main` が断られる、または `origin` の `main` にテンプレートが無い（README 付きのリポジトリを作ったときなど）: 上書きしない。
-  GitHub の画面で空のリポジトリ（README なし）を作ってもらい、`git remote set-url origin <URL>` と `git push -u origin main` を実行する
+- `gh repo create` が失敗する（組織でリポジトリを作る権限が無い、`gh` が無い）: GitHub の画面でリポジトリを作ってもらう
+  （`README.md`・`LICENSE`・`.gitignore` は付けてもよい）。続けて、`git remote add origin <URL>` と `git push -u origin main` を実行する
+- `git push -u origin main` が断られる、または `origin` の `main` にテンプレートが無い: 上書きしない（`--force` を付けない）。次の順に行う
+  1. `git push -u origin main` を実行する。手元の `main` が `origin` の `main` の続きなら（GitHub で作ったリポジトリを clone したフォルダなど）、これで送れる
+  2. 断られたら、`origin` の `main` のファイルを見る
+
+     ```
+     git fetch origin main
+     git ls-tree -r --name-only origin/main
+     ```
+
+  3. ファイルが `README.md`・`LICENSE`・`.gitignore` のほかに無ければ（GitHub の作成画面で付けたもの）、テンプレートのコミットを `origin` の `main` の上に重ね直す。
+     `git reset --soft origin/main` は、手元の `main` を `origin` の `main` に合わせる。作業フォルダとステージした中身（テンプレート）は変えない。
+     `origin` の `main` に `LICENSE` があるときだけ、`git checkout origin/main -- LICENSE` でそれを戻す（手順 0 の 2 と同じく、利用者が選んだライセンスを残す）
+
+     ```
+     git reset --soft origin/main
+     git checkout origin/main -- LICENSE
+     git commit -m "テンプレートの取り込み"
+     git push -u origin main
+     ```
+
+  4. ほかのファイルもあれば、`origin` は別のアプリのリポジトリを指している。GitHub の画面で空のリポジトリを作ってもらい、
+     `git remote set-url origin <URL>` と `git push -u origin main` を実行する
 - `git merge origin/main` が衝突で止まる: `.shinnn/setup.json` の衝突は、`git checkout --theirs .shinnn/setup.json` → `git add .shinnn/setup.json` で `main` の側を取り、
   `git commit --no-edit` でマージを終える。そのあと、手順 5 の 4 を実行し直して選択を入れ直す。ほかのファイルが衝突したら、`git merge --abort` で戻して報告する
 - `gh repo create` が、同じ名前のリポジトリが既にあると言って失敗する: `gh repo view <置き場所>/<名前> --json isEmpty,url` で中身を見る。
-  空なら、`git remote add origin <URL>` と `git push -u origin main` を実行する。空でなければ、別の名前を聞く
+  空なら、`git remote add origin <URL>` と `git push -u origin main` を実行する。
+  空でなければ、`gh api "repos/<置き場所>/<名前>/contents" --jq '.[].name'` で、いちばん上のファイルとフォルダの名前を見る。
+  `README.md`・`LICENSE`・`.gitignore` のほかに無ければ、`git remote add origin <URL>` を実行してから、上の `git push -u origin main` の項目に従う。
+  ほかにもあれば、別の名前を聞く
 - `gh` の認証が切れている: `gh auth login` を案内する。ログインできなければ、手順 5 の 3 の `gh` が無い場合と同じく
   Issue と PR を GitHub の画面で作ってもらい、ラベルの投入は後回しにする
 - Dependabot のアラートやセキュリティ更新を有効にできない（管理者権限が無い）: 止めずに続け、手順 5 の 11 の画面での手順を案内する
