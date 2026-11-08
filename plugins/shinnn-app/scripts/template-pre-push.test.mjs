@@ -55,19 +55,24 @@ function commitMarker(local) {
   assert.equal(git(local, 'commit', '-m', 'template').status, 0);
 }
 
-/** GitHub の作成画面で README.md と LICENSE を付けたリポジトリと同じく、その 2 つだけのコミットを作る */
-function commitRepositoryFiles(local) {
-  writeFileSync(join(local, 'README.md'), '# app\n');
-  writeFileSync(join(local, 'LICENSE'), 'MIT License\n');
+/** GitHub の作成画面で README.md と LICENSE を付けたリポジトリと同じ、最初のコミットのファイル */
+const README_AND_LICENSE = { 'README.md': '# app\n', LICENSE: 'MIT License\n' };
+
+/** 渡したファイルだけのコミットを作る。既定は、作成画面で README.md と LICENSE を付けたリポジトリと同じ顔ぶれ */
+function commitRepositoryFiles(local, files = README_AND_LICENSE) {
+  for (const [path, content] of Object.entries(files)) {
+    mkdirSync(join(local, path, '..'), { recursive: true });
+    writeFileSync(join(local, path), content);
+  }
   assert.equal(git(local, 'add', '.').status, 0);
   assert.equal(git(local, 'commit', '-m', 'Initial commit').status, 0);
 }
 
 /**
  * 送り先と手元のリポジトリを作り、手元に husky と同じ呼び方でフックを入れる。最初のコミットは main にある。
- * `repositoryFilesOnly` なら、最初のコミットを作成画面のファイルだけにする
+ * `firstFiles` を渡すと、最初のコミットをそのファイルだけにする（渡さなければ first.txt だけ）
  */
-function setupRepos({ repositoryFilesOnly = false } = {}) {
+function setupRepos({ firstFiles } = {}) {
   const root = mkdtempSync(join(workRoot, 'case-'));
   const remote = join(root, 'remote.git');
   const local = join(root, 'local');
@@ -78,8 +83,8 @@ function setupRepos({ repositoryFilesOnly = false } = {}) {
   writeFileSync(join(hooksDir, 'pre-push'), `#!/bin/sh\nsh -e "${prePush}" "$@"\n`, { mode: 0o755 });
   assert.equal(git(local, 'config', 'core.hooksPath', hooksDir).status, 0);
   assert.equal(git(local, 'remote', 'add', 'origin', remote).status, 0);
-  if (repositoryFilesOnly) {
-    commitRepositoryFiles(local);
+  if (firstFiles !== undefined) {
+    commitRepositoryFiles(local, firstFiles);
   } else {
     commit(local, 'first');
   }
@@ -107,7 +112,7 @@ test('送り先にまだ main が無いときは、main への最初の push を
 });
 
 test('送り先の main が作成画面のファイルだけのときは、テンプレートを取り込む push を通し、取り込んだ後は断る', () => {
-  const { local, remote } = setupRepos({ repositoryFilesOnly: true });
+  const { local, remote } = setupRepos({ firstFiles: README_AND_LICENSE });
   assert.equal(git(local, 'push', '-u', 'origin', 'main').status, 0);
 
   commitMarker(local);
@@ -123,7 +128,7 @@ test('送り先の main が作成画面のファイルだけのときは、テ�
 });
 
 test('送り先の main が作成画面のファイルだけでも、テンプレートを含まない push は断る', () => {
-  const { local, remote } = setupRepos({ repositoryFilesOnly: true });
+  const { local, remote } = setupRepos({ firstFiles: README_AND_LICENSE });
   assert.equal(git(local, 'push', '-u', 'origin', 'main').status, 0);
   const mainBefore = remoteHead(remote, 'refs/heads/main');
 
@@ -136,6 +141,28 @@ test('送り先の main が作成画面のファイルだけでも、テンプ�
 test('送り先の main に作成画面のほかのファイルがあれば、テンプレートの目印が無くても、取り込む push を断る', () => {
   // 送り先の main には first.txt があり、目印は無い。送るコミットには目印がある
   const { local, remote } = setupRepos();
+  assert.equal(git(local, 'push', '-u', 'origin', 'main').status, 0);
+  const mainBefore = remoteHead(remote, 'refs/heads/main');
+
+  commitMarker(local);
+  const result = git(local, 'push', 'origin', 'main');
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /main には直接 push できません/);
+  assert.equal(remoteHead(remote, 'refs/heads/main'), mainBefore);
+});
+
+test('送り先の main が作成画面の 3 つすべて（.gitignore を含む）のときも、取り込む push を通す', () => {
+  const { local, remote } = setupRepos({ firstFiles: { ...README_AND_LICENSE, '.gitignore': '.env\n' } });
+  assert.equal(git(local, 'push', '-u', 'origin', 'main').status, 0);
+
+  commitMarker(local);
+  const result = git(local, 'push', 'origin', 'main');
+  assert.equal(result.status, 0, result.stderr);
+  assert.notEqual(remoteHead(remote, 'refs/heads/main'), null);
+});
+
+test('送り先の main に、名前だけが同じ入れ子のファイル（docs/README.md）があれば、取り込む push を断る', () => {
+  const { local, remote } = setupRepos({ firstFiles: { 'README.md': '# app\n', 'docs/README.md': '# docs\n' } });
   assert.equal(git(local, 'push', '-u', 'origin', 'main').status, 0);
   const mainBefore = remoteHead(remote, 'refs/heads/main');
 

@@ -14,9 +14,9 @@ while read -r local_ref local_oid remote_ref remote_oid; do
         case "$local_oid" in
           *[!0]*)
             # 送り先のコミットが手元にあり、そのファイルが作成画面の 3 つだけ（ほかのファイルの行が無い）で、
-            # 送るコミットにテンプレートの目印があるときだけ通す
+            # 送るコミットにテンプレートの目印があるときだけ通す。ファイルの一覧を読めなければ、3 つに当たらない行を流して断る
             if git cat-file -e "$remote_oid^{commit}" 2>/dev/null &&
-              ! git ls-tree -r --name-only "$remote_oid" | grep -qvxE "$repository_files" &&
+              ! { git ls-tree -r --name-only "$remote_oid" 2>/dev/null || echo "unreadable"; } | grep -qvxE "$repository_files" &&
               git cat-file -e "$local_oid:$template_marker" 2>/dev/null; then
               continue
             fi

@@ -118,6 +118,16 @@ test('作成画面のファイルのほかにもファイルがあるコミッ�
   assert.match(result.stderr, /1 行目が `\[<対象>\]<要約>` の形ではありません/);
 });
 
+test('名前だけが同じ入れ子のファイル（docs/README.md）があるコミットの上では見る', () => {
+  const local = setupEmptyRepo();
+  mkdirSync(join(local, 'docs'));
+  commitOnly(local, { 'README.md': '# app\n', 'docs/README.md': '# docs\n' }, 'Initial commit');
+
+  const result = commitWith(local, 'テンプレートの取り込み');
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /1 行目が `\[<対象>\]<要約>` の形ではありません/);
+});
+
 test('テンプレートの目印を消したリポジトリでも、見るのをやめない', () => {
   const local = setupRepo();
   mkdirSync(join(local, '.claude', 'rules'), { recursive: true });
