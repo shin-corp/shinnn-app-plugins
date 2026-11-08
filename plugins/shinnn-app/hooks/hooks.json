@@ -71,6 +71,13 @@
             "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/check-on-stop.mjs"],
             "timeout": 420,
             "statusMessage": "変更したファイルの lint と関連テストを確認しています"
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/continue-on-stop.mjs"],
+            "timeout": 60,
+            "statusMessage": "進められる Issue が残っているかを確かめています"
           }
         ]
       }
