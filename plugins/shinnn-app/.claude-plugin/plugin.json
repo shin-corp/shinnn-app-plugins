@@ -1,6 +1,6 @@
 {
   "name": "shinnn-app",
-  "version": "0.12.47",
+  "version": "0.12.50",
   "description": "shinnn-app-starter テンプレートで作るアプリの開発標準。初回の setup と普段の feature（check・pr・retro まで続けて行う）、理由を聞く why、内部スキル、レビューエージェント、取り決めを案内し、作業が詰まったところを手元に記録する hooks を提供する",
   "author": {
     "name": "shinnn"

@@ -8,7 +8,7 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
@@ -137,8 +137,24 @@ test('setup-env --database: 検出の結果ではなく、指定した方式の�
   const written = readFileSync(join(repo, 'docs', 'env.md'), 'utf8');
   assert.match(written, /^- 採用: PGlite/m);
   assert.match(written, /^- 設定: `server\/\.env` の `DB_DRIVER` を `pglite` にします/m);
+  // テンプレートの server/src/config.ts は、pglite でも DATABASE_URL が無いと起動しない
+  assert.match(written, /^- `DATABASE_URL`: 接続には使いません。.*`\.env\.example` の値のまま残します$/m);
+  assert.ok(!written.includes('使われません'), written);
+  // update-rules は server/seed/ を写さないので、seed がマイグレーションを適用しないアプリでも正しい手順にする
+  assert.match(written, /^- 初期データ: `npm run seed -w server` で入れます。.*API サーバーを 1 回起動して止めます。/m);
   // 検出では DATABASE_URL が先に見つかっている。指定で置き換えたことが分かるように残す
   assert.match(written, /^- 指定された方法: pglite（検出で最初に見つかったのは database-url）$/m);
+});
+
+test('setup-env: server/.env の DATABASE_URL は検出に使わない', () => {
+  const repo = makeEnvRepo();
+  mkdirSync(join(repo, 'server'));
+  writeFileSync(join(repo, 'server', '.env'), 'DATABASE_URL=postgres://app:app@localhost:5432/app\n');
+  // 環境変数の空の値は、設定されていないものとして扱う
+  const result = runSetupEnv(repo, [], { DATABASE_URL: '' });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /^- DATABASE_URL: 未設定$/m);
 });
 
 test('setup-env --database: 知らない方式は、何も書かずに止める', () => {

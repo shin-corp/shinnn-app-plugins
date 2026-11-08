@@ -1,7 +1,7 @@
 /**
  * @file マイグレーションの適用。
  *
- * 単体で実行すると `DATABASE_URL` の DB へ適用する（`npm run db:migrate -w server`）。
+ * 単体で実行すると、`DB_DRIVER=pg` では `DATABASE_URL` の DB へ適用する（`npm run db:migrate -w server`）。
  * `DB_DRIVER=pglite` のときは API サーバーが起動のたびに適用するので、単体では実行しない
  * （API サーバーが開いている間は、同じ保存先を別のプロセスから開けない）。
  * テストは `applyMigrations()` を呼び、その場で作った PGlite の DB へ同じ SQL を流す。

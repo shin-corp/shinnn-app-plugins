@@ -78,6 +78,30 @@ test('pr は、コミットが lint-staged の退避で止まったら、退避�
   assert.ok(skill.includes('`git stash drop "stash@{n}"`'));
 });
 
+test('auto-merge でも、コミットが lint-staged の退避で止まったら、Issue を止めずにその場で戻す', () => {
+  const rule = readFileSync(
+    fileURLToPath(new URL('../template/.claude/rules/git-workflow.md', import.meta.url)),
+    'utf8',
+  );
+  const autoMerge = rule.slice(rule.indexOf('## `auto-merge` のとき'), rule.indexOf('## CI が始まらないとき'));
+
+  // 戻し方の最初の一歩（利用者にアプリを閉じてもらう）は、人にしかできない操作に当たる。
+  // Issue を止めると、コミットし直して main に切り替えるので、半端な変更を次の Issue のブランチに持ち込む
+  assert.match(
+    autoMerge,
+    /^- ただし、コミットが lint-staged の `Failed to back up original state!` で止まったことだけでは、`status:blocked` にしない/m,
+  );
+  assert.match(
+    autoMerge,
+    /^- ただし、コミットが lint-staged の退避で止まったときの、利用者にアプリを閉じてもらう依頼は、その場で出す/m,
+  );
+  assert.match(readSkill('pr', 'SKILL.md'), /`auto-merge` のときの扱いは、同じ規約の「`auto-merge` のとき」/);
+  assert.match(
+    readSkill('feature', 'SKILL.md'),
+    /利用者にアプリを閉じてもらうのを待つことを除く。規約 `git-workflow\.md` の「`auto-merge` のとき」/,
+  );
+});
+
 test('pr は main への切り替えと取り込みを別のコマンドにし、失敗したら次に進まない', () => {
   const skill = readSkill('pr', 'SKILL.md');
 
