@@ -65,7 +65,7 @@ PR に付いた指摘も、Critical / Warning = 0 になるまで回す。
 
 コミットの前に `.claude/rules/git-workflow.md` の「コミットメッセージ」「コミットの分け方」を読み直し、それに従って層ごとに分ける。
 
-コミットが `Failed to back up original state!`（`lint-staged failed due to a git error.`）で止まったら、次の順で戻してからコミットし直す（lint-staged の案内で戻さないことは、`.claude/rules/git-workflow.md` の「やらないこと」）。
+コミットが `Failed to back up original state!`（`lint-staged failed due to a git error.`）で止まったら、次の順で戻してからコミットし直す（lint-staged の案内で戻さないことは、`.claude/rules/git-workflow.md` の「やらないこと」。`auto-merge` のときの扱いは、同じ規約の「`auto-merge` のとき」）。
 よくある原因は、変更のあるファイル（ステージしたものを含む）を、ほかのアプリ（Excel など）が書き込めない形で開いていることである。
 このとき、lint-staged の退避（stash）は残ったまま、作業ツリーと index（ステージした中身）が半端な状態になる。
 退避は、ほかの worktree の作業の退避と同じ一覧に並ぶ。番号（`stash@{n}`）は、ほかの作業で変わることがある。そのため、退避は番号ではなく、退避のコミットの値で指す。
