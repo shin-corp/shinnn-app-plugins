@@ -15,7 +15,10 @@
  *   failure: true なら、remote が無いときと同じく終了コード 1 で終わる
  *   timeout: true なら、gh が時間内に終わらず、spawnSync が止めたときと同じ結果を返す。
  *            ただし、呼ぶ側が spawnSync に数値の timeout を渡していなければ、例外を投げてテストを落とす
- *   issues:  ラベル → 開いている Issue の番号の配列（例: { "status:next": [14, 22] }）。書いていないラベルは 0 件
+ *   raw:     文字列なら、`gh issue list` の標準出力としてそのまま返す（JSON でない出力の試し）
+ *   issues:  ラベル → 開いている Issue の配列（例: { "status:next": [14, 22] }）。書いていないラベルは 0 件。
+ *            要素は番号か { number, title, body }。番号だけなら、題は `[機能] #<番号>`、本文は空にする
+ * `gh issue list` には、`--json` で頼まれた欄だけを返す。
  */
 import * as childProcess from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
@@ -65,10 +68,19 @@ function fakeGh(state, args, options) {
     return result(1, '', 'no git remotes found\n');
   }
   if (args[0] === 'issue' && args[1] === 'list') {
+    if (typeof state.raw === 'string') {
+      return result(0, state.raw);
+    }
     const labelIndex = args.indexOf('--label');
     const label = labelIndex === -1 ? null : args[labelIndex + 1];
-    const numbers = state.issues?.[label] ?? [];
-    return result(0, `${JSON.stringify(numbers.map((number) => ({ number })))}\n`);
+    const jsonIndex = args.indexOf('--json');
+    const fields = jsonIndex === -1 ? [] : args[jsonIndex + 1].split(',');
+    const issues = [];
+    for (const entry of state.issues?.[label] ?? []) {
+      const issue = typeof entry === 'number' ? { number: entry, title: `[機能] #${entry}`, body: '' } : entry;
+      issues.push(Object.fromEntries(fields.map((field) => [field, issue[field]])));
+    }
+    return result(0, `${JSON.stringify(issues)}\n`);
   }
   return result(1, '', `fake gh: 対応していないコマンドです（${args.join(' ')}）\n`);
 }
