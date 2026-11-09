@@ -2,8 +2,9 @@
  * スキル add-screen の「9. 作った画面を見直す」の 1（画面を撮る）の回帰テスト。`node --test scripts/` で実行する。
  *
  * 環境変数 CHROME_PATH は、外の仕組み（ブラウザで Claude Code を動かすサービスなど）がワークスペースに置く。
- * 名前が変わると、その仕組みの上で画面を撮れなくなる。
- * そのため、名前と、見る順番（CHROME_PATH が先、channel が後）を文で確かめる。
+ * 名前が変わると、その仕組みの上で画面を撮れなくなる。そのため、名前を文で確かめる。
+ * CHROME_PATH を置いた環境では、その値のブラウザが動くと分かっている。そのため、channel より先に見ることも確かめる。
+ * 値を Bash で出すと確認が出るので、撮るスクリプトの中で読むことも確かめる。
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -23,12 +24,14 @@ function shootStep() {
   return section.slice(0, end);
 }
 
-test('外の仕組みとの約束: 手順 9 の 1 は、CHROME_PATH があれば、その値を executablePath に渡してブラウザを動かす', () => {
-  assert.match(shootStep(), /環境変数 `CHROME_PATH` があれば、その値を `executablePath` に渡して動かす/);
+test('外の仕組みとの約束: 手順 9 の 1 は、撮るスクリプトの中で CHROME_PATH を読み、値があれば executablePath に渡し、無ければ続けて channel で動かす', () => {
+  // 2 つの文が隣り合っていることまで見る。間に別の文が入ると、「無ければ」の指す先が変わる
+  assert.match(
+    shootStep(),
+    /環境変数 `CHROME_PATH`（`process\.env\.CHROME_PATH`）に値があれば、その値を `executablePath` に渡してブラウザを動かす。\s*`CHROME_PATH` が無ければ、入っているブラウザ（`channel: 'msedge'` か `'chrome'`）を動かす/,
+  );
 });
 
-test('外の仕組みとの約束: 手順 9 の 1 は、CHROME_PATH が無ければ、入っているブラウザを channel で動かす', () => {
-  const step = shootStep();
-  assert.match(step, /無ければ、入っているブラウザ（`channel: 'msedge'` か `'chrome'`）を動かす/);
-  assert.ok(step.indexOf('CHROME_PATH') < step.indexOf("channel: 'msedge'"), 'CHROME_PATH を channel より先に見る');
+test('手順 9 の 1 は、CHROME_PATH の値を Bash で出して確かめない', () => {
+  assert.match(shootStep(), /`CHROME_PATH` の値は、Bash で出して確かめない/);
 });

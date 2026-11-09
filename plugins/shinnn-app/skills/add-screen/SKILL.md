@@ -116,9 +116,11 @@ Issue の受入条件を読み、作る画面と要るデータを確かめる�
 ## 9. 作った画面を見直す
 
 1. 開発用のサーバーを起動し（`/shinnn-app:dev-stack-start`）、画面を撮る。
-   画面を操作する道具（ブラウザのツール）が使えれば、それで撮る。無ければ、scratchpad に `playwright-core` を入れ、
-   ブラウザを画面なしで動かして撮る。環境変数 `CHROME_PATH` があれば、その値を `executablePath` に渡して動かす。
-   無ければ、入っているブラウザ（`channel: 'msedge'` か `'chrome'`）を動かす。
+   画面を操作する道具（ブラウザのツール）が使えれば、それで撮る。
+   無ければ、scratchpad に `playwright-core` を入れる。続けて、ブラウザを画面なしで動かして撮るスクリプトを scratchpad に書いて動かす。
+   スクリプトは、環境変数 `CHROME_PATH`（`process.env.CHROME_PATH`）に値があれば、その値を `executablePath` に渡してブラウザを動かす。
+   `CHROME_PATH` が無ければ、入っているブラウザ（`channel: 'msedge'` か `'chrome'`）を動かす。
+   `CHROME_PATH` の値は、Bash で出して確かめない（変数だけを出すコマンドは、許可があっても確認が出る）。
    認証が要る画面では、`npm run token -w server` で発行した値を `addInitScript` で `localStorage` の `token` に入れる
 2. 撮った画像を Read で開く。画像の場所を材料に足して、「デザインの指導を受ける」をもう一度行う。
    頼むことは、この画面の批評と、直す箇所を優先の順に挙げること。
