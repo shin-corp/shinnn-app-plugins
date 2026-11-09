@@ -7,7 +7,7 @@
  * - テンプレートから作ったアプリのリポジトリである（`.shinnn/setup.json` がある）
  * - マージの方針が auto-merge である（isAutoMerge）
  * - Claude が、裏の作業の結果を待っていない（waitingInBackground）
- * - 開いている Issue のうち、`status:next` か `status:doing` のものが 1 件以上ある
+ * - 進められる Issue（workableIssues）が 1 件以上ある
  *
  * 続けさせるときは、Stop の JSON の additionalContext で伝える。受け取った Claude は応答を続ける。
  * 続けさせたときの Issue の番号の組を、セッションごとに残す。
@@ -27,12 +27,25 @@ import { appRootOf, fromRoot, hookOutput, projectDir, readHookInput, readJson, r
 const WORKABLE_LABELS = ['status:next', 'status:doing'];
 
 /**
- * 数えない Issue の題の頭。どれも、作る作業そのものではなく、スキルが進み具合を記録する Issue。
+ * 数えない Issue の題の頭。
  * - `[計画]`: 計画の親（feature の plan.md）。子がすべて閉じるまで `status:doing` のまま開いている
  * - `[設定]`: setup の適用の Issue。setup の実行の間は、規約 git-workflow.md の「`auto-merge` のとき」を当てない
- * - `[標準]`: update-rules の取り込みの Issue
+ * - `[標準]`: update-rules の取り込みの Issue。取り込みの進み具合を記録する
+ * - `[改善]`: pr が、AI の出力の評価を 2 回直しても通らなかったときに作る Issue。
+ *   評価は回すたびに時間と費用がかかる。続けさせると、通らないたびに新しい番号の Issue ができ、組が変わり続ける。
+ *   session-retro が作る `[改善]` の Issue も外れるが、session-retro は残りが 0 件になってから動く
  */
-const EXCLUDED_TITLE_PREFIXES = ['[計画]', '[設定]', '[標準]'];
+const EXCLUDED_TITLE_PREFIXES = ['[計画]', '[設定]', '[標準]', '[改善]'];
+
+/**
+ * 数えない Issue の題（全体が一致するもの）。
+ * - `[調整] 画面の調整`: feature の手順 9。利用者が画面を見て「ここまで」と伝えるまで `status:doing` のまま開いている
+ *   （同じ `[調整]` でも、`[調整] すべての画面の見直し` は Claude が進める作業なので数える）
+ */
+const EXCLUDED_TITLES = ['[調整] 画面の調整'];
+
+/** gh の出力を受け取る上限（バイト）。本文を含めて取るので、Node の既定（1MB）より広げる */
+const GH_MAX_BUFFER = 16 * 1024 * 1024;
 
 /**
  * Dependabot の PR に対応する Issue の本文に、ワークフロー dependabot-issue.yaml が書く目印。
@@ -93,7 +106,7 @@ function isAutoMerge(root, setup) {
  *
  * shell の作業は数えない。開発用のサーバーのように、セッションの間ずっと動き続けるものがあるため。
  * 数えると、サーバーを起動したセッションでは、ずっと続けさせなくなる。
- * shell の結果を待って応答を終えたとき（CI の待ちなど）は、伝える文の「止まってよいとき」に当たるので、Claude が止まる。
+ * shell の結果を待って応答を終えたとき（CI の待ちなど）は、伝える文の「続けずに応答を終えてよい」の項目に当たるので、Claude は止まれる。
  * その後は、残りの組が変わるまで止まらせる。
  */
 function waitingInBackground(input) {
@@ -113,7 +126,7 @@ function waitingInBackground(input) {
 
 /**
  * 開いている Issue のうち、進められるものの番号（小さい順）。gh が無い・失敗した・時間切れのときは null。
- * 題が EXCLUDED_TITLE_PREFIXES で始まる Issue と、本文に DEPENDABOT_MARKER がある Issue は数えない。
+ * 題が EXCLUDED_TITLE_PREFIXES で始まる Issue、題が EXCLUDED_TITLES と一致する Issue、本文に DEPENDABOT_MARKER がある Issue は数えない。
  *
  * @param root - アプリのリポジトリのルート
  */
@@ -132,7 +145,7 @@ function workableIssues(root) {
       '--limit',
       String(ISSUE_LIMIT),
     ];
-    const result = run('gh', args, { cwd: root, timeout: GH_TIMEOUT });
+    const result = run('gh', args, { cwd: root, timeout: GH_TIMEOUT, maxBuffer: GH_MAX_BUFFER });
     if (result.failedToStart || result.status !== 0) {
       return null;
     }
@@ -150,7 +163,7 @@ function workableIssues(root) {
         continue;
       }
       const title = String(issue.title ?? '');
-      if (EXCLUDED_TITLE_PREFIXES.some((prefix) => title.startsWith(prefix))) {
+      if (EXCLUDED_TITLE_PREFIXES.some((prefix) => title.startsWith(prefix)) || EXCLUDED_TITLES.includes(title)) {
         continue;
       }
       if (String(issue.body ?? '').includes(DEPENDABOT_MARKER)) {
@@ -275,15 +288,17 @@ console.log(
     additionalContext: [
       `[shinnn-app] マージの方針が auto-merge なので、開発がすべて完了するまで続けてください。残っている Issue: ${listed}`,
       'なぜ: 利用者は、Issue の作成から PR のマージまでを任せている。利用者への報告は、進められる Issue が無くなったときに 1 回にまとめる',
-      'どう続ける: /shinnn-app:feature の「続きから始める」のとおりに進める（作業途中の Issue があれば、先に仕上げる）',
+      'どう続ける: /shinnn-app:feature の「続きから始める」のとおりに進める',
       'ただし、次のどれかに当たるときは、続けずに応答を終えてよい',
-      '- 規約の「`auto-merge` のとき」を当てない場面か、止まってよいとしている場面である（setup の実行の間、利用者の直前の依頼が開発の続きではないとき）',
-      '- スキルの手順が、止まる・次に進まずに報告すると決めているところに当たる（feature の手順 7 の「止まるとき」（コミットが lint-staged の退避で止まり、利用者にアプリを閉じてもらうのを待つときを含む）、`git pull --ff-only` の失敗、`/reload-plugins` や起動し直しを頼むときなど）',
+      '- /shinnn-app:setup の実行の間である（規約の「`auto-merge` のとき」を当てない）',
+      '- 利用者が止めるよう伝えた、または利用者の直前の依頼が開発の続きではない（規約の「`auto-merge` のとき」）',
+      '- コミットが lint-staged の退避で止まり、利用者にアプリを閉じてもらうのを待っている',
+      '- スキルの手順が、止まる・次に進まずに報告すると決めているところに当たる（feature の手順 7 の「止まるとき」、`git pull --ff-only` の失敗、`/reload-plugins` や起動し直しを頼むときなど）',
       '- feature の手順 9 で、画面を見た利用者が伝えるのを待っている',
       '- バックグラウンドのサブエージェントかコマンドの結果を待っている（結果の知らせで再開する）',
       '規約: .claude/rules/git-workflow.md の「`auto-merge` のとき」',
     ].join('\n'),
-    systemMessage: `[shinnn-app] 進められる Issue（${listed}）が残っているので、続けるよう Claude に伝えました`,
+    systemMessage: `[shinnn-app] 残っている Issue（${listed}）を Claude に伝えました`,
   }),
 );
 process.exit(0);

@@ -3,7 +3,7 @@
  *
  * スクリプトが呼ぶ gh を偽物（continue-on-stop.fake-gh.mjs）に差し替え、次を確かめる。
  * - マージの方針が auto-merge で setup が済み、進められる Issue（status:next / status:doing）があれば、続けるよう伝える
- * - 計画の親・setup と update-rules の Issue・Dependabot の Issue は数えない
+ * - 計画の親・setup と update-rules の Issue・AI の出力の改善の Issue・画面の調整の Issue・Dependabot の Issue は数えない
  * - 続けさせた後の応答の終わり（stop_hook_active が true）でも、残りの組が変わっていれば、また続けるよう伝える
  * - 同じセッションで残りの組が変わっていなければ（進まなかった）、止まらせる。残りが 0 件になったら、残した組を消す
  * - 裏で動いている shell（開発用のサーバーなど）だけなら続けるよう伝え、サブエージェントや起こす予約があれば止まらせる
@@ -145,33 +145,51 @@ test('作業している場所がセッションを始めたフォルダと違�
 test('auto-merge で進められる Issue が残っている: 続け方と、そのまま止まってよい場合も伝える', () => {
   const root = createRepo();
   const context = assertContinued(runHook(root, { issues: { 'status:next': [14] } }));
-  assert.match(context, /feature の「続きから始める」のとおりに進める（作業途中の Issue があれば、先に仕上げる）/);
-  assert.match(context, /setup の実行の間、利用者の直前の依頼が開発の続きではないとき/);
+  assert.match(context, /feature の「続きから始める」のとおりに進める$/m);
+  assert.match(context, /^- \/shinnn-app:setup の実行の間である/m);
+  assert.match(context, /^- 利用者が止めるよう伝えた、または利用者の直前の依頼が開発の続きではない/m);
+  assert.match(context, /^- コミットが lint-staged の退避で止まり、利用者にアプリを閉じてもらうのを待っている$/m);
   assert.match(
     context,
-    /feature の手順 7 の「止まるとき」（.*lint-staged の退避で止まり、利用者にアプリを閉じてもらうのを待つ/,
+    /^- スキルの手順が、止まる・次に進まずに報告すると決めているところに当たる（feature の手順 7 の「止まるとき」/m,
   );
   assert.match(context, /feature の手順 9 で、画面を見た利用者が伝えるのを待っている/);
   assert.match(context, /バックグラウンドのサブエージェントかコマンドの結果を待っている（結果の知らせで再開する）/);
 });
 
-test('計画の親・setup と update-rules の Issue・Dependabot の Issue: 数えない', () => {
+test('計画の親・setup と update-rules の Issue・AI の出力の改善の Issue・画面の調整の Issue・Dependabot の Issue: 数えない', () => {
   const root = createRepo();
   const ghState = {
     issues: {
       'status:next': [
         { number: 30, title: '[依存] Bump vitest from 3.0.0 to 3.1.0', body: '- PR: …\n\n<!-- dependabot-pr: 12 -->' },
         { number: 31, title: '[依存] 依存の脆弱性の修正', body: '' },
+        { number: 32, title: '[改善] 要約 の AI の出力', body: '' },
       ],
       'status:doing': [
         { number: 1, title: '[計画] 在庫を管理したい', body: '' },
         { number: 2, title: '[設定] 初回セットアップの適用', body: '' },
         { number: 3, title: '[標準] 標準 0.9.33 の取り込み', body: '' },
+        { number: 4, title: '[調整] 画面の調整', body: '' },
+        { number: 5, title: '[調整] すべての画面の見直し', body: '' },
       ],
     },
   };
   const context = assertContinued(runHook(root, ghState));
-  assert.match(context, /残っている Issue: #31$/m);
+  assert.match(context, /残っている Issue: #5, #31$/m);
+});
+
+test('題の途中に数えない頭がある Issue: 数える', () => {
+  const root = createRepo();
+  const ghState = { issues: { 'status:next': [{ number: 7, title: '[機能] [計画] の一覧を見たい', body: '' }] } };
+  const context = assertContinued(runHook(root, ghState));
+  assert.match(context, /残っている Issue: #7$/m);
+});
+
+test('番号: 数の小さい順に並べる', () => {
+  const root = createRepo();
+  const context = assertContinued(runHook(root, { issues: { 'status:next': [10, 9, 100] } }));
+  assert.match(context, /残っている Issue: #9, #10, #100$/m);
 });
 
 test('数えない Issue だけが残っている: 止まらせる', () => {
@@ -215,7 +233,7 @@ test('裏の作業の結果を待って止まるのを繰り返す: 残りの組
   const tasks = [{ id: 'task-1', type: 'subagent', status: 'running', agent_type: 'review-scripts' }];
   assertContinued(runHook(root, ghState));
   for (let round = 0; round < 3; round += 1) {
-    // 結果を待つ間の終わり: 裏で作業が動いているので、伝えない
+    // 結果を待つ間の終わり: 裏でサブエージェントが動いているので、伝えない
     assertDidNothing(runHook(root, ghState, { background_tasks: tasks }));
     // 結果の知らせで再開した後の終わり: 残りの組が変わっていないので、伝えない
     assertDidNothing(runHook(root, ghState));
@@ -239,6 +257,14 @@ test('残りが 0 件になった: 止まらせ、残した組を消す', () => 
   assertContinued(runHook(root, { issues: { 'status:next': [22] } }));
   assertDidNothing(runHook(root, { issues: {} }, { stop_hook_active: true }));
   assert.equal(readState(root), null);
+});
+
+test('残りが 0 件になった: そのセッションの組だけを消し、ほかのセッションの組は残す', () => {
+  const root = createRepo();
+  assertContinued(runHook(root, { issues: { 'status:next': [22] } }, { session_id: 'session-b' }));
+  assertContinued(runHook(root, { issues: { 'status:next': [22] } }, { session_id: 'session-a' }));
+  assertDidNothing(runHook(root, { issues: {} }, { session_id: 'session-a' }));
+  assert.deepEqual(Object.keys(readState(root)), ['session-b']);
 });
 
 test('別のセッションで同じ組が残っている: そのセッションでは続けるよう伝える', () => {
@@ -295,6 +321,14 @@ test('裏で動いているのが shell（開発用のサーバー）だけ: 続
   const root = createRepo();
   const tasks = [{ id: 'task-1', type: 'shell', status: 'running', command: 'npm run dev -w server' }];
   assertContinued(runHook(root, { issues: { 'status:next': [14] } }, { background_tasks: tasks }));
+});
+
+test('裏で知らない種類の作業が動いている: shell 以外は待ちとして、gh を呼ばずに止まらせる', () => {
+  const root = createRepo();
+  const tasks = [{ id: 'task-1', type: 'workflow', status: 'running', name: 'review' }];
+  const result = runHook(root, { issues: { 'status:next': [14] } }, { background_tasks: tasks });
+  assertDidNothing(result);
+  assert.deepEqual(result.calls, []);
 });
 
 test('裏でサブエージェントが動いている: gh を呼ばずに止まらせる', () => {

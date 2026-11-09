@@ -291,8 +291,8 @@ COLLABORATOR）に限る条件と `--allowed-tools` が雛形に入っている*
    Issue を作るときに使う（健全性レポートを有効にしない場合も作っておく）。
    `type:deps` と `status:next` は、`dependabot-issue.yaml` が先に作っていることがある。既にあるラベルでは `gh label create` が
    `already exists` で失敗する。そのラベルはそのまま使う（`--force` で色や説明を上書きしない）
-2. 適用の Issue を用意する。題は初回なら `[設定] 初回セットアップの適用`、再実行なら変える内容に合わせる
-   （例: `[設定] PR の AI レビューの有効化`）。初回は、open な Issue の一覧から、題がこのとおりのものを探す
+2. 適用の Issue を用意する。題は初回なら `[設定] 初回セットアップの適用`、再実行なら `[設定] <変える内容>`
+   （例: `[設定] PR の AI レビューの有効化`）にする。初回は、open な Issue の一覧から、題がこのとおりのものを探す
 
    ```
    gh issue list --state open --limit 200 --json number,title
