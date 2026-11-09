@@ -8,6 +8,8 @@
  * - origin の main が GitHub の作成画面のファイル（README.md・LICENSE・.gitignore）だけなら、上書きせずにその上へ重ねて送れる
  * - 手順 5 の続き: 適用のブランチが手元か origin にあれば移れる。無ければ失敗し、main の最新から切れる
  * - main の取り込み: 未コミットの変更と重なると断られ、記録の衝突は main の側を取ると解ける
+ * - Claude Code を起動する前に外から展開したフォルダ: 手順 0 の git と GitHub の用意から行い、起動し直しを伝えない
+ *   （fetch-template.mjs の冒頭のコメントにある、外から呼ぶ側との約束）
  * どの状態で何をするかはスキルの文なので、順番と名指しだけを見る。
  */
 import assert from 'node:assert/strict';
@@ -746,4 +748,23 @@ test('手順 5 の 5: pglite なら --server-env も付けて server/.env を作
     ),
   );
   assert.match(applyStep, /方式が `pglite` なら、`--server-env` も付けて、`server\/\.env` も作る/);
+});
+
+test('外から先に展開したフォルダ: テンプレートがあれば手順 0 の git と GitHub の用意から行い、起動し直しを伝えない', () => {
+  // 後ろの 3 つの文は、同じファイルのテスト（「進め方: 手順 0 の残りの行き先と…」「手順 0: 手順 1 に進まないのは…」）も見ている。
+  // ここでは、fetch-template.mjs の冒頭にある外から呼ぶ側との約束として、同じ文を見る
+  // 手順 0 を 1 から行うのは、テンプレートが無いときだけ
+  assert.match(
+    progress,
+    /^1\. \*\*`\.claude\/rules\/\.standards-version` が無い\*\*（テンプレートがまだ無いフォルダ）: 手順 0 を 1 から行い/m,
+  );
+  // テンプレートがあれば、手順 0 の git と GitHub の用意の残りを行ってから、手順 0 の 5 に進む
+  assert.match(
+    progress,
+    /^2\. \*\*手順 0 の git と GitHub の用意が済んでいない\*\*: 次の 3 つのコマンドで順に見て、済んでいないものを行う$/m,
+  );
+  assert.match(progress, /どれかを行ったら、手順 0 の 5 に進む/);
+  // 手順 0 の 5 は、このセッションで展開していなければ起動し直しを伝えない
+  assert.match(templateStep, /このセッションで 2 の展開をしていなければ、規約は読み込まれている。/);
+  assert.match(templateStep, /その場合は起動し直しを伝えず、「進め方」の 3 に進む/);
 });

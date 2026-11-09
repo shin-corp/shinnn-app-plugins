@@ -67,6 +67,10 @@ test('アプリのリポジトリ以外: check-on-stop は lint とテストを�
   assertDidNothing(runHook('check-on-stop.mjs', {}, plainRoot));
 });
 
+test('アプリのリポジトリ以外: continue-on-stop は続けるよう伝えない', () => {
+  assertDidNothing(runHook('continue-on-stop.mjs', {}, plainRoot));
+});
+
 test('アプリのリポジトリ以外: session-start は状況を出さない', () => {
   assertDidNothing(runHook('session-start.mjs', {}, plainRoot));
 });
