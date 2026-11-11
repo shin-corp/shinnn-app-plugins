@@ -7,32 +7,22 @@
 
 import { itemsApi } from '@app/shared/api';
 import express from 'express';
-import type { AppDatabase } from '../../db/client.js';
 import { isAuthenticated } from '../../util/auth.js';
 import { route } from '../../util/route.js';
-import { createItemsController } from './items.controller.js';
+import * as controller from './items.controller.js';
 
 /** item API の URL の共通部分。認証を必須にする範囲の指定に使う。 */
 const itemsBasePath = '/api/items';
 
-/**
- * item のルーターを作る。
- *
- * @param db - DB のハンドル
- * @returns ルーター
- */
-export function createItemsRouter(db: AppDatabase): express.Router {
-  const router = express.Router();
-  const controller = createItemsController(db);
+/** item のルーター。 */
+export const itemsRouter = express.Router();
 
-  // item の API はすべて認証を必須にする。公開してよい API がある機能では、ここを個別に付ける。
-  router.use(itemsBasePath, isAuthenticated());
+// item の API はすべて認証を必須にする。公開してよい API がある機能では、この行を置かず、
+// 認証の要るルートの route() で、handler の前に isAuthenticated() を並べる。
+itemsRouter.use(itemsBasePath, isAuthenticated());
 
-  route(router, itemsApi.listItems, controller.listItems);
-  route(router, itemsApi.getItem, controller.getItem);
-  route(router, itemsApi.createItem, controller.createItem);
-  route(router, itemsApi.updateItem, controller.updateItem);
-  route(router, itemsApi.deleteItem, controller.deleteItem);
-
-  return router;
-}
+route(itemsRouter, itemsApi.listItems, controller.listItems);
+route(itemsRouter, itemsApi.getItem, controller.getItem);
+route(itemsRouter, itemsApi.createItem, controller.createItem);
+route(itemsRouter, itemsApi.updateItem, controller.updateItem);
+route(itemsRouter, itemsApi.deleteItem, controller.deleteItem);

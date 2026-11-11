@@ -97,11 +97,13 @@ export function isAuthenticated(): express.RequestHandler {
  * `isAuthenticated()` を付け忘れたルートで呼ぶと利用者が入っていないので、401 で止める
  * （持ち主の無い条件で問い合わせて、全員のデータを返してしまうのを防ぐ）。
  *
+ * 引数は `user` だけを見る形にしている。`route()` の handler が受け取る、API 定義の型を付けたリクエストも渡せるようにするため。
+ *
  * @param req - リクエスト
  * @returns 認証を通った利用者
  * @throws 利用者が入っていないとき 401 の CommonException
  */
-export function currentUser(req: express.Request): AuthenticatedUser {
+export function currentUser(req: Pick<express.Request, 'user'>): AuthenticatedUser {
   if (req.user === undefined) {
     throw new CommonException(HttpStatus.UNAUTHORIZED, MessageKeys.APP_UNAUTHORIZED);
   }

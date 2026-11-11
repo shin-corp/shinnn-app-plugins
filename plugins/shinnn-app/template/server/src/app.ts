@@ -2,20 +2,30 @@
  * @file Express アプリの組み立て。
  *
  * ここでは待ち受けを始めない（`listen` は index.ts）。
- * テストは同じ組み立てのまま `app.listen(0, '127.0.0.1')` で空きポートに立て、本番と同じ経路を HTTP で確かめる。
+ * API のテストは同じ組み立てのまま `app.listen(0, '127.0.0.1')` で空きポートに立て、本番と同じ経路を HTTP で確かめる。
  */
 
 import cors from 'cors';
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
-import { createItemsRouter } from './api/items/index.js';
+import { itemsRouter } from './api/items/index.js';
 import { config } from './config.js';
 import { CommonException, isCommonException } from './exception/common-exception.js';
 import type { AppDatabase } from './db/client.js';
 import { HttpStatus, toResponseStatus } from './util/http-status.js';
 import { Log } from './util/log.js';
 import { MessageKeys } from './util/message/index.js';
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    interface Request {
+      /** DB のハンドル。`createApp()` がすべてのリクエストに入れる。controller はこれを service に渡す。 */
+      db: AppDatabase;
+    }
+  }
+}
 
 const logger = new Log('app');
 
@@ -28,7 +38,7 @@ const rateLimitWindowMs = 60_000;
 /** 上の時間内に受け付けるリクエストの数。 */
 const rateLimitMax = 300;
 
-/** API の URL の共通部分。認証も rate limit もこの配下に掛ける。 */
+/** API の URL の共通部分。rate limit をこの配下に掛ける（認証は機能のルーターが掛ける）。 */
 const apiBasePath = '/api';
 
 /** 稼働確認用の URL。監視から叩くため認証を掛けない。 */
@@ -139,7 +149,13 @@ export function createApp({ db }: CreateAppOptions): express.Express {
     res.status(HttpStatus.OK).json({ status: 'ok' });
   });
 
-  app.use(createItemsRouter(db));
+  // controller が service に渡す DB のハンドルを、リクエストに入れる。テストはその場限りの DB を渡す。
+  app.use((req, _res, next) => {
+    req.db = db;
+    next();
+  });
+
+  app.use(itemsRouter);
 
   // どのルートにも当たらなかったとき。API 定義に無い URL はここで 404 になる。
   app.use((_req, _res, next) => {

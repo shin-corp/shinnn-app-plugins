@@ -9,7 +9,7 @@ import tseslint from 'typescript-eslint';
  *     ＼      ＼  ＼     ／
  *        util / exception   provider（外部システム。service と、評価の採点（evals）からだけ呼ぶ）
  *
- * - api は DB を直接触らない（値の import は禁止。DB のハンドルを service へ渡すための型だけ許す）
+ * - api は DB を直接触らない（値の import は禁止。型の import だけ許す）
  * - api は provider も直接呼ばない（外部システムの呼び出しは service を通す）
  * - service は HTTP を知らない（api を import しない）
  * - provider は上の層と db を import しない。外部システムの SDK を import できるのは provider だけ

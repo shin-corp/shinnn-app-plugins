@@ -86,7 +86,7 @@ export type RouteInput<D extends AnyRouteDef> = OmitNeverValues<{
 }>;
 
 /**
- * ハンドラ（server の `route()`）が受け取る検証済みの入力。
+ * server の handler が `req.params` / `req.query` / `req.body` で読む、検証済みの入力。
  *
  * zod の検証後の型なので、既定値は適用済みで省略可能な項目が無い。
  */
@@ -96,7 +96,7 @@ export type RouteHandlerInput<D extends AnyRouteDef> = OmitNeverValues<{
   body: SchemaOutput<D['body']>;
 }>;
 
-/** ハンドラが返し、呼び出し側が受け取るレスポンス。 */
+/** server の handler が `res.json()` で返し、呼び出し側が受け取るレスポンス。 */
 export type RouteOutput<D extends AnyRouteDef> = z.output<D['response']>;
 
 /** パスパラメータに渡せる値。 */
