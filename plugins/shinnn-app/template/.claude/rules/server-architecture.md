@@ -23,14 +23,14 @@ src/app.ts                 Express の app を組み立てる（middleware と r
         ↓
 src/api/<機能>/index.ts    Router。route() で API 定義と handler を結ぶ
         ↓
-src/api/<機能>/<機能>.controller.ts   薄い。入力を service に渡し、戻り値を返すだけ
+src/api/<機能>/<機能>.controller.ts   薄い。検証済みの入力を service に渡し、結果を res で返すだけ
         ↓
 src/service/<機能>.service.ts        業務ルール。失敗は CommonException を throw
         ↓
 src/db/                    Drizzle。SQL を書く唯一の場所
 ```
 
-`src/index.ts` は `app.listen()` を呼ぶだけです。テストは `app.ts` を import して `listen(0, '127.0.0.1')` します。
+`src/index.ts` は `app.listen()` を呼ぶだけです。API のテストは `app.ts` を import して `listen(0, '127.0.0.1')` します。
 
 ## 新規ファイルの配置判断
 
@@ -67,14 +67,14 @@ src/db/                    Drizzle。SQL を書く唯一の場所
 ```
 index.ts       → app.ts, config.ts, db/, util/
 app.ts         → api/<機能>/index.ts, config.ts, exception/, util/, db/（型のみ）
-api/<機能>/    → service/, util/（route, auth）, exception/, db/（型のみ）, @app/shared
+api/<機能>/    → service/, util/（route, auth, http-status）, exception/, @app/shared
 service/       → db/, provider/, exception/, util/, config.ts, @app/shared
 provider/      → config.ts, exception/, util/（log）, 外部システムの SDK
 db/            → config.ts, exception/, util/（log, message）, @app/shared（型のみ）
 util/          → config.ts, exception/, @app/shared（型のみ）
 exception/     → util/message/
 seed/          → db/, config.ts, util/
-tests/         → app.ts, tests/helpers/, config.ts, db/, @app/shared
+tests/         → app.ts, tests/helpers/, config.ts, db/, util/・exception/（`route()` のテスト）, @app/shared
 evals/         → service/, provider/（採点の呼び出し）, config.ts, @app/shared
 ```
 

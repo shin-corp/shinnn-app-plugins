@@ -14,10 +14,14 @@ Express 5 と TypeScript の書き方です。置き場所は [server-architectu
 ## API 定義と検証
 
 - **ルートは `route(router, def, handler)` で定義する。** `router.get(...)` を直接書かない
-- **handler の中で `req.body` / `req.query` / `req.params` を直接参照しない。** handler は、`route()` が zod で
-  検証した `input` を受け取る
+- 1 つのルートだけに掛ける middleware（ファイルの受け取り・ルートごとの認証など）は、`route()` の handler の前に
+  並べる（`route(router, def, middleware, handler)`）
+- **handler には `RouteHandler<typeof <機能>Api.<名前>>` の型を付ける**
 - handler で入力の検証を書かない。検証に失敗すると、`route()` が 400 の `CommonException`（`messageKey` は
   `APP_VALIDATION_FAILED`、`details` に zod の指摘）を返す
+- 作成したものを返すルートは、`res.status(HttpStatus.CREATED).json(...)` で返す
+- 本文を返さないルート（API 定義の `response` が `z.undefined()`）は、`res.status(HttpStatus.NO_CONTENT).end()` で返す
+- ほかの成功は、`res.status(HttpStatus.OK).json(...)` で返す
 - **API 定義に無いルートを作らない。** 作りたくなったら、先に `shared/src/api/` に定義を足す
   （CI の API 定義の検査は、API 定義にあるルートだけを数える。API 定義に無いルートは、テストが無くても CI が通る）
 - ただし、稼働確認の `/health` は、API 定義と `route()` を使わずに `app.ts` に置いてよい
@@ -26,7 +30,7 @@ Express 5 と TypeScript の書き方です。置き場所は [server-architectu
 
 1. async の handler の reject は、自動で error middleware に渡る。`express-async-errors` を入れない。
    error middleware は 4 引数で定義する（引数を減らすと、通常の middleware と見なされる）
-2. `req.query` は読み取り専用なので、書き換えない。既定のパーサは `?a[b]=1` をネストしない
+2. `req.query` は読み取り専用なので、代入しない。既定のパーサは `?a[b]=1` をネストしない
 3. ルートの書式は path-to-regexp v8 に従う。ワイルドカードは `/*splat`、省略可は `/:file{.:ext}` と書く。
    `/foo/*` や正規表現をそのまま書かない（起動時に例外になる）
 4. `res.status()` には 100〜999 の整数だけを渡す（それ以外は例外になる）。例外から取り出した
@@ -69,7 +73,7 @@ Express 5 と TypeScript の書き方です。置き場所は [server-architectu
 - `any` を使わない（検査: ESLint）。避けられない箇所は `unknown` と型ガードで書く
 - **API の入出力の型は、`@app/shared` の zod スキーマから導く。手書きの型定義を作らない**
 - `as` キャストと non-null assertion（`!`）は、型ガードや zod の検証で型を絞れない場合にだけ使う。手本では、
-  ライブラリどうしの型の食い違い（`db/client.ts`・`db/migrate.ts`）、型引数で決まる型（`util/validate.ts`）、リポジトリの
+  ライブラリどうしの型の食い違い（`db/client.ts`・`db/migrate.ts`）、型引数で決まる型（`util/route.ts`）、リポジトリの
   中のファイルを読んだ JSON（`messages.json`）に使っている
 - ただし、テストでは、API 定義で形が決まっているレスポンスの本文（`res.json()`）に、検証せずに `as` で型を付けてよい
 - `enum` を使わず、`as const` のオブジェクトと、その値から導いた型の形で書く（`HttpStatus` と `HttpStatusCode` の
@@ -111,11 +115,27 @@ Express 5 と TypeScript の書き方です。置き場所は [server-architectu
 という意味になります。一意性を全体で判定しないのも、同じ理由です。全体で判定すると、409 から、他人のデータがある
 ことが分かります。
 
-`req.body` の直接参照を禁じるのは、検証を通していない値が DB まで届く経路を無くすためです。`route()` を通す
-ようにすれば、検証を書き忘れたエンドポイントは作れません。
+ルートを `route()` で定義するのは、検証を通していない値が DB まで届く経路を無くすためです。`route()` は、handler の
+直前で入力を検証し、`req.params` / `req.query` / `req.body` を検証後の値に置き換えます。そのため、検証を書き忘れた
+エンドポイントは作れません。
 
-`/health` を API 定義に入れないのは、監視から認証なしで呼べるようにするためです。API 定義のルートは `/api` の下に
-置かれ、認証と rate limit が掛かります。
+1 つのルートだけに掛ける middleware を `route()` に並べるのは、`router.post(...)` を直接書かずに済ませるためです。
+直接書いたルートは、API 定義の検証を通りません。`route()` は、並べた middleware の後で入力を検証します。そのため、
+middleware が `req.body` を作る場合（ファイルを含むフォームの本文の受け取りなど）も、`req.body` に入るのは検証を
+通った値です。
+
+handler に `RouteHandler<...>` の型を付けるのは、API 定義と handler の食い違いをビルドエラーにするためです。
+型を付けると、`req.params` / `req.query` / `req.body` の型と、`res.json()` に渡せる値の型が API 定義から決まります。
+API 定義に無い部分は `unknown` 型になります。そのため、検証していない値は、そのままでは読めません。
+
+成功したときのステータスを使い分けるのは、レスポンスの意味を実際の処理と合わせるためです。201 は「作成した」という
+意味です。作成ではない POST（検索・ログインなど）に 201 を返すと、意味が処理と食い違います。
+
+本文を返さないルートで 204 を返すのは、画面の `call()` が本文を読み損なわないようにするためです。`call()` は、204 の
+ときだけ本文を読みません。204 以外のステータスで本文が無いと、`call()` は無い本文を JSON として読もうとして失敗します。
+
+`/health` を API 定義に入れないのは、監視の呼び出しを rate limit で止めないためです。API 定義のルートは `/api` の
+下に置かれ、rate limit が掛かります。
 
 `details` に内部の情報を入れないのは、攻撃の手がかりを利用者に見せないためです。`details` は、文言と一緒に
 レスポンスで画面へ返ります。

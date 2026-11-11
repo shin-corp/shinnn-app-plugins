@@ -28,7 +28,7 @@ Express 5 + PostgreSQL 16（Drizzle ORM）の API サーバー。TypeScript の 
 3. `createApp()` が middleware → ルーター → 404 → error middleware の順に組み立てる
 4. `app.listen(PORT)`。`SIGTERM` / `SIGINT` で処理中のリクエストを終わらせてから止める
 
-`app.ts`（組み立て）と `index.ts`（待ち受け）は分ける。テストは `app.ts` だけを使い、`app.listen(0, '127.0.0.1')` で空きポートに立てる。
+`app.ts`（組み立て）と `index.ts`（待ち受け）は分ける。API のテストは `app.ts` だけを使い、`app.listen(0, '127.0.0.1')` で空きポートに立てる。
 
 ## 環境変数
 
@@ -59,7 +59,7 @@ api/<機能>/{index.ts, <機能>.controller.ts}  →  service/  →  db/
                              util/ ・ exception/
 ```
 
-- `api` は DB を直接触らない（DB のハンドルを service へ渡すための型だけ許可）
+- `api` は DB を直接触らない（`db/` から import してよいのは型だけ）
 - `service` は HTTP を知らない（`req` / `res` を持ち込まない）
 - `db` と `util` / `exception` は上の層を import しない
 - `repositories/` などの層は増やさない（`provider/` は外部システムとの連携専用に 1 つだけ置ける。`.claude/rules/ai-integration.md`）。
@@ -74,7 +74,7 @@ api/<機能>/{index.ts, <機能>.controller.ts}  →  service/  →  db/
 ## Express 5 の注意
 
 1. async ハンドラの reject は自動で error middleware に渡る。`try / catch` で握り潰さない
-2. `req.query` は読み取り専用。`?a[b]=1` はネストしない
+2. `req.query` は読み取り専用で、代入できない。`?a[b]=1` はネストしない
 3. ルートの書き方は path-to-regexp v8。`*` は `/*splat`、任意の部分は `/:file{.:ext}`、正規表現は書けない
 4. `res.status()` は 100〜999 の整数以外で例外を投げる（`toResponseStatus()` で丸めている）
 5. `req.body` は `express.json()` を通さないと `undefined`
@@ -99,8 +99,7 @@ error middleware は 4 引数で `app.ts` に 1 か所だけ置く。エラー�
 ## テストの書き方
 
 - ファイル名は `<機能>.test.ts`（`.spec.ts` は CI で失敗する）
-- `startServer()` で本番と同じ組み立てのサーバーを立て、native fetch で HTTP として確かめる。内部の関数を直接呼ばない
-- リクエスト先の URL の組み立て方は、`.claude/rules/testing.md` の「サーバーのテスト」に従う。
+- サーバーの立て方・確かめ方・リクエスト先の URL の組み立て方は、`.claude/rules/testing.md` の「サーバーのテスト」に従う。
   手本はサンプルの `tests/items.test.ts`（サンプルの `items` を消した後は、既存の機能を手本にする）
 - `describe` の分け方と、テスト名に受入条件の番号（`AC-1` など）を書く決まりは、`.claude/rules/testing.md` の「テスト名」
 - DB はテストファイルごとに PGlite を作って、本番と同じマイグレーションを流す。データはテストごとに `reset()` で空にする

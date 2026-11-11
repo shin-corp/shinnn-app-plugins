@@ -30,7 +30,7 @@ description: API のエンドポイントを 1 つ追加する 6 手順（API �
 ## 4. router と controller（`server/src/api/<機能>/`）
 
 `route()` ヘルパーに API 定義とハンドラを渡す（`.claude/rules/server-coding-conventions.md` の「API 定義と検証」）。
-controller は検証済みの入力を service へ渡し、戻り値を返すだけにする（`.claude/rules/server-architecture.md` の「層ごとの責務」）。
+controller は検証済みの入力を service へ渡し、結果をレスポンスで返すだけにする（`.claude/rules/server-architecture.md` の「層ごとの責務」）。
 
 router を新設したら、`server/src/app.ts` の `app.use(...)` に足す（パスは API 定義が持つので、mount 先に URL を書かない）。
 
