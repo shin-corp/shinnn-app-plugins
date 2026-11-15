@@ -14,6 +14,7 @@
  * その後に応答を終えるときは、組が同じなら、進まなかったものとして止まらせる（そのセッションの間は、利用者の次の依頼の後も同じ）。
  * 組が変わっていれば（Issue が閉じた、`status:blocked` にした、など）、また続けさせる。
  * 残りが 0 件になったら、残した組を消す。組を書けなければ、続けさせない。
+ * 集めた Issue に、利用者の確認を待つ Issue（題が `[確認]` で始まるもの）があれば、続けさせずに止まらせ、残した組を消す（awaitingConfirmation）。
  * 入力の `stop_hook_active`（続けさせた後の応答の終わり）では、判定を変えない。黙ると、続けた後の 2 回目の終わりで止まる。
  *
  * gh が無い・失敗した・時間切れのときは、何も出さずに止まらせる。
@@ -43,6 +44,13 @@ const EXCLUDED_TITLE_PREFIXES = ['[計画]', '[設定]', '[標準]', '[改善]']
  *   （同じ `[調整]` でも、`[調整] すべての画面の見直し` は Claude が進める作業なので数える）
  */
 const EXCLUDED_TITLES = ['[調整] 画面の調整'];
+
+/**
+ * 利用者の確認を待つ Issue の題の頭。feature の手順 10（計画の最初の画面を利用者に確かめてもらう）が `[確認] 最初の画面の確認` を作る。
+ * これが開いている間は、利用者の返事を待っているので、ほかに進められる Issue があっても続けさせない。
+ * 閉じると（利用者が了承した後）、また続けさせる。そのため、止まらせるときに残した組を消す（了承の後の組が、前と同じでも続けさせる）
+ */
+const CONFIRMATION_TITLE_PREFIX = '[確認]';
 
 /** gh の出力を受け取る上限（バイト）。本文を含めて取るので、Node の既定（1MB）より広げる */
 const GH_MAX_BUFFER = 16 * 1024 * 1024;
@@ -125,13 +133,17 @@ function waitingInBackground(input) {
 }
 
 /**
- * 開いている Issue のうち、進められるものの番号（小さい順）。gh が無い・失敗した・時間切れのときは null。
+ * 開いている Issue のうち、進められるものの番号（小さい順）と、利用者の確認を待つ Issue があるか。
+ * gh が無い・失敗した・時間切れのときは null。
  * 題が EXCLUDED_TITLE_PREFIXES で始まる Issue、題が EXCLUDED_TITLES と一致する Issue、本文に DEPENDABOT_MARKER がある Issue は数えない。
+ * 題が CONFIRMATION_TITLE_PREFIX で始まる Issue は、数えずに awaitingConfirmation を true にする。
  *
  * @param root - アプリのリポジトリのルート
+ * @returns `{ numbers, awaitingConfirmation }` か null
  */
 function workableIssues(root) {
   const numbers = new Set();
+  let awaitingConfirmation = false;
   for (const label of WORKABLE_LABELS) {
     const args = [
       'issue',
@@ -163,6 +175,10 @@ function workableIssues(root) {
         continue;
       }
       const title = String(issue.title ?? '');
+      if (title.startsWith(CONFIRMATION_TITLE_PREFIX)) {
+        awaitingConfirmation = true;
+        continue;
+      }
       if (EXCLUDED_TITLE_PREFIXES.some((prefix) => title.startsWith(prefix)) || EXCLUDED_TITLES.includes(title)) {
         continue;
       }
@@ -172,7 +188,7 @@ function workableIssues(root) {
       numbers.add(issue.number);
     }
   }
-  return [...numbers].sort((a, b) => a - b);
+  return { numbers: [...numbers].sort((a, b) => a - b), awaitingConfirmation };
 }
 
 /** 残した組を読む。無いか壊れていれば空 */
@@ -255,15 +271,17 @@ if (dir === null) {
   process.exit(0);
 }
 
-const issues = workableIssues(root);
-if (issues === null) {
+const found = workableIssues(root);
+if (found === null) {
   process.exit(0);
 }
 
 const state = readState(join(dir, STATE_FILE));
 const session = String(input.session_id ?? '');
+const issues = found.numbers;
 
-if (issues.length === 0) {
+// 残りが無いときと、利用者の確認を待っているときは止まらせ、残した組を消す
+if (issues.length === 0 || found.awaitingConfirmation) {
   if (Object.hasOwn(state, session)) {
     delete state[session];
     writeState(dir, state);
@@ -295,6 +313,7 @@ console.log(
       '- コミットが lint-staged の退避で止まり、利用者にアプリを閉じてもらうのを待っている',
       '- スキルの手順が、止まる・次に進まずに報告すると決めているところに当たる（feature の手順 7 の「止まるとき」、`git pull --ff-only` の失敗、`/reload-plugins` や起動し直しを頼むときなど）',
       '- feature の手順 9 で、画面を見た利用者が伝えるのを待っている',
+      '- feature の手順 10 で、最初の画面を確かめてもらうよう利用者に報告した（題が `[確認]` の Issue を作ったところ）',
       '- バックグラウンドのサブエージェントかコマンドの結果を待っている（結果の知らせで再開する）',
       '規約: .claude/rules/git-workflow.md の「`auto-merge` のとき」',
     ].join('\n'),

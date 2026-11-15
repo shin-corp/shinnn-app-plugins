@@ -132,7 +132,8 @@ Dependabot の設定（`.github/dependabot.yml`）。
 
 写した後に、次を行う。
 
-- `.gitignore` に `.claude/worktrees/` の行が無ければ、末尾に 1 行足す。ほかの行は触らない（案件ごとに書き足すファイルのため）
+- `.gitignore` に `.claude/worktrees/` の行が無ければ、末尾に 1 行足す。`/screenshots/`（撮った画面の置き場所）の行も、無ければ末尾に 1 行足す。
+  ほかの行は触らない（案件ごとに書き足すファイルのため）
 - `${CLAUDE_PLUGIN_ROOT}/template/CLAUDE.md` / `.../template/client/CLAUDE.md` / `.../template/server/CLAUDE.md`
   を、それぞれ `CLAUDE.md` / `client/CLAUDE.md` / `server/CLAUDE.md` へ当てる。**案件固有の記述を消さないように**
   マージする（雛形が変わった箇所だけを当て、埋めてある内容は残す）

@@ -8,15 +8,19 @@
  * 「引き継ぎメモ」Issue に CI で確かめていないマージ（手元の確かめで進めた PR と、外しているブランチ保護）が残っていれば、
  * 確かめる手順を案内する。
  * 別のセッションが API のエラーで途中で終わっていれば、そのことを出す（record-friction.mjs が残した印を読む）。
+ * 作り直しのアプリ（`docs/移植対応表.md` がある）では、移植対応表の「まだ」の件数と全体の件数を出す。
+ * マージの方針が auto-merge なら、利用者の確認を待つ Issue（題が `[確認]` で始まる open な Issue）を出す。
+ * 出すのは、返事を受けた後の閉じ忘れに気づけるようにするため。
+ * 閉じ忘れると、continue-on-stop.mjs が続けさせないままになる。
  * 会話の要約（compact）の後にも動き、要約で抜けた今の状況を出し直す。
- * gh の呼び出しは最大 4 回（次に着手する Issue・open な PR・直近の CI・引き継ぎメモ）。hooks.json の timeout（60 秒）に収まるよう、
- * 呼び出しに使える時間の合計を HOOK_BUDGET に絞る。
+ * gh の呼び出しは最大 5 回（次に着手する Issue・open な PR・直近の CI・確認待ち（auto-merge のときだけ）・引き継ぎメモ）。
+ * hooks.json の timeout（60 秒）に収まるよう、呼び出しに使える時間の合計を HOOK_BUDGET に絞る。
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readStopFailure, removeStopFailure } from './lib/friction.mjs';
-import { fromRoot, hasCommand, isAppRepo, projectDir, readHookInput, run, stateDir } from './lib/hook-io.mjs';
+import { fromRoot, hasCommand, isAppRepo, projectDir, readHookInput, readJson, run, stateDir } from './lib/hook-io.mjs';
 import { UNVERIFIED_MERGES_HEADING, unverifiedMergeLines } from './lib/unverified-merges.mjs';
 
 const MAX_LINES = 10;
@@ -26,9 +30,18 @@ const GH_TIMEOUT = 20_000;
 
 /**
  * gh の呼び出しに使える時間の合計（ミリ秒）。hooks.json の SessionStart の timeout（60 秒）より短くする。
- * gh は最大 4 回呼ぶので、1 回ごとに GH_TIMEOUT で待つと合計が 60 秒を超えうる。残りの時間が短い呼び出しは、待つ時間を残りに絞る。
+ * gh は最大 5 回呼ぶので、1 回ごとに GH_TIMEOUT で待つと合計が 60 秒を超えうる。残りの時間が短い呼び出しは、待つ時間を残りに絞る。
  */
 const HOOK_BUDGET = 50_000;
+
+/** 作り直しの移植対応表（リポジトリルート起点）。/shinnn-app:feature の「作り直しの元の画面・見た目・移植対応表」が作る */
+const PORTING_TABLE = 'docs/移植対応表.md';
+
+/** 移植対応表の「状態」のうち、終わったものとして数える値。ほかの値（空を含む）は「まだ」に数える */
+const PORTING_DONE_STATES = ['済み', '違う', 'やらない'];
+
+/** 利用者の確認を待つ Issue の題の頭（continue-on-stop.mjs と同じ文字列で探す） */
+const CONFIRMATION_TITLE_PREFIX = '[確認]';
 
 const startedAt = Date.now();
 
@@ -39,7 +52,7 @@ function remainingBudget() {
 
 /**
  * 一覧の取得（ghSection）の gh が、時間切れ（または起動できず）になったか。
- * これを見るのは、引き継ぎメモの取得（unverifiedMergesSection）だけで、なっていれば取得を飛ばす。
+ * これを見るのは、確認待ちの取得（confirmationSection）と引き継ぎメモの取得（unverifiedMergesSection）だけで、なっていれば取得を飛ばす。
  * 一覧の取得どうしは、前が時間切れでも飛ばさず、待つ時間を残りに絞って呼ぶ。
  */
 let ghFailedToStart = false;
@@ -151,6 +164,34 @@ function hasAutoMergeRule(workflowRulePath) {
 }
 
 /**
+ * setup の記録から、実際に扱うマージの方針を決める。setup が済んでいない記録（setupCompletedAt が空）には使わない。
+ *
+ * @param setup - .shinnn/setup.json の中身
+ * @param workflowRulePath - 規約 git-workflow.md の絶対パス
+ */
+function effectiveMergePolicy(setup, workflowRulePath) {
+  // self-review は、標準を取り込む前の記録に残る値。update-rules で auto-merge に揃う。
+  // 止まる条件は規約の「auto-merge のとき」にある。その節が入るまでは、確認を挟まない進め方にしない
+  // キーの無い記録は、人がマージする動きで作られている。テンプレートの既定ではなく human として扱う（apply-setup.mjs も human で埋める）
+  const recorded = setup.mergePolicy ?? 'human';
+  return recorded === 'self-review' && hasAutoMergeRule(workflowRulePath) ? 'auto-merge' : recorded;
+}
+
+/**
+ * setup が済んでいて、マージの方針が auto-merge か。記録を読めなければ false。
+ *
+ * @param setupPath - .shinnn/setup.json の絶対パス
+ * @param workflowRulePath - 規約 git-workflow.md の絶対パス
+ */
+function isAutoMerge(setupPath, workflowRulePath) {
+  const setup = readJson(setupPath);
+  if (setup === null || (setup.setupCompletedAt ?? null) === null) {
+    return false;
+  }
+  return effectiveMergePolicy(setup, workflowRulePath) === 'auto-merge';
+}
+
+/**
  * セットアップの節。setupCompletedAt が空なら、まだ /shinnn-app:setup を終えていないものとして案内する。
  *
  * @param setupPath - .shinnn/setup.json の絶対パス
@@ -175,11 +216,7 @@ function setupSection(setupPath, installed, workflowRulePath) {
   }
 
   const profile = setup.profile ?? '不明';
-  // self-review は、標準を取り込む前の記録に残る値。update-rules で auto-merge に揃う。
-  // 止まる条件は規約の「auto-merge のとき」にある。その節が入るまでは、確認を挟まない進め方にしない
-  // キーの無い記録は、人がマージする動きで作られている。テンプレートの既定ではなく human として扱う（apply-setup.mjs も human で埋める）
-  const recorded = setup.mergePolicy ?? 'human';
-  const mergePolicy = recorded === 'self-review' && hasAutoMergeRule(workflowRulePath) ? 'auto-merge' : recorded;
+  const mergePolicy = effectiveMergePolicy(setup, workflowRulePath);
   const standards = installed ?? '不明';
   const lines = [`プロファイル: ${profile} / マージ方針: ${mergePolicy} / 標準バージョン: ${standards}`];
   if (mergePolicy === 'auto-merge') {
@@ -289,6 +326,123 @@ function unverifiedMergesSection(setupPath, root) {
   );
 }
 
+/** Markdown の表の 1 行を、セルの配列にする。セルの `` ` `` と `*`（書式の印）は外す。表の行でなければ null */
+function tableCells(line) {
+  const text = line.trim();
+  if (!text.startsWith('|')) {
+    return null;
+  }
+  return text
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.replace(/[`*]/g, '').trim());
+}
+
+/**
+ * 作り直しの進み具合の節。`docs/移植対応表.md` が無ければ null（節を出さない）。
+ *
+ * 見出しの行に「状態」のセルがある表を、すべて数える。区切りの行（`:--` など）の後の行を、1 行 1 件に数える。
+ * 「状態」が PORTING_DONE_STATES のどれでもない行（空を含む）を「まだ」に数える。完成は「まだ」が 0 件になったとき。
+ */
+function portingSection(root) {
+  const path = fromRoot(root, ...PORTING_TABLE.split('/'));
+  let text;
+  try {
+    text = readFileSync(path, 'utf8');
+  } catch {
+    return null;
+  }
+
+  let found = false;
+  let inTable = false;
+  let stateIndex = -1;
+  let total = 0;
+  let remaining = 0;
+  for (const line of text.split(/\r?\n/)) {
+    const cells = tableCells(line);
+    if (cells === null) {
+      // 表の終わり。次の表は、見出しの行から読み直す
+      inTable = false;
+      stateIndex = -1;
+      continue;
+    }
+    if (!inTable) {
+      inTable = true;
+      stateIndex = cells.indexOf('状態');
+      found ||= stateIndex !== -1;
+      continue;
+    }
+    if (stateIndex === -1 || cells.every((cell) => /^:?-+:?$/.test(cell))) {
+      continue;
+    }
+    total += 1;
+    if (!PORTING_DONE_STATES.includes(cells[stateIndex] ?? '')) {
+      remaining += 1;
+    }
+  }
+
+  if (!found) {
+    return section('作り直しの進み具合', `\`${PORTING_TABLE}\` に「状態」の列のある表がありません。`);
+  }
+  return section(
+    '作り直しの進み具合',
+    [
+      `移植対応表: まだ ${remaining} 件 / 全 ${total} 件（\`${PORTING_TABLE}\`）`,
+      '完成は「まだ」が 0 件になったときです（`/shinnn-app:feature` の「作り直しの元の画面・見た目・移植対応表」）。',
+    ].join('\n'),
+  );
+}
+
+/**
+ * 確認待ちの節。題が `[確認]` で始まる open な Issue（ラベル status:doing）があるときだけ出す。
+ * 前の gh の呼び出しが時間切れだった・時間の枠が残っていない・この gh の呼び出しが失敗した・Issue が無いときは null。
+ *
+ * @param root - リポジトリのルート
+ */
+function confirmationSection(root) {
+  const remaining = remainingBudget();
+  if (ghFailedToStart || remaining === 0) {
+    return null;
+  }
+  const result = run(
+    'gh',
+    ['issue', 'list', '--state', 'open', '--label', 'status:doing', '--limit', '100', '--json', 'number,title'],
+    { cwd: root, timeout: Math.min(GH_TIMEOUT, remaining) },
+  );
+  ghFailedToStart ||= result.failedToStart;
+  if (result.failedToStart || result.status !== 0) {
+    return null;
+  }
+  let issues;
+  try {
+    issues = JSON.parse(result.stdout);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(issues)) {
+    return null;
+  }
+  const lines = [];
+  for (const issue of issues) {
+    const title = String(issue?.title ?? '');
+    if (Number.isInteger(issue?.number) && title.startsWith(CONFIRMATION_TITLE_PREFIX)) {
+      lines.push(`確認待ち: #${issue.number}（${title}）`);
+    }
+  }
+  if (lines.length === 0) {
+    return null;
+  }
+  return section(
+    '確認待ち',
+    [
+      ...lines,
+      '利用者の返事を待っています。返事を受けたら、`/shinnn-app:feature` の「10. 最初の画面を確かめてもらう」の 4 で進め、この Issue を閉じてください。',
+      '閉じるまでは、応答を終えるときに続きを促しません（continue-on-stop）。',
+    ].join('\n'),
+  );
+}
+
 const input = await readHookInput();
 
 // テンプレートから作ったアプリのリポジトリでだけ動く
@@ -311,6 +465,11 @@ out.push(
     fromRoot(root, '.claude', 'rules', 'git-workflow.md'),
   ),
 );
+
+const porting = portingSection(root);
+if (porting !== null) {
+  out.push(porting);
+}
 
 const stopFailure = stopFailureSection(root, input.session_id);
 if (stopFailure !== null) {
@@ -387,6 +546,12 @@ if (hasCommand('gh')) {
       root,
     ),
   );
+  if (isAutoMerge(fromRoot(root, '.shinnn', 'setup.json'), fromRoot(root, '.claude', 'rules', 'git-workflow.md'))) {
+    const confirmation = confirmationSection(root);
+    if (confirmation !== null) {
+      out.push(confirmation);
+    }
+  }
   const unverified = unverifiedMergesSection(fromRoot(root, '.shinnn', 'setup.json'), root);
   if (unverified !== null) {
     out.push(unverified);

@@ -7,6 +7,8 @@
  * - gh の一覧の取得に失敗した欄は、0 件（「（なし）」）と書かずに、取得できなかったことと理由を書く
  * - 依存か git のフックが無い作業フォルダ（作ったばかりの worktree など）では npm install を促し、両方あれば促さない
  * - 「引き継ぎメモ」Issue に「CI で確かめていないマージ」の行があるときだけ、その節を出す
+ * - `docs/移植対応表.md` があれば、「状態」の列のある表をすべて数え、「まだ」の件数と全体の件数を出す
+ * - auto-merge のときだけ、題が `[確認]` で始まる open な Issue を「確認待ち」に出す（呼び出しも時間の枠に収める）
  *
  * gh は、hook が呼ぶ node:child_process を偽物に差し替えて答えさせる。差し替えの下準備は一時フォルダに書き、
  * `--import` で読み込む。PATH に偽の gh を置かないのは、Windows の spawnSync が拡張子 .exe / .com のファイルしか
@@ -46,6 +48,7 @@ const INSTALLED = '0.0.1';
  * - body: `issue view` には環境変数 FAKE_GH_BODY を本文として出し、それ以外は何も出さずに成功する
  * - timeout: `--version` 以外は、時間切れ（ETIMEDOUT）で失敗する
  * - issue-view: `issue view <番号>` が FAKE_GH_ISSUE の番号のときだけ FAKE_GH_BODY を出し、それ以外は失敗する
+ * - doing: `issue list` の `--label status:doing` には環境変数 FAKE_GH_DOING（JSON）を出し、それ以外は何も出さずに成功する
  */
 const FAKE_CHILD_PROCESS = `
 import * as childProcess from 'node:child_process';
@@ -88,6 +91,10 @@ export function spawnSync(command, args = [], options = {}) {
   if (mode === 'body') {
     const isIssueView = args[0] === 'issue' && args[1] === 'view';
     return { status: 0, stdout: isIssueView ? (process.env.FAKE_GH_BODY ?? '') : '', stderr: '' };
+  }
+  if (mode === 'doing') {
+    const isDoingList = args[0] === 'issue' && args[1] === 'list' && args[args.indexOf('--label') + 1] === 'status:doing';
+    return { status: 0, stdout: isDoingList ? (process.env.FAKE_GH_DOING ?? '[]') : '', stderr: '' };
   }
   if (mode === 'issue-view') {
     // FAKE_GH_ISSUE があれば、その番号の Issue だけを答える（番号が渡ったかを確かめる）
@@ -147,10 +154,20 @@ function createRepo(setup, { remote } = {}) {
  * @param ghIssue - issue-view のときに答える Issue の番号
  * @param ghLog - gh の呼び出しを JSON の行で書くファイル
  * @param ghElapsed - gh を 1 回呼ぶたびに進める時計の分（ミリ秒）
+ * @param ghDoing - doing のときに `issue list --label status:doing` が出す JSON
  */
 function runHook(
   root,
-  { gh = 'missing', ghStderr = '', ghBody = '', ghIssue = '', ghLog = '', ghElapsed = 0, hookInput = {} } = {},
+  {
+    gh = 'missing',
+    ghStderr = '',
+    ghBody = '',
+    ghIssue = '',
+    ghLog = '',
+    ghElapsed = 0,
+    ghDoing = '[]',
+    hookInput = {},
+  } = {},
 ) {
   const result = spawnSync(process.execPath, ['--import', fakeChildProcess, script], {
     input: JSON.stringify(hookInput),
@@ -164,6 +181,7 @@ function runHook(
       FAKE_GH_ISSUE: ghIssue,
       FAKE_GH_LOG: ghLog,
       FAKE_GH_ELAPSED: String(ghElapsed),
+      FAKE_GH_DOING: ghDoing,
     },
   });
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
@@ -579,4 +597,138 @@ test('時間の枠: 各呼び出しの timeout は、HOOK_BUDGET から経った
   const overrunCalls = readCalls(overrun);
   assert.equal(overrunCalls.length, 3, JSON.stringify(overrunCalls));
   assert.equal(overrunCalls[2].timeout, 1000, JSON.stringify(overrunCalls));
+});
+
+const PORTING_TABLE = [
+  '# 移植対応表',
+  '',
+  '| 元の画面・機能 | 元の場所 | 状態 | Issue | 違い |',
+  '| :-- | :-- | :-- | :-- | :-- |',
+  '| 備品の一覧 | `public/index.html`（`/`） | 済み | #12 | |',
+  '| 備品の登録 | `public/new.html` | 違う | #13 | 登録できる人を管理者に絞った |',
+  '| 貸出の記録 | `public/lend.html` | まだ | #14 | |',
+  '| 印刷 | `public/print.html` | やらない | | 利用者が不要と決めた |',
+  '| 返却の記録 | `public/return.html` |  | #15 | |',
+  '',
+  '表の後の文章 | 状態 | まだ',
+  '',
+].join('\n');
+
+test('移植対応表: 「状態」が済み・違う・やらないでない行（空を含む）を「まだ」に数え、全体の件数と一緒に出す', () => {
+  const root = createRepo({});
+  writeFile(root, 'docs/移植対応表.md', PORTING_TABLE);
+  const result = runHook(root);
+
+  assert.equal(result.status, 0, result.stderr);
+  const text = section(result.stdout, '作り直しの進み具合');
+  assert.match(text, /^移植対応表: まだ 2 件 \/ 全 5 件（`docs\/移植対応表\.md`）$/m);
+  assert.match(text, /「まだ」が 0 件になったとき/);
+});
+
+test('移植対応表: 「状態」の列のある表をすべて数え、セルの ` と * を外して比べる', () => {
+  const root = createRepo({});
+  const table = [
+    '# 移植対応表',
+    '',
+    '## 画面',
+    '',
+    '| 元の画面・機能 | 元の場所 | 状態 | Issue | 違い |',
+    '| :-- | :-- | :-- | :-- | :-- |',
+    '| 備品の一覧 | `public/index.html` | `済み` | #12 | |',
+    '| 備品の登録 | `public/new.html` | **違う** | #13 | 登録できる人を絞った |',
+    '| 貸出の記録 | `public/lend.html` | `まだ` | #14 | |',
+    '',
+    '## 機能',
+    '',
+    '| 元の機能 | 状態 | Issue |',
+    '| :-- | :-- | :-- |',
+    '| CSV の書き出し | `やらない` | |',
+    '| 月次の集計 | まだ | #15 |',
+    '',
+  ].join('\n');
+  writeFile(root, 'docs/移植対応表.md', table);
+  const result = runHook(root);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(section(result.stdout, '作り直しの進み具合'), /^移植対応表: まだ 2 件 \/ 全 5 件/m);
+});
+
+test('移植対応表: ファイルが無ければ節を出さず、「状態」の列が無ければそう書く', () => {
+  const withoutTable = runHook(createRepo({}));
+  assert.equal(withoutTable.status, 0, withoutTable.stderr);
+  assert.ok(!withoutTable.stdout.includes('作り直しの進み具合'), withoutTable.stdout);
+
+  const root = createRepo({});
+  writeFile(root, 'docs/移植対応表.md', '| 画面 | 済んだか |\n| :-- | :-- |\n| 一覧 | はい |\n');
+  const result = runHook(root);
+  assert.match(section(result.stdout, '作り直しの進み具合'), /「状態」の列のある表がありません/);
+});
+
+const DOING_ISSUES = JSON.stringify([
+  { number: 30, title: '[確認] 最初の画面の確認' },
+  { number: 31, title: '[機能] 貸出を記録できる' },
+  { number: 32, title: '[機能] [確認] ボタンを足す' },
+]);
+
+test('確認待ち: auto-merge で、題が [確認] で始まる open な Issue があれば、番号と進め方を出す', () => {
+  const root = createRepo({ mergePolicy: 'auto-merge' });
+  const result = runHook(root, { gh: 'doing', ghDoing: DOING_ISSUES });
+
+  assert.equal(result.status, 0, result.stderr);
+  const text = section(result.stdout, '確認待ち');
+  assert.match(text, /^確認待ち: #30（\[確認\] 最初の画面の確認）$/m);
+  assert.doesNotMatch(text, /#31|#32/);
+  assert.match(text, /「10\. 最初の画面を確かめてもらう」の 4/);
+});
+
+test('確認待ち: auto-merge で [確認] の Issue が無ければ、節を出さない', () => {
+  const root = createRepo({ mergePolicy: 'auto-merge' });
+  const result = runHook(root, { gh: 'doing', ghDoing: JSON.stringify([{ number: 31, title: '[機能] 貸出' }]) });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(!result.stdout.includes('## 確認待ち'), result.stdout);
+});
+
+test('確認待ち: human では status:doing の一覧を取りに行かない', () => {
+  const root = createRepo({ mergePolicy: 'human' });
+  const log = join(workRoot, 'human-doing.log');
+  writeFileSync(log, '');
+  const result = runHook(root, { gh: 'doing', ghDoing: DOING_ISSUES, ghLog: log });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(!result.stdout.includes('## 確認待ち'), result.stdout);
+  const calls = readCalls(log);
+  assert.ok(!calls.some(({ args }) => args.includes('status:doing')), JSON.stringify(calls));
+});
+
+test('時間の枠（auto-merge）: 確認待ちの取得（4 回目）の timeout は、HOOK_BUDGET から経った時間を引いた値以下にする', () => {
+  const root = createRepo({ mergePolicy: 'auto-merge', handoverIssue: 3 });
+  const log = join(workRoot, 'doing-budget.log');
+  writeFileSync(log, '');
+  // 1 回ごとに 12 秒かかる gh。4 回目（確認待ち）を呼ぶ時点で、36 秒が経っている
+  const result = runHook(root, { gh: 'doing', ghDoing: DOING_ISSUES, ghLog: log, ghElapsed: 12_000 });
+
+  assert.equal(result.status, 0, result.stderr);
+  const calls = readCalls(log);
+  const doing = calls.findIndex(({ args }) => args.includes('status:doing'));
+  assert.equal(doing, 3, JSON.stringify(calls));
+  assert.ok(
+    calls[3].timeout <= HOOK_BUDGET - 36_000 && calls[3].timeout > HOOK_BUDGET - 36_000 - 5000,
+    String(calls[3].timeout),
+  );
+  // 5 回目（引き継ぎメモ）を呼ぶ時点で 48 秒が経っているので、残りの 2 秒より短く待つ
+  assert.equal(calls.length, 5, JSON.stringify(calls));
+  assert.ok(calls[4].timeout <= HOOK_BUDGET - 48_000, String(calls[4].timeout));
+});
+
+test('確認待ち: 前の gh が時間切れなら、status:doing の一覧を取りに行かない', () => {
+  const root = createRepo({ mergePolicy: 'auto-merge' });
+  const log = join(workRoot, 'doing-timeout.log');
+  writeFileSync(log, '');
+  const result = runHook(root, { gh: 'timeout', ghLog: log });
+
+  assert.equal(result.status, 0, result.stderr);
+  const calls = readCalls(log);
+  assert.equal(calls.length, 3, JSON.stringify(calls));
+  assert.ok(!calls.some(({ args }) => args.includes('status:doing')), JSON.stringify(calls));
 });

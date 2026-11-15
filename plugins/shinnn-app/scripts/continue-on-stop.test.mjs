@@ -6,6 +6,7 @@
  * - 計画の親・setup と update-rules の Issue・AI の出力の改善の Issue・画面の調整の Issue・Dependabot の Issue は数えない
  * - 続けさせた後の応答の終わり（stop_hook_active が true）でも、残りの組が変わっていれば、また続けるよう伝える
  * - 同じセッションで残りの組が変わっていなければ（進まなかった）、止まらせる。残りが 0 件になったら、残した組を消す
+ * - 利用者の確認を待つ Issue（題が `[確認]` で始まる）が開いていれば、ほかに残りがあっても止まらせ、残した組を消す
  * - 裏で動いている shell（開発用のサーバーなど）だけなら続けるよう伝え、サブエージェントや起こす予約があれば止まらせる
  * - auto-merge でない・setup が済んでいない・gh が使えない・組を書けない・SHINNN_SKIP_STOP_CHECK のときは、
  *   何も出さずに止まらせる
@@ -154,6 +155,7 @@ test('auto-merge で進められる Issue が残っている: 続け方と、そ
     /^- スキルの手順が、止まる・次に進まずに報告すると決めているところに当たる（feature の手順 7 の「止まるとき」/m,
   );
   assert.match(context, /feature の手順 9 で、画面を見た利用者が伝えるのを待っている/);
+  assert.match(context, /^- feature の手順 10 で、最初の画面を確かめてもらうよう利用者に報告した/m);
   assert.match(context, /バックグラウンドのサブエージェントかコマンドの結果を待っている（結果の知らせで再開する）/);
 });
 
@@ -257,6 +259,41 @@ test('残りが 0 件になった: 止まらせ、残した組を消す', () => 
   assertContinued(runHook(root, { issues: { 'status:next': [22] } }));
   assertDidNothing(runHook(root, { issues: {} }, { stop_hook_active: true }));
   assert.equal(readState(root), null);
+});
+
+test('利用者の確認を待つ Issue（題が [確認]）が開いている: ほかに残りがあっても、何も出さずに止まらせる', () => {
+  const root = createRepo();
+  const ghState = {
+    issues: {
+      'status:next': [14, 22],
+      'status:doing': [{ number: 30, title: '[確認] 最初の画面の確認', body: '計画: #10' }],
+    },
+  };
+  const result = runHook(root, ghState);
+  assertDidNothing(result);
+  assert.equal(readState(root), null);
+  assert.equal(result.calls.length, 2);
+});
+
+test('利用者の確認を待つ Issue が開いた: 残した組を消し、閉じた後は前と同じ組でも続けるよう伝える', () => {
+  const root = createRepo();
+  const remaining = { 'status:next': [14, 22] };
+  const confirmation = { number: 30, title: '[確認] 最初の画面の確認', body: '' };
+  assertContinued(runHook(root, { issues: remaining }, { session_id: 'session-b' }));
+  assertContinued(runHook(root, { issues: remaining }));
+  // 確認を待つ間: 止まらせ、このセッションの組だけを消す
+  assertDidNothing(runHook(root, { issues: { ...remaining, 'status:doing': [confirmation] } }));
+  assert.deepEqual(Object.keys(readState(root)), ['session-b']);
+  // 了承を受けて [確認] を閉じた後: 残りの組は前と同じでも、続けるよう伝える
+  const context = assertContinued(runHook(root, { issues: remaining }));
+  assert.match(context, /残っている Issue: #14, #22$/m);
+});
+
+test('題の途中に [確認] がある Issue: 確認を待つ Issue とは扱わず、進められる Issue として数える', () => {
+  const root = createRepo();
+  const ghState = { issues: { 'status:next': [{ number: 7, title: '[機能] [確認] ボタンを足したい', body: '' }] } };
+  const context = assertContinued(runHook(root, ghState));
+  assert.match(context, /残っている Issue: #7$/m);
 });
 
 test('残りが 0 件になった: そのセッションの組だけを消し、ほかのセッションの組は残す', () => {
