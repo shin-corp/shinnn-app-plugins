@@ -653,6 +653,23 @@ test('移植対応表: 「状態」の列のある表をすべて数え、セル
   assert.match(section(result.stdout, '作り直しの進み具合'), /^移植対応表: まだ 2 件 \/ 全 5 件/m);
 });
 
+test('移植対応表: 「状態」の前に列（元の画像）があっても、「状態」の列の位置で数える', () => {
+  const root = createRepo({});
+  const table = [
+    '| 元の画面・機能 | 元の場所 | 元の画像 | 状態 | Issue | 違い |',
+    '| :-- | :-- | :-- | :-- | :-- | :-- |',
+    '| 備品の一覧 | `public/index.html` | 有 | 済み | #12 | |',
+    '| 備品の登録 | `public/new.html` | 無 | まだ | #13 | |',
+    '| 管理者の設定 | `public/admin.html` | 無 | 違う | #14 | 権限を絞った |',
+    '',
+  ].join('\n');
+  writeFile(root, 'docs/移植対応表.md', table);
+  const result = runHook(root);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(section(result.stdout, '作り直しの進み具合'), /^移植対応表: まだ 1 件 \/ 全 3 件/m);
+});
+
 test('移植対応表: ファイルが無ければ節を出さず、「状態」の列が無ければそう書く', () => {
   const withoutTable = runHook(createRepo({}));
   assert.equal(withoutTable.status, 0, withoutTable.stderr);
