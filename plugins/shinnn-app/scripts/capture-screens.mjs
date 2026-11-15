@@ -116,6 +116,8 @@ const BROWSER_ARGS = [
   '--disable-sync',
   '--disable-background-networking',
   '--disable-component-update',
+  '--disable-breakpad',
+  '--disable-crash-reporter',
   '--hide-scrollbars',
   '--mute-audio',
   '--force-color-profile=srgb',
@@ -751,6 +753,26 @@ function removeDirectory(dir) {
 }
 
 /**
+ * ブラウザを、ブラウザが起こした子のプロセスごと止める（SIGKILL）。
+ * Linux と macOS では、ブラウザを独立したプロセスのまとまりで起動している（Browser.launch）。
+ * そのまとまりごと止める。親だけを止めると、子のプロセスが残り、一時のフォルダに書き続ける。
+ */
+function killBrowser(child) {
+  if (child.pid === undefined) {
+    return;
+  }
+  try {
+    if (process.platform === 'win32') {
+      child.kill('SIGKILL');
+    } else {
+      process.kill(-child.pid, 'SIGKILL');
+    }
+  } catch {
+    // 既に終わっている
+  }
+}
+
+/**
  * ブラウザを止め、一時のフォルダを消す。
  *
  * @param graceMs - ブラウザが自分で終わるのを待つ時間（ミリ秒）。過ぎたら止める（SIGKILL）
@@ -758,7 +780,7 @@ function removeDirectory(dir) {
 async function shutdown(child, userDataDir, graceMs) {
   // 起動できなかった子（pid が無い）は、終わりの知らせが来ないので待たない
   if (child.pid !== undefined && !(await waitForExit(child, graceMs))) {
-    child.kill('SIGKILL');
+    killBrowser(child);
     await waitForExit(child, CLOSE_TIMEOUT_MS);
   }
   leftovers.child = null;
@@ -773,7 +795,9 @@ function cleanUpOnSignal() {
     ['SIGHUP', 1],
   ]) {
     process.once(signal, () => {
-      leftovers.child?.kill('SIGKILL');
+      if (leftovers.child !== null) {
+        killBrowser(leftovers.child);
+      }
       // 止めた直後は、ブラウザの子のプロセスがまだファイルを掴んでいる（Windows）。removeDirectory のやり直しで待つ
       for (const dir of [...leftovers.dirs]) {
         removeDirectory(dir);
@@ -834,9 +858,11 @@ class Browser {
     let child;
     try {
       // Windows の .cmd などと、実行ファイルでないものは、spawn がその場で投げる（error の知らせにならない）
+      // Linux と macOS では、独立したプロセスのまとまりで起動する。止めるときに、子のプロセスごと止めるため（killBrowser）
       child = spawn(executable, [...browserArgs(), `--user-data-dir=${userDataDir}`, 'about:blank'], {
         stdio: ['ignore', 'ignore', 'pipe'],
         windowsHide: true,
+        detached: process.platform !== 'win32',
       });
     } catch (error) {
       removeDirectory(userDataDir);
