@@ -50,7 +50,8 @@
       "Bash(gh run watch *)",
       "Bash(gh run rerun *)",
       "Bash(gh workflow run ci.yaml *)",
-      "Bash(gh workflow run policy.yaml *)"
+      "Bash(gh workflow run policy.yaml *)",
+      "WebFetch(domain:api.npmjs.org)"
     ],
     "deny": [
       "Bash(rm -rf *)",

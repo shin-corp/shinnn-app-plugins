@@ -107,6 +107,7 @@ const REQUIRED_RULES = [
   'client-styling.md',
   'db.md',
   'git-workflow.md',
+  'libraries.md',
   'messages.md',
   'server-architecture.md',
   'server-coding-conventions.md',
