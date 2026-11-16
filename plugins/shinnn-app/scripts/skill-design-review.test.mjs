@@ -134,14 +134,14 @@ test('continue-on-stop.mjs は、design-review で利用者に聞いている間
 test('feature の手順 6 は、題が [デザイン] の Issue も 7 に進める', () => {
   assert.match(
     sectionOf(feature, '6. 仕上げ'),
-    /計画の Issue か、題が `\[デザイン\]` の Issue なら、続けて 7 に進む。/,
+    /計画の Issue か、題が `\[デザイン\]` の Issue か[^。]*なら、続けて 7 に進む。/,
   );
 });
 
 test('feature の手順 7 は、[デザイン] の Issue を、7 に進むことと次の Issue の選び方だけ計画の Issue と同じに扱う', () => {
   assert.match(
     sectionOf(feature, '7. 次の Issue へ進む'),
-    /題が `\[デザイン\]` の Issue（[^）]*）も、6 から 7 に進むことと、次の Issue の選び方は、計画の Issue と同じに扱う。/,
+    /題が `\[デザイン\]` の Issue（[^）]*）[^。]*も、6 から 7 に進むことと、次の Issue の選び方は、計画の Issue と同じに扱う。/,
   );
   // 止まるときに 8 へ進む条件は、8 で決めた「この計画」で見る（聞き終えていない [デザイン] が残っても 8 に届く）
   assert.match(
