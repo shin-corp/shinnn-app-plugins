@@ -36,6 +36,8 @@ const secretKey = new TextEncoder().encode(config.JWT_SECRET);
 /**
  * Authorization ヘッダから Bearer トークンを取り出す。
  *
+ * ライブラリを使わない理由: express-bearer-token（直近 1 年に新しい版が出ていない）、passport-http-bearer（直近 1 年に新しい版が出ていない）、express-jwt（直近 1 年に新しい版が出ていない）、express-oauth2-jwt-bearer（検証に使っている jose と役割が重なる）
+ *
  * @param req - リクエスト
  * @returns トークン。取り出せなければ undefined
  */

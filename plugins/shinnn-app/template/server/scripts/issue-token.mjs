@@ -12,43 +12,8 @@
 //
 // 本番では使わない。発行したトークンは誰にも共有しない。
 
+import { parseArgs } from 'node:util';
 import { SignJWT } from 'jose';
-
-/** 引数の既定値。subject は seed/index.ts が入れる item の持ち主と同じ値。 */
-const defaults = {
-  subject: '00000000-0000-4000-8000-000000000001',
-  name: '開発用の利用者',
-  expiresIn: '8h',
-};
-
-/** `--key value` の形の引数を読む。 */
-function parseArgs(argv) {
-  const options = { ...defaults };
-
-  for (let i = 0; i < argv.length; i += 2) {
-    const key = argv[i];
-    const value = argv[i + 1];
-
-    if (value === undefined) {
-      throw new Error(`${key} の値が指定されていません。`);
-    }
-    if (key === '--subject') {
-      options.subject = value;
-      continue;
-    }
-    if (key === '--name') {
-      options.name = value;
-      continue;
-    }
-    if (key === '--expires-in') {
-      options.expiresIn = value;
-      continue;
-    }
-    throw new Error(`知らない引数です: ${key}`);
-  }
-
-  return options;
-}
 
 /** 環境変数を読む。無ければ何を用意すればよいかを出して終わる。 */
 function readEnv(name, hint) {
@@ -64,7 +29,18 @@ function readEnv(name, hint) {
   return value;
 }
 
-const options = parseArgs(process.argv.slice(2));
+/**
+ * `--key value` の形の引数。知らない引数と値の無い引数は、parseArgs がエラーにする。
+ * subject の既定値は、seed/index.ts が入れる item の持ち主と同じ値。
+ */
+const { values: options } = parseArgs({
+  args: process.argv.slice(2),
+  options: {
+    subject: { type: 'string', default: '00000000-0000-4000-8000-000000000001' },
+    name: { type: 'string', default: '開発用の利用者' },
+    'expires-in': { type: 'string', default: '8h' },
+  },
+});
 const secret = readEnv('JWT_SECRET', '32 文字以上のランダムな文字列');
 const audience = readEnv('JWT_AUDIENCE', '.env.example の既定は app-client');
 
@@ -73,11 +49,11 @@ const token = await new SignJWT({ name: options.name })
   .setSubject(options.subject)
   .setAudience(audience)
   .setIssuedAt()
-  .setExpirationTime(options.expiresIn)
+  .setExpirationTime(options['expires-in'])
   .sign(new TextEncoder().encode(secret));
 
 console.log(token);
 console.error('');
-console.error(`有効期限: ${options.expiresIn} / 利用者: ${options.subject}`);
+console.error(`有効期限: ${options['expires-in']} / 利用者: ${options.subject}`);
 console.error('画面で使うには、ブラウザの開発者ツールのコンソールで次を実行してから再読み込みします。');
 console.error(`  localStorage.setItem('token', '${token}')`);

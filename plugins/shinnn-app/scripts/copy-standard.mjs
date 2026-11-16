@@ -62,8 +62,8 @@ const STANDARDS_VERSION = '.claude/rules/.standards-version';
 const RETIRED_FILES = JSON.parse(readFileSync(new URL('./retired-files.json', import.meta.url), 'utf8'));
 
 /**
- * サーバー側の規約。server/ が無いリポジトリ（client-only）は持たない。
- * テンプレートの scripts/check-mandatory.mjs の SERVER_ONLY_RULES と同じにする
+ * サーバー側の規約。server/ が無いリポジトリ（client-only）には、元から無ければ写さない。
+ * テンプレートの scripts/check-mandatory.mjs の SERVER_ONLY_RULES（client-only で求めない規約）と同じにする
  */
 const SERVER_ONLY_RULES = new Set([
   'ai-integration.md',

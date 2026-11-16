@@ -100,6 +100,10 @@ test('copy-standard: 規約・権限の設定・スクリプト・ワークフ�
   ]) {
     assert.ok(sameAsTemplate(repo, path), path);
   }
+  // server/ があるリポジトリには、元から無かった規約を、サーバー側の規約も含めてすべて写す
+  for (const name of readdirSync(join(templateRoot, '.claude/rules')).filter((entry) => entry.endsWith('.md'))) {
+    assert.ok(sameAsTemplate(repo, `.claude/rules/${name}`), name);
+  }
   assert.match(result.stdout, /^更新 \.github\/workflows\/ci\.yaml$/m);
   assert.match(result.stdout, /^追加 \.github\/PULL_REQUEST_TEMPLATE\.md$/m);
   assert.match(result.stdout, /^更新 \.github\/dependabot\.yml$/m);
@@ -137,6 +141,9 @@ test('copy-standard: 有効にしているワークフローはその名前に�
 
 test('copy-standard: サーバー側を持たないリポジトリには、元から無かったサーバー側の規約だけを増やさない', () => {
   const repo = makeOldRepo({ hasServer: false });
+  // 元からあったサーバー側の規約は、server/ が無くても更新する
+  const existingServerRule = 'ai-integration.md';
+  writeRepoFile(repo, `.claude/rules/${existingServerRule}`, 'old\n');
   const result = runCopyStandard(repo);
 
   assert.equal(result.status, 0, result.stderr);
@@ -149,10 +156,11 @@ test('copy-standard: サーバー側を持たないリポジトリには、元�
   assert.ok(serverOnlyList, 'check-mandatory.mjs に SERVER_ONLY_RULES がある');
   const serverOnlyRules = new Set([...serverOnlyList[1].matchAll(/'([^']+)'/g)].map((match) => match[1]));
   assert.ok(serverOnlyRules.has('db.md'));
+  assert.ok(serverOnlyRules.has(existingServerRule));
   const templateRules = readdirSync(join(templateRoot, '.claude/rules')).filter((name) => name.endsWith('.md'));
   for (const name of templateRules) {
     const path = `.claude/rules/${name}`;
-    if (serverOnlyRules.has(name)) {
+    if (serverOnlyRules.has(name) && name !== existingServerRule) {
       assert.equal(existsSync(join(repo, path)), false, `${path} は写さない`);
     } else {
       assert.ok(sameAsTemplate(repo, path), `${path} は写す`);
