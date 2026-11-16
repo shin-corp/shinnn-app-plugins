@@ -7,7 +7,7 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, before, test } from 'node:test';
@@ -135,17 +135,43 @@ test('copy-standard: 有効にしているワークフローはその名前に�
   assert.equal(existsSync(join(repo, '.github/workflows/claude.yaml')), false);
 });
 
-test('copy-standard: サーバー側を持たないリポジトリには、元から無かった規約を増やさない', () => {
+test('copy-standard: サーバー側を持たないリポジトリには、元から無かったサーバー側の規約だけを増やさない', () => {
   const repo = makeOldRepo({ hasServer: false });
   const result = runCopyStandard(repo);
 
   assert.equal(result.status, 0, result.stderr);
   assert.ok(sameAsTemplate(repo, '.claude/rules/testing.md'));
   assert.ok(sameAsTemplate(repo, '.claude/rules/.standards-version'));
-  assert.equal(existsSync(join(repo, '.claude/rules/db.md')), false);
-  assert.equal(existsSync(join(repo, '.claude/rules/api-contract.md')), false);
+  // 飛ばすのは、テンプレートの check-mandatory.mjs が client-only で求めない規約と同じものだけ。
+  // ほかの規約は client-only でも必須なので、飛ばすと check-mandatory.mjs が落ちる
+  const checkMandatory = readFileSync(join(templateRoot, 'scripts/check-mandatory.mjs'), 'utf8');
+  const serverOnlyList = /const SERVER_ONLY_RULES = \[([^\]]*)\]/.exec(checkMandatory);
+  assert.ok(serverOnlyList, 'check-mandatory.mjs に SERVER_ONLY_RULES がある');
+  const serverOnlyRules = new Set([...serverOnlyList[1].matchAll(/'([^']+)'/g)].map((match) => match[1]));
+  assert.ok(serverOnlyRules.has('db.md'));
+  const templateRules = readdirSync(join(templateRoot, '.claude/rules')).filter((name) => name.endsWith('.md'));
+  for (const name of templateRules) {
+    const path = `.claude/rules/${name}`;
+    if (serverOnlyRules.has(name)) {
+      assert.equal(existsSync(join(repo, path)), false, `${path} は写さない`);
+    } else {
+      assert.ok(sameAsTemplate(repo, path), `${path} は写す`);
+    }
+  }
   // 飛ばした規約は出力に出す（PR 本文に「追加された規約」として書かないように）
   assert.match(result.stdout, /^飛ばした \.claude\/rules\/db\.md（server\/ が無いリポジトリには/m);
+});
+
+test('check-mandatory.mjs: 必ずある規約の一覧は、テンプレートの規約の顔ぶれと同じ', () => {
+  // 規約を足した・消したときに、写した先の check-mandatory.mjs の一覧を直し忘れないようにする
+  const checkMandatory = readFileSync(join(templateRoot, 'scripts/check-mandatory.mjs'), 'utf8');
+  const requiredList = /const REQUIRED_RULES = \[([^\]]*)\]/.exec(checkMandatory);
+  assert.ok(requiredList, 'check-mandatory.mjs に REQUIRED_RULES がある');
+  const requiredRules = [...requiredList[1].matchAll(/'([^']+)'/g)].map((match) => match[1]).sort();
+  const templateRules = readdirSync(join(templateRoot, '.claude/rules'))
+    .filter((name) => name.endsWith('.md'))
+    .sort();
+  assert.deepEqual(requiredRules, templateRules);
 });
 
 test('copy-standard: 途中で失敗したときは、標準の版を新しくしない', () => {

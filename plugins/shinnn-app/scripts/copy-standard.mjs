@@ -18,7 +18,7 @@
 // 消すのは一覧にあるものだけで、テンプレートに無いファイルを片っ端から消すことはしない（案件で足したファイルは残る）。
 // ワークフローの雛形（*.yaml.disabled）は、リポジトリで有効にしている（.disabled の無い名前がある）なら
 // その名前に写し、そうでなければ .disabled のまま写す。有効・無効は setup で選んだまま変えない。
-// サーバー側を持たないリポジトリ（server/ が無い）には、元から無かった規約を増やさない（飛ばしたものは出力に出す）。
+// サーバー側を持たないリポジトリ（server/ が無い）には、元から無かったサーバー側の規約を増やさない（飛ばしたものは出力に出す）。
 // 標準の版（.standards-version）は最後に写す。途中で失敗したときに「取り込み済み」に見えないようにするため。
 //
 // .claude/ と .github/workflows/ は権限の設定の deny で守られていて、Claude の cp では書けない。
@@ -61,6 +61,18 @@ const STANDARDS_VERSION = '.claude/rules/.standards-version';
  */
 const RETIRED_FILES = JSON.parse(readFileSync(new URL('./retired-files.json', import.meta.url), 'utf8'));
 
+/**
+ * サーバー側の規約。server/ が無いリポジトリ（client-only）は持たない。
+ * テンプレートの scripts/check-mandatory.mjs の SERVER_ONLY_RULES と同じにする
+ */
+const SERVER_ONLY_RULES = new Set([
+  'ai-integration.md',
+  'db.md',
+  'messages.md',
+  'server-architecture.md',
+  'server-coding-conventions.md',
+]);
+
 /** 1 つずつ名前で写すファイル */
 const SINGLE_FILES = [
   '.claude/settings.json',
@@ -98,8 +110,8 @@ function listCopies() {
     if (path === STANDARDS_VERSION) {
       continue;
     }
-    const isNewRule = name.endsWith('.md') && !existsSync(join(repositoryRoot, path));
-    if (!hasServer && isNewRule) {
+    const isNewServerRule = SERVER_ONLY_RULES.has(name) && !existsSync(join(repositoryRoot, path));
+    if (!hasServer && isNewServerRule) {
       skipped.push(path);
       continue;
     }
@@ -197,7 +209,7 @@ if (versionKind === undefined) {
 }
 
 for (const path of skipped) {
-  console.log(`飛ばした ${path}（server/ が無いリポジトリには、元から無かった規約を増やさない）`);
+  console.log(`飛ばした ${path}（server/ が無いリポジトリには、元から無かったサーバー側の規約を増やさない）`);
 }
 console.log(`変わらないファイル: ${unchangedCount}`);
 if (dryRun) {
