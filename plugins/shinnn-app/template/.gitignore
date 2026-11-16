@@ -15,7 +15,7 @@ playwright-report/
 # DB_DRIVER=pglite で動かしたときの DB（server/.pglite）。手元だけのデータなので共有しない。
 .pglite/
 
-# 撮った画面と、作り直しの元のアプリの画面（/shinnn-app:add-screen と /shinnn-app:feature）。本物のデータが写りうるので共有しない。
+# 撮った画面と、作り直しの元のアプリの画面（/shinnn-app:add-screen・/shinnn-app:feature・/shinnn-app:design-review）。本物のデータが写りうるので共有しない。
 /screenshots/
 
 # 個人の設定と個人用のメモ。認証情報やローカルのパスを含みうるので共有しない。

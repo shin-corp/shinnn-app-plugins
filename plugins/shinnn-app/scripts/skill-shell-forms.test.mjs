@@ -113,7 +113,7 @@ test('feature と check は git switch main が成功してから git pull --ff-
   const steps =
     /`git switch main` を実行し、成功したら `git pull --ff-only` を実行する。失敗したら、次に進まずに報告する/g;
 
-  assert.equal(readSkill('feature', 'SKILL.md').match(steps)?.length, 4);
+  assert.equal(readSkill('feature', 'SKILL.md').match(steps)?.length, 3);
   assert.equal(readSkill('check', 'SKILL.md').match(steps)?.length, 1);
 });
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * 画面を撮るスクリプト。Chrome・Edge・Chromium を画面なしで起動し、DevTools プロトコル（ブラウザを外から操作する仕組み）で動かす。
- * /shinnn-app:add-screen の「9. 作った画面を見直す」と、/shinnn-app:feature の作り直しが使う。
+ * /shinnn-app:add-screen の「9. 作った画面を見直す」と、/shinnn-app:feature の作り直しと手順 10 と、/shinnn-app:design-review が使う。
  *
  * プラグインには package.json が無く、スクリプトは Node の標準だけで動く。
  * そのため、DevTools プロトコルは Node 24 の組み込みの WebSocket で話す（playwright などの依存を足さない）。

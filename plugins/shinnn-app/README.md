@@ -11,12 +11,12 @@
 
 | 種類 | 内容 |
 |:--|:--|
-| コマンド | 初回の `setup` と、普段の `feature`（続けて `pr` が `check` を通して PR を出し、`retro` まで行う）、理由を聞く `why` |
+| コマンド | 初回の `setup` と、普段の `feature`（続けて `pr` が `check` を通して PR を出し、`retro` まで行う）、理由を聞く `why`、画面のデザインを見直す `design-review`（計画の Issue がすべて閉じたときは `feature` が呼ぶ） |
 | 内部スキル | API の追加、画面の追加、マイグレーション、レビュー、テストが効いているかの確認 など 9 |
 | レビュー担当 | 正確性 / セキュリティ / 規約 の 3 体。`code-review` から同時に動く |
 | hooks | 取り決めの案内と記録。保存のたびの `eslint --fix`（画面の `.ts` には prettier も）、変更したファイルの lint とテスト、セッション開始時の状況、作業が詰まったところの記録 |
 | 適用スクリプト | `scripts/apply-setup.mjs`（`setup` が `.shinnn/setup.json` / ワークフロー / `CODEOWNERS` を書き換える。`update-rules` も `--align-only` で `.shinnn/setup.json` の形だけを揃える）と `scripts/copy-standard.mjs`（`update-rules` が規約・権限の設定・ワークフローなどの標準を写す）。deny で守られたファイルは、setup の展開（`scripts/fetch-template.mjs`）とこの 2 つから書き換える |
-| 画面を撮るスクリプト | `scripts/capture-screens.mjs`（`add-screen` と `feature` が、作った画面を撮り、作り直しでは元の画面と並べる）。Chrome・Edge・Chromium を DevTools プロトコル（ブラウザを外から操作する仕組み）で動かし、依存を足さない |
+| 画面を撮るスクリプト | `scripts/capture-screens.mjs`（`add-screen` と `feature` が、作った画面を撮り、作り直しでは元の画面と並べる。`design-review` が、すべての画面をまとめて撮る）。Chrome・Edge・Chromium を DevTools プロトコル（ブラウザを外から操作する仕組み）で動かし、依存を足さない |
 | テンプレート | アプリの土台（`template/`）。`setup` が空のフォルダに展開する |
 
 ## コマンド
@@ -28,12 +28,14 @@
 | `/shinnn-app:setup` | 初回セットアップ。同梱のテンプレートの展開・種類の選択・環境の確認・必要な機能の決定と適用。最後に作りたいアプリを聞いて、`feature` を始める |
 
 利用者が普段打つのは `feature` だけ。`why` は理由を知りたいときに使う。
+`design-review` は、画面のデザインの改善案がほしいときに使う（計画の Issue がすべて閉じたときは `feature` が呼ぶ）。
 `check` / `pr` / `retro` は `feature` が続けて行う（`feature` の仕上げが `pr` を呼び、`pr` が PR を出す前に `check` を 1 回、
 出した後に `retro` を呼ぶ）。利用者が直接呼んでもよい。
 
 | コマンド | 内容 |
 |:--|:--|
 | `/shinnn-app:feature <作りたいこと>` | PR 1 本ずつの Issue に分けて順番を決め、Issue の作成 → 仕様書への反映 → 実装 → テスト → `pr` |
+| `/shinnn-app:design-review` | すべての画面を撮る → `frontend-design` で画面をまたいだ改善案を受ける → 改善案を 1 件ずつ Issue にする → 入れるかを利用者に 1 件ずつ聞く。入れると決めた改善案は `feature` が作る |
 | `/shinnn-app:why <話題>` | 決まりの理由を、根拠を引いて説明する |
 | `/shinnn-app:pr` | `check` → コミット → セルフレビューの収束 → プッシュ → ドラフト PR → Copilot のレビュー（有効なとき）→ `retro`（`feature` が呼ぶ） |
 | `/shinnn-app:check` | 型検査・lint・テストと、受入条件および API 定義のカバレッジ、依存の脆弱性（`pr` が PR 1 本につき 1 回呼ぶ） |
@@ -60,7 +62,7 @@ hooks は取り決めの案内です。`.env` や CI の設定や規約の編集
 
 - Node 24 系（24.15 以上）。npm は Node.js 24 に同梱される 11 系
 - `gh`（Issue と PR を使う機能に必要。無い場合、セッションの開始時には GitHub の画面の URL と、導入・ログインの案内を出します）
-- Chrome・Edge・Chromium のどれか（画面を撮るのに必要。無い場合、`add-screen` の見直しは撮らずに進みます）
+- Chrome・Edge・Chromium のどれか（画面を撮るのに必要。無い場合、`add-screen` の見直しは撮らずに進みます。`design-review` は見直さずに終わります）
 - hooks の Node スクリプトはシェルを介さずに外部コマンドを呼びます。Windows で `npm` のような
   バッチファイルを起動するときだけ `cmd.exe` 経由に切り替え、引数は自前で引用します
   （空白や `&` を含むファイル名がコマンドとして解釈されないようにするため）

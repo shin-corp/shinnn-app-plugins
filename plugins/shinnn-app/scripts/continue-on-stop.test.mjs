@@ -3,7 +3,8 @@
  *
  * スクリプトが呼ぶ gh を偽物（continue-on-stop.fake-gh.mjs）に差し替え、次を確かめる。
  * - マージの方針が auto-merge で setup が済み、進められる Issue（status:next / status:doing）があれば、続けるよう伝える
- * - 計画の親・setup と update-rules の Issue・AI の出力の改善の Issue・画面の調整の Issue・Dependabot の Issue は数えない
+ * - 計画の親・setup と update-rules の Issue・AI の出力の改善の Issue・画面の調整の Issue・デザインの見直しの記録の Issue・
+ *   Dependabot の Issue は数えない。利用者が入れると決めたデザインの改善案の Issue（題が `[デザイン]` で始まる）は数える
  * - 続けさせた後の応答の終わり（stop_hook_active が true）でも、残りの組が変わっていれば、また続けるよう伝える
  * - 同じセッションで残りの組が変わっていなければ（進まなかった）、止まらせる。残りが 0 件になったら、残した組を消す
  * - 利用者の確認を待つ Issue（題が `[確認]` で始まる）が開いていれば、ほかに残りがあっても止まらせ、残した組を消す
@@ -156,10 +157,11 @@ test('auto-merge で進められる Issue が残っている: 続け方と、そ
   );
   assert.match(context, /feature の手順 9 で、画面を見た利用者が伝えるのを待っている/);
   assert.match(context, /^- feature の手順 10 で、最初の画面を確かめてもらうよう利用者に報告した/m);
+  assert.match(context, /^- \/shinnn-app:design-review の手順 4 で、改善案を入れるかを利用者に聞いている$/m);
   assert.match(context, /バックグラウンドのサブエージェントかコマンドの結果を待っている（結果の知らせで再開する）/);
 });
 
-test('計画の親・setup と update-rules の Issue・AI の出力の改善の Issue・画面の調整の Issue・Dependabot の Issue: 数えない', () => {
+test('計画の親・setup と update-rules の Issue・AI の出力の改善の Issue・画面の調整とデザインの見直しの記録の Issue・Dependabot の Issue: 数えない', () => {
   const root = createRepo();
   const ghState = {
     issues: {
@@ -167,18 +169,21 @@ test('計画の親・setup と update-rules の Issue・AI の出力の改善の
         { number: 30, title: '[依存] Bump vitest from 3.0.0 to 3.1.0', body: '- PR: …\n\n<!-- dependabot-pr: 12 -->' },
         { number: 31, title: '[依存] 依存の脆弱性の修正', body: '' },
         { number: 32, title: '[改善] 要約 の AI の出力', body: '' },
+        { number: 33, title: '[デザイン] 一覧と登録の画面の見出しの言葉をそろえる', body: '' },
       ],
       'status:doing': [
         { number: 1, title: '[計画] 在庫を管理したい', body: '' },
         { number: 2, title: '[設定] 初回セットアップの適用', body: '' },
         { number: 3, title: '[標準] 標準 0.9.33 の取り込み', body: '' },
         { number: 4, title: '[調整] 画面の調整', body: '' },
-        { number: 5, title: '[調整] すべての画面の見直し', body: '' },
+        { number: 5, title: '[調整] デザインの見直し', body: '' },
+        // 数えない題は全体の一致で見る。同じ `[調整]` で始まるほかの題は数える
+        { number: 6, title: '[調整] 一覧の列の幅', body: '' },
       ],
     },
   };
   const context = assertContinued(runHook(root, ghState));
-  assert.match(context, /残っている Issue: #5, #31$/m);
+  assert.match(context, /残っている Issue: #6, #31, #33$/m);
 });
 
 test('題の途中に数えない頭がある Issue: 数える', () => {
