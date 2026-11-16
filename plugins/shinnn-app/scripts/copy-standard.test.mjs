@@ -100,7 +100,7 @@ test('copy-standard: 規約・権限の設定・スクリプト・ワークフ�
   ]) {
     assert.ok(sameAsTemplate(repo, path), path);
   }
-  // server/ があるリポジトリには、元から無かった規約を、サーバー側の規約も含めてすべて写す
+  // server/ があるリポジトリには、サーバー側の規約も含めて、テンプレートの規約をすべて写す
   for (const name of readdirSync(join(templateRoot, '.claude/rules')).filter((entry) => entry.endsWith('.md'))) {
     assert.ok(sameAsTemplate(repo, `.claude/rules/${name}`), name);
   }
