@@ -11,6 +11,7 @@
 - ベースブランチは `main` にする
 - 別の作業フォルダが要るときは、Claude Code の worktree（同じリポジトリを別のフォルダに取り出したもの。`claude --worktree <名前>` か、デスクトップアプリで worktree を選んで始めたセッション）を使う
 - `git worktree add` で隣のフォルダに worktree を作り、元のセッションから `cd` して作業しない
+- git のコマンドは、今の作業フォルダでそのまま実行する。`cd <別のフォルダ> && git …` と `git -C <フォルダ>` を使わない（検査: 権限の設定。`git -C` に確認を出すことだけ）
 - PR を誰がマージするかは、`.shinnn/setup.json` の `mergePolicy` で決める
 - ただし、`setupCompletedAt` が `null`（setup が済んでいない）場合は、`mergePolicy` の値にかかわらず `human` として扱う
 - `human` では、人が PR を ready にしてマージする
