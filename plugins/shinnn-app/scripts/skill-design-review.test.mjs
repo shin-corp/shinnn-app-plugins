@@ -27,6 +27,12 @@ function readPluginFile(path) {
 
 const skill = readPluginFile('skills/design-review/SKILL.md');
 const feature = readPluginFile('skills/feature/SKILL.md');
+/** feature の手順 8 と 9 の本文（手順 8 の「作り直しのとき」は SKILL.md に残る） */
+const featureFinish = readPluginFile('skills/feature/finish.md');
+/** feature の作り直しの分（手順 8 の「作り直しのとき」を含む） */
+const featureRebuild = readPluginFile('skills/feature/rebuild.md');
+/** feature の「止まるとき」 */
+const featureStopping = readPluginFile('skills/feature/stopping.md');
 const hook = readPluginFile('scripts/continue-on-stop.mjs');
 const addScreen = readPluginFile('skills/add-screen/SKILL.md');
 
@@ -78,7 +84,10 @@ test('記録の Issue の題が、design-review と feature の手順 8 と cont
   // 文書の中で題を書いたところ（`[調整] …`）が、記録の Issue の題か、見直し済みの印になる題のどちらかであること
   for (const [where, text] of [
     ['design-review', skill],
-    ['feature の手順 8', sectionOf(feature, '8. デザインを見直す')],
+    [
+      'feature の手順 8',
+      sectionOf(featureFinish, '8. デザインを見直す') + sectionOf(featureRebuild, '8. デザインを見直す'),
+    ],
   ]) {
     const titles = text.match(/`\[調整\] [^`]*`/g) ?? [];
     assert.ok(titles.includes(`\`${RECORD_TITLE}\``), `${where} に記録の Issue の題がありません`);
@@ -117,7 +126,7 @@ test('手順 4 は、入れない改善案を not planned で閉じ、入れる�
 });
 
 test('feature の手順 8 は、Skill ツールで shinnn-app:design-review を呼ぶ', () => {
-  const step = sectionOf(feature, '8. デザインを見直す');
+  const step = sectionOf(featureFinish, '8. デザインを見直す');
   assert.match(step, /Skill ツールで `shinnn-app:design-review` を呼ぶ/);
   assert.match(step, /`args` には、この計画の親 Issue の番号を `計画: #<親の番号>` の形で渡す/);
   assert.match(
@@ -145,7 +154,7 @@ test('feature の手順 7 は、[デザイン] の Issue を、7 に進むこと
   );
   // 止まるときに 8 へ進む条件は、8 で決めた「この計画」で見る（聞き終えていない [デザイン] が残っても 8 に届く）
   assert.match(
-    feature,
+    featureStopping,
     /^1\. 「8\. デザインを見直す」でいう「この計画」（「作る順番」の Issue がすべて閉じた計画）があれば、8 を行う$/m,
   );
   // [デザイン] はどの計画の「作る順番」にも無いので、番号の順で取る
@@ -156,8 +165,13 @@ test('feature の手順 7 は、[デザイン] の Issue を、7 に進むこと
 });
 
 test('feature の手順 8 は、作り直しのアプリでは design-review を呼ばず、すべての画面を元と並べて撮る', () => {
-  const step = sectionOf(feature, '8. デザインを見直す');
-  assert.match(step, /「元に寄せる」のアプリでは、下の「作り直しのとき」を行い、`design-review` を呼ばない/);
+  assert.match(
+    sectionOf(featureFinish, '8. デザインを見直す'),
+    /「元に寄せる」のアプリでは、SKILL\.md の 8 の「作り直しのとき」を行い、`design-review` を呼ばない/,
+  );
+  // finish.md が指す「作り直しのとき」は、SKILL.md の 8 の下に残る
+  assert.match(sectionOf(feature, '8. デザインを見直す'), /^### 作り直しのとき$/m);
+  const step = sectionOf(featureRebuild, '8. デザインを見直す');
   assert.match(
     step,
     /node \$\{CLAUDE_PLUGIN_ROOT\}\/scripts\/capture-screens\.mjs batch --list <一覧のファイル> --out-dir screenshots --token/,
@@ -171,7 +185,7 @@ test('feature の手順 8 は、作り直しのアプリでは design-review を
 });
 
 test('feature の手順 8 は、「この計画」を 1 か所で決め、見直し済みの印の題がある計画では行わず、design-review を終えたら決まった手順に戻る', () => {
-  const step = sectionOf(feature, '8. デザインを見直す');
+  const step = sectionOf(featureFinish, '8. デザインを見直す');
   assert.match(
     step,
     /^この節と「止まるとき」の 1 でいう「この計画」は、題が `\[計画\]` の Issue のうち、「作る順番」の Issue がすべて閉じているもの（親が open でも closed でも）で、\n子 Issue が最後に閉じたのがいちばん新しいものを指す。/m,

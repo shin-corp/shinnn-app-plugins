@@ -97,7 +97,7 @@ test('auto-merge でも、コミットが lint-staged の退避で止まった�
   );
   assert.match(readSkill('pr', 'SKILL.md'), /`auto-merge` のときの扱いは、同じ規約の「`auto-merge` のとき」/);
   assert.match(
-    readSkill('feature', 'SKILL.md'),
+    readSkill('feature', 'stopping.md'),
     /利用者にアプリを閉じてもらうのを待つことを除く。規約 `git-workflow\.md` の「`auto-merge` のとき」/,
   );
 });
@@ -113,12 +113,13 @@ test('feature と check は git switch main が成功してから git pull --ff-
   const steps =
     /`git switch main` を実行し、成功したら `git pull --ff-only` を実行する。失敗したら、次に進まずに報告する/g;
 
+  // feature の 3 か所は、手順 7 の表と「Issue を止める」の 4 と「続きから始める」の 2（どれも SKILL.md）
   assert.equal(readSkill('feature', 'SKILL.md').match(steps)?.length, 3);
   assert.equal(readSkill('check', 'SKILL.md').match(steps)?.length, 1);
 });
 
 test('pr の時刻のコマンドは、現地の時刻によらず UTC を秒までで返す', () => {
-  const command = readSkill('pr', 'SKILL.md').match(/^\s*node -p "([^"]+)"$/m);
+  const command = readSkill('pr', 'ci-not-starting.md').match(/^\s*node -p "([^"]+)"$/m);
   assert.ok(command, 'pr に node -p の時刻のコマンドが無い');
 
   const before = Math.floor(Date.now() / 1000) * 1000;
@@ -136,7 +137,7 @@ test('pr の時刻のコマンドは、現地の時刻によらず UTC を秒ま
 });
 
 test('pr は引き継ぎメモの本文を check・retro と同じく Write ツールで書く', () => {
-  const skill = readSkill('pr', 'SKILL.md');
+  const skill = readSkill('pr', 'ci-not-starting.md');
 
   assert.ok(skill.includes('今の本文は `gh issue view <Issue 番号> --json body --jq .body` で読む。'));
   assert.ok(

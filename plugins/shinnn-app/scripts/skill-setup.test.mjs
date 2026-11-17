@@ -662,9 +662,11 @@ test('再実行のとき: マージの前の再実行で困るのは、記録の
 
 test('feature の続きから始める: 初回の適用の Issue のブランチなら、setup に回す', () => {
   const feature = readFileSync(fileURLToPath(new URL('../skills/feature/SKILL.md', import.meta.url)), 'utf8');
+  const resume = feature.match(/^## 続きから始める\n[\s\S]*?(?=^## )/m);
+  assert.ok(resume, 'feature の SKILL.md に見出し「続きから始める」がありません');
 
   assert.ok(
-    feature.includes(
+    resume[0].includes(
       `その Issue の題が \`${APPLY_ISSUE_TITLE}\` なら、このスキルでは進めず、\`/shinnn-app:setup\` を実行する`,
     ),
   );

@@ -82,18 +82,19 @@ test('check は直しの Issue を --json の結果から題で探す', () => {
 });
 
 test('pr の CI の見分け方は、job と step の conclusion を出す式を使う', () => {
-  const skill = readSkill('pr', 'SKILL.md');
+  const steps = readSkill('pr', 'SKILL.md');
 
   assert.ok(
-    skill.includes(
+    steps.includes(
       `gh run view <実行の番号> --json jobs --jq '.jobs[] | {databaseId, name, conclusion, steps: [.steps[] | {name, conclusion}]}'`,
     ),
   );
-  assert.doesNotMatch(skill, /step=|failed=/);
+  assert.doesNotMatch(steps, /step=|failed=/);
+  assert.doesNotMatch(readSkill('pr', 'ci-not-starting.md'), /step=|failed=/);
 });
 
 test('pr は必須のチェックをルールの種類の名前で見分ける', () => {
-  const skill = readSkill('pr', 'SKILL.md');
+  const skill = readSkill('pr', 'ci-not-starting.md');
 
   assert.ok(skill.includes(`gh api "repos/{owner}/{repo}/rules/branches/main" --jq '.[].type'`));
   assert.match(skill, /2 つ目に `required_status_checks` の行が出れば/);

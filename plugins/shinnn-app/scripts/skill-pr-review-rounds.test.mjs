@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 const pluginRoot = fileURLToPath(new URL('..', import.meta.url));
 const prSkill = readFileSync(join(pluginRoot, 'skills/pr/SKILL.md'), 'utf8');
 const featureSkill = readFileSync(join(pluginRoot, 'skills/feature/SKILL.md'), 'utf8');
+const featureStopping = readFileSync(join(pluginRoot, 'skills/feature/stopping.md'), 'utf8');
 const gitWorkflow = readFileSync(join(pluginRoot, 'template/.claude/rules/git-workflow.md'), 'utf8');
 const continueOnStop = readFileSync(join(pluginRoot, 'scripts/continue-on-stop.mjs'), 'utf8');
 
@@ -70,7 +71,9 @@ test('feature は、頼まれて status:next を付けた [後回し] の Issue 
   assert.match(step6, /利用者に頼まれて `status:next` を付けた `\[後回し\]` の Issue なら、続けて 7 に進む/);
   const step7 = sectionOf(featureSkill, '7. 次の Issue へ進む');
   assert.match(step7, /利用者に頼まれて `status:next` を付けた `\[後回し\]` の Issue も、6 から 7 に進むこと/);
-  const stop = featureSkill.slice(featureSkill.indexOf('### 止まるとき'), featureSkill.indexOf('## 8. '));
+  const stopStart = featureStopping.indexOf('### 止まるとき');
+  assert.notEqual(stopStart, -1, 'stopping.md に見出し「止まるとき」がありません');
+  const stop = featureStopping.slice(stopStart);
   assert.match(stop, /`\[後回し\]` の Issue の番号と件数/);
   assert.match(stop, /「後回しにした点も進めて」と伝えれば作ること/);
   assert.match(featureSkill.match(/^description: (.*)$/m)[1], /「後回しにした点も進めて」/);
