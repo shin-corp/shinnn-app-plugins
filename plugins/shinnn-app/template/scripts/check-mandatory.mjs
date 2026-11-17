@@ -111,6 +111,7 @@ const REQUIRED_RULES = [
   'messages.md',
   'server-architecture.md',
   'server-coding-conventions.md',
+  'spec.md',
   'testing.md',
 ];
 

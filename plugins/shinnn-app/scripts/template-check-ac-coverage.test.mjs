@@ -8,6 +8,7 @@
  * - --report なら、重なりがあっても終了コード 0 で終え、表の後に重なった番号を 1 行で示す
  * - 画面の表の「対応する受入条件」の列にある AC-n の参照は、重なりに数えない
  * - テストの無い受入条件があれば、終了コード 1 で終え、その番号を示す
+ * - 仕様書の大きさと表のセルの長さが目安を超えていれば、注意を出す（終了コードは変えない。CI では PR の画面に出る形）
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -91,9 +92,10 @@ after(() => {
  * @param specification 仕様書の中身
  * @param tests テストのファイル（リポジトリルート起点のパス → 中身）
  * @param args スクリプトの引数
+ * @param env 足す環境変数（既定では、CI の外として動かす）
  * @returns 終了コードと出力
  */
-function runCoverage(specification, tests, args = []) {
+function runCoverage(specification, tests, args = [], env = {}) {
   const root = mkdtempSync(join(workRoot, 'repo-'));
   const script = join(root, SCRIPT);
 
@@ -104,7 +106,11 @@ function runCoverage(specification, tests, args = []) {
     writeFileSync(join(root, path), content);
   }
 
-  const result = spawnSync(process.execPath, [script, ...args], { cwd: root, encoding: 'utf8' });
+  const result = spawnSync(process.execPath, [script, ...args], {
+    cwd: root,
+    encoding: 'utf8',
+    env: { ...process.env, GITHUB_ACTIONS: '', ...env },
+  });
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
 
@@ -215,4 +221,119 @@ test('テストの無い受入条件があれば、終了コード 1 で終え�
   assert.equal(result.status, 1, result.stdout);
   assert.match(result.stderr, /^テストの無い受入条件があります。$/m);
   assert.match(result.stderr, /^ {2}何が: AC-2$/m);
+});
+
+test('テンプレートの仕様書では、大きさの注意を出さない', () => {
+  const result = runCoverage(templateSpecification, templateTests);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stderr, /注意:/);
+});
+
+test('仕様書が目安（150KB）を超えたら、注意を出し、終了コードは変えない', () => {
+  const filler = `\n${'説明の文です。'.repeat(8000)}\n`;
+  const result = runCoverage(templateSpecification + filler, templateTests);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /^注意: docs\/仕様書\.md が \d+KB あります（目安は 150KB まで）。/m);
+  // 表でない長い行は、表のセルに数えない
+  assert.doesNotMatch(result.stderr, /表のセルが/);
+});
+
+test('仕様書がちょうど目安（150KB）なら、注意を出さない', () => {
+  const base = Buffer.byteLength(templateSpecification);
+  const filler = `\n${'a'.repeat(150 * 1024 - base - 2)}\n`;
+  const specification = templateSpecification + filler;
+  assert.equal(Buffer.byteLength(specification), 150 * 1024);
+  const result = runCoverage(specification, templateTests);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stderr, /注意:/);
+});
+
+test('表のセルが目安（1,000 文字）を超えたら、その行の番号を示して注意を出し、終了コードは変えない', () => {
+  const specification = specificationOf([['一覧', 'あ'.repeat(1001), 'AC-1']], [['AC-1', '一覧が返る']]);
+  const result = runCoverage(specification, { 'server/tests/items.test.ts': testFileOf(['AC-1']) });
+  const line = specification.split('\n').findIndex((row) => row.includes('あ'.repeat(1001))) + 1;
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, new RegExp(`^注意: docs/仕様書\\.md の ${line} 行目の表のセルが 1001 文字あります`, 'm'));
+});
+
+test('CI（GitHub Actions）では、注意を PR の画面に出る形（::warning）で出す', () => {
+  const specification = specificationOf([['一覧', 'あ'.repeat(1001), 'AC-1']], [['AC-1', '一覧が返る']]);
+  const result = runCoverage(specification, { 'server/tests/items.test.ts': testFileOf(['AC-1']) }, [], {
+    GITHUB_ACTIONS: 'true',
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(
+    result.stdout,
+    /^::warning file=docs\/仕様書\.md,line=\d+::docs\/仕様書\.md の \d+ 行目の表のセルが 1001 文字あります/m,
+  );
+});
+
+test('表のセルがちょうど目安（1,000 文字）なら、注意を出さない', () => {
+  const specification = specificationOf([['一覧', 'あ'.repeat(1000), 'AC-1']], [['AC-1', '一覧が返る']]);
+  const result = runCoverage(specification, { 'server/tests/items.test.ts': testFileOf(['AC-1']) });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stderr, /注意:/);
+});
+
+test('長いセルの行がいくつあっても、注意は 5 件までにする', () => {
+  const screens = Array.from({ length: 6 }, (_, index) => [`画面${index}`, 'あ'.repeat(1001), 'AC-1']);
+  const specification = specificationOf(screens, [['AC-1', '一覧が返る']]);
+  const result = runCoverage(specification, { 'server/tests/items.test.ts': testFileOf(['AC-1']) });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr.match(/^注意: .*表のセルが/gm)?.length, 5);
+});
+
+test('字下げした表の行と、\\| を含むセルも、表のセルとして数える。コードの囲みの中は数えない', () => {
+  const specification = [
+    specificationOf([], [['AC-1', '一覧が返る']]),
+    `  | 字下げ | ${'い'.repeat(1001)} |`,
+    `| 縦棒 | ${'う'.repeat(600)}\\|${'う'.repeat(600)} |`,
+    '```',
+    `| コード | ${'え'.repeat(1001)} |`,
+    '```',
+    '',
+  ].join('\n');
+  const result = runCoverage(specification, { 'server/tests/items.test.ts': testFileOf(['AC-1']) });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr.match(/^注意: .*表のセルが/gm)?.length, 2);
+  assert.match(result.stderr, /表のセルが 1001 文字/);
+  assert.match(result.stderr, /表のセルが 1202 文字/);
+});
+
+test('--report では、CI でも注意を ::warning にせず、レポートの出力に混ぜない', () => {
+  const specification = specificationOf([['一覧', 'あ'.repeat(1001), 'AC-1']], [['AC-1', '一覧が返る']]);
+  const result = runCoverage(specification, { 'server/tests/items.test.ts': testFileOf(['AC-1']) }, ['--report'], {
+    GITHUB_ACTIONS: 'true',
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /::warning/);
+  assert.match(result.stderr, /^注意: docs\/仕様書\.md の \d+ 行目の表のセルが 1001 文字あります/m);
+});
+
+test('~~~ の囲みと、4 つのバッククォートの囲みの中の行も、表のセルに数えない', () => {
+  const specification = [
+    specificationOf([], [['AC-1', '一覧が返る']]),
+    '~~~',
+    `| 囲み | ${'お'.repeat(1001)} |`,
+    '~~~',
+    '````',
+    '```',
+    `| 入れ子 | ${'か'.repeat(1001)} |`,
+    '```',
+    '````',
+    '',
+  ].join('\n');
+  const result = runCoverage(specification, { 'server/tests/items.test.ts': testFileOf(['AC-1']) });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stderr, /表のセルが/);
 });

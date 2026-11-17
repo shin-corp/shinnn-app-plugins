@@ -2,5 +2,11 @@
   "printWidth": 120,
   "singleQuote": true,
   "endOfLine": "lf",
-  "proseWrap": "preserve"
+  "proseWrap": "preserve",
+  "overrides": [
+    {
+      "files": ["docs/仕様書.md", "docs/移植対応表.md"],
+      "options": { "proseWrap": "never" }
+    }
+  ]
 }

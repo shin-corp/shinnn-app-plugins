@@ -93,6 +93,7 @@ test('copy-standard: 規約・権限の設定・スクリプト・ワークフ�
     '.husky/commit-msg',
     '.husky/pre-push',
     '.lintstagedrc.json',
+    '.prettierrc.json',
     'scripts/check-ac-coverage.mjs',
     '.github/workflows/ci.yaml',
     '.github/PULL_REQUEST_TEMPLATE.md',

@@ -24,7 +24,7 @@ PR を出す前に、CI と同じ内容を手元で通す。**ここが緑にな
 |:--|:--|:--|
 | 1 | `npm run check` | shared のビルド → 各パッケージのビルド・型検査・lint。`--max-warnings 0` なので警告も落ちる |
 | 2 | `npm test` | テスト。DB を使うテストは既定で PGlite（実 PostgreSQL は不要） |
-| 3 | `node scripts/check-ac-coverage.mjs` | `docs/仕様書.md` の受入条件 `AC-n` すべてに、対応するテストがあるか。受入条件の番号が重なっていないか |
+| 3 | `node scripts/check-ac-coverage.mjs` | `docs/仕様書.md` の受入条件 `AC-n` すべてに、対応するテストがあるか。受入条件の番号が重なっていないか。仕様書の大きさと表のセルの長さが目安を超えると、落ちずに注意を出す。セルの注意がこの PR で足したセルなら短くする（規約 `spec.md`）。大きさの注意と前からのセルの注意は、この PR では直さない |
 | 4 | `node scripts/check-api-coverage.mjs` | `shared/src/api` の全ルートにテストがあるか |
 | 5 | `node scripts/check-test-naming.mjs` | テストのファイル名が `.test.ts` か（`.spec.ts` は CI で落ちる） |
 | 6 | `node scripts/check-mandatory.mjs` | 必須項目（ファイル・deny・規約）の実体が残っているか |

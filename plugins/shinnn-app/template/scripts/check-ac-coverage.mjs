@@ -10,6 +10,7 @@
 //   docs/仕様書.md に出てくる AC-n を集め、テストファイル（*.test.ts）の中に
 //   同じ AC-n を含む文字列があるかを見る。テスト名の先頭に識別子を書く規約が前提。
 //   あわせて、受入条件の表（`| AC-n |` で始まる行）に、同じ番号の行が 2 つ以上ないかを見る。
+//   仕様書が 150KB を超えたときと、表のセルが 1,000 文字を超えたときは、注意を出す（終了コードは変えない）。
 // CI の policy job から呼ばれる。
 
 import { readdir, readFile } from 'node:fs/promises';
@@ -46,6 +47,67 @@ async function listTestFiles(directory) {
   return files;
 }
 
+/** 仕様書の大きさの目安（バイト）。Claude が 1 回で読める大きさ（256KB）より小さくしておく */
+const SPECIFICATION_SIZE_NOTICE = 150 * 1024;
+/** 表のセル 1 つの長さの目安（文字） */
+const TABLE_CELL_LENGTH_NOTICE = 1000;
+/** 長いセルの注意を出す行の数の上限（出力が埋まらないように） */
+const TABLE_CELL_NOTICE_LIMIT = 5;
+
+/**
+ * 注意を出す。CI（GitHub Actions）では、PR の画面にも出る形で出す。終了コードは変えない。
+ * --report の出力はファイルに書いてレポートの本文にするので、--report では CI でも標準エラーに出す
+ */
+function notice(message, line) {
+  if (process.env.GITHUB_ACTIONS === 'true' && !isReportMode) {
+    const location = line === undefined ? 'file=docs/仕様書.md' : `file=docs/仕様書.md,line=${line}`;
+    console.log(`::warning ${location}::${message}`);
+    return;
+  }
+  console.error(`注意: ${message}`);
+}
+
+/** 仕様書の大きさと、表のセルの長さを見て、目安を超えていれば注意を出す（規約 spec.md） */
+function noticeSpecificationSize(text) {
+  const size = Buffer.byteLength(text);
+  if (size > SPECIFICATION_SIZE_NOTICE) {
+    notice(
+      `docs/仕様書.md が ${Math.round(size / 1024)}KB あります（目安は ${SPECIFICATION_SIZE_NOTICE / 1024}KB まで）。` +
+        '表のセルの細かい説明を受入条件とテストに移して、短くしてください（規約 spec.md）。',
+    );
+  }
+  let noticed = 0;
+  // 開いているコードの囲みの記号（``` か ~~~ を 3 つ以上）。同じ記号で、同じ長さ以上の行で閉じる
+  let openFence = null;
+  const lines = text.split('\n');
+  for (const [index, line] of lines.entries()) {
+    const trimmed = line.trim();
+    const fence = /^(`{3,}|~{3,})/.exec(trimmed)?.[1];
+    if (fence !== undefined) {
+      if (openFence === null) {
+        openFence = fence;
+      } else if (fence[0] === openFence[0] && fence.length >= openFence.length) {
+        openFence = null;
+      }
+      continue;
+    }
+    // コードの囲みの中の行は、表の行に数えない
+    if (openFence !== null || !trimmed.startsWith('|') || noticed >= TABLE_CELL_NOTICE_LIMIT) {
+      continue;
+    }
+    // セルの区切りは、`\|` と書いた縦棒を除く縦棒
+    const longest = Math.max(...trimmed.split(/(?<!\\)\|/).map((cell) => cell.trim().length));
+    if (longest > TABLE_CELL_LENGTH_NOTICE) {
+      notice(
+        `docs/仕様書.md の ${index + 1} 行目の表のセルが ${longest} 文字あります（目安は ${TABLE_CELL_LENGTH_NOTICE} 文字まで）。` +
+          '1 つのことを 1〜2 文で書いてください（規約 spec.md）。',
+        index + 1,
+      );
+      noticed += 1;
+    }
+  }
+}
+
 let specification;
 
 try {
@@ -54,6 +116,8 @@ try {
   console.log('docs/仕様書.md がまだありません。受入条件の検査を飛ばします。');
   process.exit(0);
 }
+
+noticeSpecificationSize(specification);
 
 // 雛形のまま（AC-1 の行に中身が書かれていない）の場合は検査しない
 const acceptanceIds = [...new Set(specification.match(acceptancePattern) ?? [])].sort(
