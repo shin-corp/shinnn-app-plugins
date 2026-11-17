@@ -20,7 +20,7 @@ const logger = new Log('db.migrate');
 /*
  * 生成物の場所は server/drizzle。src から実行しても dist から実行しても 2 つ上が server/ になる。
  */
-const migrationsFolder = fileURLToPath(new URL('../../drizzle', import.meta.url));
+export const migrationsFolder = fileURLToPath(new URL('../../drizzle', import.meta.url));
 
 /**
  * マイグレーションを適用する。

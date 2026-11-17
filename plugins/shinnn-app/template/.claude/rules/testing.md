@@ -67,6 +67,7 @@ paths:
   - 接続先を渡す環境変数を足す
   - `docs/env.md` に、その環境変数の名前を書く
   - PGlite では足りない理由を、テストのコメントに書く
+- PGlite の DB は `createTestDb()` で作る（実行の最初に `tests/global-setup.ts` が書き出した、マイグレーション済みの DB の雛形を読み込む）
 - AI の SDK を呼ぶルートのテストは、[ai-integration.md](ai-integration.md) の「テスト」に従う
 - 各テストの前に、`beforeEach` で `reset()` を呼んでデータを空にする
 - **利用者ごとのデータを扱うルートには、別の利用者で確かめるテストを書く。**

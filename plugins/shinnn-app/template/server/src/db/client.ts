@@ -5,6 +5,7 @@
  * 動かせる（Docker も PostgreSQL も無いパソコンでの開発用。本番では使わない）。
  */
 
+import type { PGliteOptions } from '@electric-sql/pglite';
 import { fileURLToPath } from 'node:url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -68,12 +69,13 @@ export function createPgDb(connectionString: string = config.DATABASE_URL): DbHa
  * （本番の依存に入れないため）。
  *
  * @param dataDir - 保存先。既定はメモリ上（プロセスが終わると消える）
+ * @param options - PGlite に渡す設定（テストは、書き出した DB の中身を `loadDataDir` で読み込む）
  * @returns DB のハンドル
  */
-export async function createPgliteDb(dataDir = 'memory://'): Promise<DbHandle> {
+export async function createPgliteDb(dataDir = 'memory://', options: PGliteOptions = {}): Promise<DbHandle> {
   const { PGlite } = await import('@electric-sql/pglite');
   const { drizzle: drizzlePglite } = await import('drizzle-orm/pglite');
-  const client = new PGlite(dataDir);
+  const client = new PGlite(dataDir, options);
   /*
    * PGlite 用のハンドルは接続方式ごとに別の型になるが、問い合わせの書き方は同じ。
    * service が接続方式を意識しなくて済むよう、ここで 1 度だけ AppDatabase として扱う。
