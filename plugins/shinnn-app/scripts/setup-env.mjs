@@ -425,7 +425,7 @@ const databaseModes = {
       '設定: `server/.env` の `DB_DRIVER` を `pglite` にします（`.env.example` の `# DB_DRIVER=pg` の行）。`/shinnn-app:setup` は、`server/.env` が無ければ、`.env.example` を写してこの形で作ります。`JWT_SECRET` には、ランダムな値を入れます',
       '`DATABASE_URL`: 接続には使いません。消すと起動のときの検査で止まるので、`.env.example` の値のまま残します',
       '起動と停止: API サーバー（`npm run dev -w server`）と一緒に動きます。起動のたびにマイグレーションを適用するので、`db:migrate` は実行しません',
-      '初期データ: `npm run seed -w server` で入れます。`seed` がテーブルが無いと言って落ちたときは、先に API サーバーを 1 回起動して止めます。そのあと、もう一度流します',
+      '初期データ: `npm run seed -w server` で入れます。`server/seed/index.ts` が `applyMigrations` を呼んでいれば、PGlite では `seed` がマイグレーションを適用してから入れます。`seed` がテーブルが無いと言って落ちたときは、先に API サーバーを 1 回起動して止めます。そのあと、もう一度流します',
       'データ: `server/.pglite/` に残ります（git の管理外）。消すと空の DB からやり直せます',
       '注意: API サーバーを動かしている間は、`seed` など同じ DB を開く別のコマンドを実行しません。本番では使わず、本番の前に PostgreSQL で動作を確かめます',
     ],

@@ -90,6 +90,8 @@ paths:
 - **サーバーの呼び出しは、`fetch` を差し替えて再現する。** `api-client.ts` の `call()` を差し替えない
   （手本は同梱の `items-page.component.test.ts`。サンプルの `items` を消した後は、既存の機能を手本にする）
 - サーバーからデータを読み込む画面は、empty / loading / error の 3 状態をそれぞれ確かめる
+- レスポンスを返さないまま待ち続ける読み取り（ロングポーリングなど）がある画面では、`fixture.whenStable()` で待たない
+- その画面の表示は、`vi.waitFor()` の中で `fixture.detectChanges()` を呼んで確かめる
 - 画面に現れる受入条件（表示・操作）は、画面のテストで確かめる
 
 ## やらないこと

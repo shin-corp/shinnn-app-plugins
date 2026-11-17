@@ -155,12 +155,15 @@ jobs:
       # 第三者の Action（gitleaks-action）は組織リポジトリでライセンスキーの登録と、実行時のライセンスサーバーへの
       # 問い合わせを要する。本体（MIT ライセンス）を版とチェックサムを固定して直接実行すれば、登録も外部への通信も要らない。
       # 版を上げるときは GITLEAKS_VERSION と、リリースの checksums.txt にある linux_x64 の sha256 を一緒に更新する。
+      # --fail を付けるのは、ダウンロードの失敗を、ダウンロードの段で止めるためだ。
+      # 付けないと、curl はエラーのページ（HTML）を保存して、成功で終わる。そのあとのチェックサムの検査が落ち、不一致と取り違える。
+      # --retry 3 --retry-all-errors は、途中で切れた転送も含め、どの失敗も 3 回まで試し直す。
       - name: 認証情報の混入（gitleaks）
         env:
           GITLEAKS_VERSION: '8.30.1'
           GITLEAKS_SHA256: '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb'
         run: |
-          curl -sSL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl --fail --silent --show-error --location --retry 3 --retry-all-errors -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum --check --strict
           tar -xzf gitleaks.tar.gz gitleaks
           ./gitleaks git --no-banner --redact --exit-code 1 .

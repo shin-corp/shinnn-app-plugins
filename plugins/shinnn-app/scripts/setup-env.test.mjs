@@ -141,7 +141,11 @@ test('setup-env --database: 検出の結果ではなく、指定した方式の�
   assert.match(written, /^- `DATABASE_URL`: 接続には使いません。.*`\.env\.example` の値のまま残します$/m);
   assert.ok(!written.includes('使われません'), written);
   // update-rules は server/seed/ を写さないので、seed がマイグレーションを適用しないアプリでも正しい手順にする
-  assert.match(written, /^- 初期データ: `npm run seed -w server` で入れます。.*API サーバーを 1 回起動して止めます。/m);
+  // 今のテンプレートの seed はマイグレーションを適用する（下のテスト）
+  assert.match(
+    written,
+    /^- 初期データ: `npm run seed -w server` で入れます。`server\/seed\/index\.ts` が `applyMigrations` を呼んでいれば、PGlite では `seed` がマイグレーションを適用してから入れます。`seed` がテーブルが無いと言って落ちたときは、先に API サーバーを 1 回起動して止めます。そのあと、もう一度流します$/m,
+  );
   // 検出では DATABASE_URL が先に見つかっている。指定で置き換えたことが分かるように残す
   assert.match(written, /^- 指定された方法: pglite（検出で最初に見つかったのは database-url）$/m);
 });
@@ -334,4 +338,9 @@ test('setup-env --database: 知らない方式は、何も書かずに止める'
     /--database に指定できるのは database-url \/ local-postgres \/ docker \/ pglite \/ managed です/,
   );
   assert.equal(existsSync(join(repo, 'docs')), false);
+});
+
+test('setup-env: 案内の前提（テンプレートの seed は、PGlite のときにマイグレーションを適用する）', () => {
+  const seed = readFileSync(fileURLToPath(new URL('../template/server/seed/index.ts', import.meta.url)), 'utf8');
+  assert.match(seed, /if \(handle\.driver === 'pglite'\) \{\s*await applyMigrations\(handle\);/);
 });
