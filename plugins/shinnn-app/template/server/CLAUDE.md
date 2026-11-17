@@ -1,14 +1,15 @@
 # server（@app/server）
 
-Express 5 + PostgreSQL 16（Drizzle ORM）の API サーバー。TypeScript の ESM で書く。
-画面（client）とやり取りするデータの形は `shared` の API 定義が正で、ここには書かない。
+Express 5 + PostgreSQL 16（Drizzle ORM）の API サーバーです。TypeScript の ESM で書きます。
+書き方と層の決まりは、`server/` のファイルを触ると読み込まれる規約（`server-architecture.md`・`server-coding-conventions.md`・`db.md` など）にあります。
+API を足す手順は `/shinnn-app:add-api` にあります。
 
-## よく使うコマンド
+## コマンド
 
 | コマンド                        | 内容                                          |
 | ------------------------------- | --------------------------------------------- |
 | `npm run dev -w server`         | ホットリロードつきで起動                      |
-| `npm run check -w server`       | build + typecheck + lint（コミット前に通す）  |
+| `npm run check -w server`       | build + typecheck + lint                      |
 | `npm run test -w server`        | テスト（DB は PGlite。PostgreSQL は不要）     |
 | `npm run db:generate -w server` | スキーマの変更からマイグレーション SQL を生成 |
 | `npm run db:migrate -w server`  | マイグレーションを適用                        |
@@ -16,91 +17,13 @@ Express 5 + PostgreSQL 16（Drizzle ORM）の API サーバー。TypeScript の 
 | `npm run messages -w server`    | messages.json からメッセージキーを再生成      |
 | `npm run token -w server`       | 開発中に画面へ持たせる JWT を 1 つ発行        |
 
-`dev` / `db:migrate` / `seed` は `--env-file-if-exists=.env` で起動するので、`server/.env`（`.env.example` をコピーしたもの）が
-あれば自動で読み込む。無い場合は、`config.ts` の検査で止まる（`DATABASE_URL`・`JWT_SECRET` などに既定値が無い）。
+- `dev` / `db:migrate` / `seed` は、`server/.env` があれば読み込む。無いと、`config.ts` の検査で止まる（`DATABASE_URL`・`JWT_SECRET` などに既定値が無い）
+- 環境変数の意味は `docs/env.md`、見本は `.env.example` にある
+- `DB_DRIVER=pglite` のデータは `server/.pglite/` に残る。サーバーを動かしている間は、`db:migrate` や `seed` で同じ DB を開かない（別のプロセスから同時に開けない）
+- `app.ts`（組み立て）と `index.ts`（待ち受け）を分ける。API のテストは `app.ts` だけを使う
 
-`check` は先に `@app/shared` のビルドが要る（`npm run build` か `npm run build -w shared`）。
+Express 5 の注意と、外さないセキュリティの既定は、規約 `server-coding-conventions.md` にあります。
 
-## 起動順
+**CSRF 対策の middleware は入れていない。** 認証情報を Cookie で持たず、毎回 `Authorization` ヘッダで送るので、他サイトからの自動送信では認証が通らない。Cookie のセッションを入れるなら、そのときにトークン型の対策を足す。
 
-1. `src/index.ts` が `config.ts` を読む（環境変数を zod で検証。ここで落ちたら値が足りない）
-2. `createDb()` で DB のハンドルを作る（接続は最初の問い合わせまで張らない）
-3. `createApp()` が middleware → ルーター → 404 → error middleware の順に組み立てる
-4. `app.listen(PORT)`。`SIGTERM` / `SIGINT` で処理中のリクエストを終わらせてから止める
-
-`app.ts`（組み立て）と `index.ts`（待ち受け）は分ける。API のテストは `app.ts` だけを使い、`app.listen(0, '127.0.0.1')` で空きポートに立てる。
-
-## 環境変数
-
-値は `.env`（git 管理外）に置く。見本は `.env.example`、意味の一覧は `docs/env.md`。
-
-| 名前           | 意味                                                                 |
-| -------------- | -------------------------------------------------------------------- |
-| `DATABASE_URL` | PostgreSQL への接続先                                                |
-| `PORT`         | 待ち受けるポート番号                                                 |
-| `JWT_SECRET`   | JWT（署名付きの通行証）の署名鍵。32 文字以上                         |
-| `JWT_AUDIENCE` | JWT の受け取り手。`aud` がこの値と一致しないと通さない               |
-| `CORS_ORIGIN`  | 画面を配信するオリジン。カンマ区切りで複数可                         |
-| `TRUST_PROXY`  | `X-Forwarded-For` を信頼する範囲                                     |
-| `NODE_ENV`     | 実行環境（development / test / production）                          |
-| `LOG_LEVEL`    | ログの下限レベル                                                     |
-| `DB_DRIVER`    | `pg`（既定）か `pglite`。pglite は PostgreSQL 無しで動かすためのもの |
-
-`DB_DRIVER=pglite` のデータは `server/.pglite/`（git 管理外）に残る。pglite のときは、`index.ts` が起動のたびにマイグレーションを適用する。
-サーバーを動かしている間は、`db:migrate` や `seed` で同じ DB を開かない（別のプロセスから同時に開けない）。
-
-`process.env` を直接読んでよい場所は、`.claude/rules/server-coding-conventions.md` の「環境変数」に従う。
-
-## 構成と import の許可関係
-
-```
-api/<機能>/{index.ts, <機能>.controller.ts}  →  service/  →  db/
-                          ＼                  ／
-                             util/ ・ exception/
-```
-
-- `api` は DB を直接触らない（`db/` から import してよいのは型だけ）
-- `service` は HTTP を知らない（`req` / `res` を持ち込まない）
-- `db` と `util` / `exception` は上の層を import しない
-- `repositories/` などの層は増やさない（`provider/` は外部システムとの連携専用に 1 つだけ置ける。`.claude/rules/ai-integration.md`）。
-  1 ファイルが 150 行を超えたら、分割より先に減らせないか考える
-
-この関係は `eslint.config.js` の `no-restricted-imports` で強制していて、破ると `npm run check` が失敗する。
-
-## エンドポイントを追加する
-
-手順は `/shinnn-app:add-api`（API 定義 → テーブル → service → router と controller → テスト → docs）。
-
-## Express 5 の注意
-
-1. async ハンドラの reject は自動で error middleware に渡る。`try / catch` で握り潰さない
-2. `req.query` は読み取り専用で、代入できない。`?a[b]=1` はネストしない
-3. ルートの書き方は path-to-regexp v8。`*` は `/*splat`、任意の部分は `/:file{.:ext}`、正規表現は書けない
-4. `res.status()` は 100〜999 の整数以外で例外を投げる（`toResponseStatus()` で丸めている）
-5. `req.body` は `express.json()` を通さないと `undefined`
-6. `res.send(status)` / `res.json(obj, status)` / `req.param()` / `app.del` は無い。`res.status().json()` に統一
-7. `express.urlencoded` の `extended` の既定は false
-8. `app.listen(port, cb)` の `cb` にはエラー（ポートの重複など）が渡る
-
-error middleware は 4 引数で `app.ts` に 1 か所だけ置く。エラーのレスポンスは `{ messageKey, message, details? }` の形で返す。
-
-## セキュリティ既定
-
-- `helmet` でセキュリティ関連のヘッダを付ける。`X-Powered-By` は出さない
-- CORS は `CORS_ORIGIN` を明示する（`*` は使わない）。Cookie を使わないので `credentials` は許可しない
-- `express.json({ limit })` でリクエストの本文の大きさに上限を置き、`/api` 配下に rate limit を掛ける
-- **認証（ログインしているか）と認可（そのデータを扱ってよいか）は別。** 利用者ごとのデータには持ち主の列を置き、
-  service のすべての問い合わせを持ち主で絞る。他人のデータには 404 を返す（`.claude/rules/server-coding-conventions.md`）
-- 認証は `isAuthenticated()`（Bearer トークン）。署名アルゴリズム（`alg`）・受け取り手（`aud`）・有効期限（`exp`）を明示して検証する（`exp` は `requiredClaims` で必須にする。無いトークンを通さないため）
-- **CSRF 対策の middleware は入れていない**。認証情報を Cookie で持たず、毎回 `Authorization` ヘッダで送るため、他サイトからの自動送信では認証が通らない。Cookie セッションを導入するなら、その時にトークン型の対策を足す
-- 静的ファイルは配信しない（画面は別に配信する）
-- ログに認証情報や個人情報を書かない。`console` は使わず `util/log.ts` の `Log` を使う
-
-## テストの書き方
-
-- ファイル名は `<機能>.test.ts`（`.spec.ts` は CI で失敗する）
-- サーバーの立て方・確かめ方・リクエスト先の URL の組み立て方は、`.claude/rules/testing.md` の「サーバーのテスト」に従う。
-  手本はサンプルの `tests/items.test.ts`（サンプルの `items` を消した後は、既存の機能を手本にする）
-- `describe` の分け方と、テスト名に受入条件の番号（`AC-1` など）を書く決まりは、`.claude/rules/testing.md` の「テスト名」
-- DB はテストファイルごとに PGlite を作って、本番と同じマイグレーションを流す。データはテストごとに `reset()` で空にする
-- 実装とテストが食い違ったときは、まず実装が正しいかを確かめる。仕様書に照らして実装が誤っていれば実装を直す
+テストの決まり（テストと実装が食い違ったときにどちらを直すか、テストの DB の作り方）は、規約 `testing.md` にあります。

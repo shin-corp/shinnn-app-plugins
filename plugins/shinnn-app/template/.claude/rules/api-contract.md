@@ -5,10 +5,7 @@ paths:
 
 # API 定義の規約
 
-**API 定義** = 画面とサーバーがやり取りするデータの形（URL・入力・出力）を 1 か所に書いたものです。
-`shared/src/api/` の zod スキーマが**唯一の正**です。server と client は、ここから型を導きます。
-
-「（検査: …）」には、その決まりを機械で確かめる仕組みを書いています。付いていない決まりは、レビューだけで確かめます。
+`shared/src/api/` の zod スキーマが**唯一の正**です。
 
 ## 新規ファイルの配置判断
 
@@ -19,8 +16,7 @@ paths:
 | ルート定義のヘルパー                 | `shared/src/api/route.ts`（編集しない）                                                                 |
 | 再エクスポート                       | `shared/src/api/index.ts` に 1 行足す（`shared/src/index.ts` は `api/index.ts` を読むので、編集しない） |
 
-- **`shared` に業務ロジック（業務の計算・判定・DB アクセス）を置かない。** 入力の検証と変換は、zod のスキーマとして
-  置いてよい
+- `shared` には、入力の検証と変換を zod のスキーマとして置いてよい
 - **`shared` から `server` / `client` を import しない。** 依存の向きは `server` → `shared` と `client` → `shared` だけ
 - `shared` で、Node.js にしか無い機能（`fs` / `path` / `process` など）を使わない
 - API 定義のための外部ライブラリを入れない。ルートは `route.ts` の `defineRoute()` で定義する
@@ -36,8 +32,7 @@ paths:
   - `<X>ParamsSchema`: パスパラメータ（`:id` など）
   - `<X>ListQuerySchema`: 一覧の絞り込み（`limit` / `offset` に既定値を持たせる）
   - `<X>ListSchema`: `{ items, total }`
-- **各フィールドに、取りうる値の範囲を制約として書く。** `z.string()` や `z.number()` だけで済ませない。
-  ここに書いた制約が、サーバーの入力の検証になる
+- **各フィールドに、取りうる値の範囲を制約として書く。** `z.string()` や `z.number()` だけで済ませない
   - 文字列: `.max()` を付ける。空を許さない項目には `.min(1)` も付ける
   - 数値: 整数なら `.int()` を付ける。下限・上限があるものは `.min()` / `.max()` を付ける
   - id: `z.uuid()`
@@ -49,17 +44,6 @@ paths:
 
 手本はサンプルの `shared/src/api/items.ts`（サンプルの `items` を消した後は、既存の機能を手本にする）。
 
-```ts
-export const listItems = defineRoute({
-  method: 'GET',
-  path: '/api/items',
-  query: ItemListQuerySchema,
-  response: ItemListSchema,
-});
-
-export const itemsApi = { listItems, getItem, createItem, updateItem, deleteItem } as const;
-```
-
 - `path` は `/api/` で始める。パスパラメータは `:<名前>` の形で書く（例: `:id`）
 - 本文を返さないルート（削除など）は `response: z.undefined()` にする（サーバーは 204 を返す）
 - **機能ごとに、ルートをまとめたオブジェクトを `export const <機能>Api = { ... } as const;` の形で export する。**
@@ -69,41 +53,13 @@ export const itemsApi = { listItems, getItem, createItem, updateItem, deleteItem
 
 API 定義を変えるときは、**`shared` → `server` → `client` を同じ PR で**直します。
 
-1. `shared/src/api/<機能>.ts` を変更する
-2. `shared` をビルドする（server / client は `shared/dist` を読む）。`npm run dev` の最中は、保存するたびに自動で
-   ビルドし直される。そのとき、server は再起動する。画面も作り直される。`npm run dev` を使っていないときは、
-   `npm run build -w shared` を実行する
-3. `server` の handler を、型エラーが消えるまで直す
-4. `client` の呼び出しを、型エラーが消えるまで直す
-5. server と client のテストを直す
-
+- `shared` を変えたら、`npm run build -w shared` を実行する（`npm run dev` の最中は自動でビルドし直される）
 - **`shared/src/api/` の下を変えた PR では、`server/tests/` の下のファイルか `*.test.ts` を 1 つ以上変える**
   （検査: CI）。ただし、テストを変えなくてよい変更（コメントや整形だけなど）では、テストを変えずに、PR 本文に
   `テストを変えない理由: <理由>` の行を書いてよい（CI は、この行があれば通す。HTML のコメントの中の行と、見出しに
   した行は読まない）
 - 破壊的な変更（フィールドの削除・名前の変更・型の変更）をするときは、PR 本文に影響範囲を書く
 
-## なぜ
+## 理由
 
-API 定義を 1 か所に書いて両側から参照するのは、**片方だけ直した状態をビルドエラーにするためです。**
-手で書き写す方式では、サーバーがフィールドを消しても、画面のコンパイルは通ります。間違いに気づくのは、
-実行して `undefined` が出たときです。
-
-`shared` で Node.js にしか無い機能を使わないのは、`shared` を画面（ブラウザ）でも動かすためです。
-
-JSON には日時の型がありません。`Date` 型で定義しても、JSON で往復すると文字列に変わります。そのため、日時は
-文字列で表します。
-
-`<機能>Api` を `as const` のオブジェクトにする理由は 2 つあります。1 つ目は、定義を書き換えられない形に保つこと
-です。2 つ目は、CI の API 定義の検査が、この形からルートを集めることです。形が違うルートは数えられません。そのため、
-そのルートにテストが無くても CI が通ります。
-
-テストを変えなくてよい変更を、PR 本文の理由の行で通せるようにしているのは、CI を通すためだけに意味の無い
-テストの変更を足さないためです。理由は PR に残ります。そのため、レビューする人は、本当にテストが要らないかを
-確かめられます。
-
-zod にする理由は、同じ定義が「型」としても「実行時の検証」としても使えるからです。型だけの定義
-（`interface`）は、外から来た JSON が本当にその形かを確かめてくれません。
-
-外部ライブラリを使わないのは、ライブラリの更新が止まったときに、直せなくなるのを避けるためです。この種の
-ライブラリは、数年で更新が止まる例が多くあります。自前の 100 行程度のヘルパーなら、自分たちで直せます。
+この規約の理由は `.claude/rules-why/api-contract.md` にあります。決まりに当てはまるかを迷ったときに読みます。

@@ -35,7 +35,7 @@
    - 模擬データは `client/src/app/mock-data.ts` に置く。画面の中に書かない
    - 遅延（`await new Promise((r) => setTimeout(r, 300))`）を入れて、loading の表示を確かめられるようにする
    - エラーを再現するための切り替え（`mock-data.ts` の定数）を用意する
-6. `.claude/rules/` から `server-architecture.md` / `server-coding-conventions.md` / `db.md` / `messages.md` を削除する
+6. `.claude/rules/` から `server-architecture.md` / `server-coding-conventions.md` / `db.md` / `messages.md` / `ai-integration.md` を削除する。`.claude/rules-why/` の同じ名前のファイルも削除する
 7. `docs/env.md` の「サーバー」と「ローカルの PostgreSQL」の節を削除する
 8. `README.md` の構成表から `server/` の行を削除する。「必要なもの」の PostgreSQL の行と、「データベースの起動」の節も削除する
 9. `.shinnn/setup.json` の `profile` を `client-only`、`optional.client-only-profile` を `true` にする

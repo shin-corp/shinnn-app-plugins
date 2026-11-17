@@ -14,7 +14,7 @@ description: 規約・構成・書き方の「なぜそうなっているのか�
 |:--|:--|:--|
 | 1 | `docs/仕様書.md` | このアプリが何をするか。**最も優先する根拠** |
 | 2 | `docs/decisions/` | なぜその設計にしたか。設計判断の記録 |
-| 3 | `.claude/rules/*.md` の `## なぜ` 節 | 規約そのものの意図 |
+| 3 | `.claude/rules-why/<規約と同じ名前>.md` | 規約そのものの意図（`.claude/rules/` の規約ごとに 1 つ。このフォルダが無い、標準を取り込む前のリポジトリでは、規約の末尾の `## なぜ` の節） |
 | 4 | `CLAUDE.md`（root / client / server） | 構成と共通方針 |
 | 5 | Issue と PR（`gh issue view` / `gh pr view`） | いつ・誰が・どう決めたか |
 

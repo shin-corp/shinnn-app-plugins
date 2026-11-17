@@ -9,7 +9,7 @@
 //   --repo-dir <パス>  対象のリポジトリ（既定は CLAUDE_PROJECT_DIR、無ければカレント）
 //   --dry-run          書かずに、変わるファイルの一覧だけを出す
 //
-// 写すもの: 規約（.claude/rules/ と .standards-version）、権限の設定（.claude/settings.json）、
+// 写すもの: 規約（.claude/rules/ と .standards-version）と規約の理由（.claude/rules-why/）、権限の設定（.claude/settings.json）、
 // アプリ作り方ガイド、git のフック（.husky/pre-commit・commit-msg・pre-push）とコミット時の整形の設定（.lintstagedrc.json）、確認のスクリプト（scripts/*.mjs）、
 // ワークフロー（.github/workflows/）、PR テンプレート、Dependabot の設定（.github/dependabot.yml）。
 // CLAUDE.md の雛形は案件固有の記述を残してマージするので、ここでは写さない（update-rules が当てる）。
@@ -18,10 +18,10 @@
 // 消すのは一覧にあるものだけで、テンプレートに無いファイルを片っ端から消すことはしない（案件で足したファイルは残る）。
 // ワークフローの雛形（*.yaml.disabled）は、リポジトリで有効にしている（.disabled の無い名前がある）なら
 // その名前に写し、そうでなければ .disabled のまま写す。有効・無効は setup で選んだまま変えない。
-// サーバー側を持たないリポジトリ（server/ が無い）には、元から無かったサーバー側の規約を増やさない（飛ばしたものは出力に出す）。
+// サーバー側を持たないリポジトリ（server/ が無い）には、元から無かったサーバー側の規約とその理由を増やさない（飛ばしたものは出力に出す）。
 // 標準の版（.standards-version）は最後に写す。途中で失敗したときに「取り込み済み」に見えないようにするため。
 //
-// .claude/ と .github/workflows/ は権限の設定の deny で守られていて、Claude の cp では書けない。
+// .claude/settings.json・.claude/rules/ と .github/workflows/ は権限の設定の deny で守られていて、Claude の cp では書けない。
 // このスクリプトはテンプレートと同じ中身を写すだけで、変更は PR にし、マージの方針（human / auto-merge）に従ってマージする。
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync } from 'node:fs';
@@ -112,6 +112,16 @@ function listCopies() {
     }
     const isNewServerRule = SERVER_ONLY_RULES.has(name) && !existsSync(join(repositoryRoot, path));
     if (!hasServer && isNewServerRule) {
+      skipped.push(path);
+      continue;
+    }
+    copies.push({ from: path, to: path });
+  }
+
+  // 規約の理由は、同じ名前の規約を写すときだけ写す
+  for (const name of listTemplateFiles('.claude/rules-why')) {
+    const path = `.claude/rules-why/${name}`;
+    if (skipped.includes(`.claude/rules/${name}`)) {
       skipped.push(path);
       continue;
     }
@@ -209,7 +219,7 @@ if (versionKind === undefined) {
 }
 
 for (const path of skipped) {
-  console.log(`飛ばした ${path}（server/ が無いリポジトリには、元から無かったサーバー側の規約を増やさない）`);
+  console.log(`飛ばした ${path}（server/ が無いリポジトリには、元から無かったサーバー側の規約とその理由を増やさない）`);
 }
 console.log(`変わらないファイル: ${unchangedCount}`);
 if (dryRun) {

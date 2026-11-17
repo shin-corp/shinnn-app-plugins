@@ -121,7 +121,7 @@ Issue の受入条件を読み、作る画面と要るデータを確かめる�
 
 ## 4. ページのコンポーネント
 
-`client/CLAUDE.md` の「Angular 規約」に従って作る。
+規約 `client-coding-conventions.md` の「コンポーネント」に従って作る。
 
 ## 5. 取得と表示
 

@@ -37,6 +37,8 @@ description: プラグインが配布するルール（規約の rules・CLAUDE.
 分ける前に `node ${CLAUDE_PLUGIN_ROOT}/scripts/copy-standard.mjs --dry-run` で、写るファイルと飛ばす規約を見ておく。
 「飛ばした」と出る規約（`server/` の無いリポジトリには増やさないもの）は、追加された規約に入れない。
 「削除」と出たファイル（テンプレートから消したもの）は、3 分類とは別に、括弧の中の理由とあわせて示す。
+規約の理由（`.claude/rules-why/`）の追加と変更は、守る決まりの変更ではないので、3 分類に入れない。規約から `## なぜ` の節が消えて `## 理由` の 1 文になったことも、決まりの変更に数えない。
+規約から消えた決まりが、CLAUDE.md・ほかの規約・スキルに移っていれば、「消えた規約」に入れず、移り先を書く。検査（ESLint・ビルド・CI）が止めている決まりが規約から消えたときも、守らなくてよくなったとは書かない。
 
 規約の変更で**既存コードが違反する場合は、その一覧も出す**（直すかは別の作業として Issue にする。手順 4 の「サーバーのコードを書き直す」で直すものを除く）。
 
@@ -90,7 +92,7 @@ npx prettier --list-different "client/**/*.ts"
 ## 4. 適用する
 
 ファイルは、プラグインのスクリプトで写す（写し元は `${CLAUDE_PLUGIN_ROOT}/template/`）。
-`.claude/` と `.github/workflows/` は権限の設定の deny で守られていて、`cp` や Edit / Write では書けない。
+`.claude/settings.json`・`.claude/rules/` と `.github/workflows/` は権限の設定の deny で守られていて、`cp` や Edit / Write では書けない。
 先に `--dry-run` で変わるファイルの一覧を出す。下の「写す前に見るもの」を済ませてから、`--dry-run` を外して実行する。
 
 ```
@@ -101,7 +103,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/copy-standard.mjs
 リポジトリの権限の設定が古く、このスクリプトの許可が無いと、実行の前に確認が出る。許可してもらって進める
 （写した後の権限の設定には許可が入っているので、次からは出ない）。
 
-写すのは、規約（`.claude/rules/`）、権限の設定（`.claude/settings.json`）、アプリ作り方ガイド、git のフック（`.husky/`）、
+写すのは、規約（`.claude/rules/`）と規約の理由（`.claude/rules-why/`）、権限の設定（`.claude/settings.json`）、アプリ作り方ガイド、git のフック（`.husky/`）、
 コミット時の整形の設定（`.lintstagedrc.json`）、確認のスクリプト（`scripts/*.mjs`）、ワークフロー（`.github/workflows/`）、PR テンプレート、
 Dependabot の設定（`.github/dependabot.yml`）。
 上書きと追加に加えて、**テンプレートから消したファイル**（一覧はプラグインの `scripts/retired-files.json`）が残っていれば消す。
@@ -115,6 +117,7 @@ Dependabot の設定（`.github/dependabot.yml`）。
 - 確認のスクリプト（`scripts/`）は CI と `/shinnn-app:check` が使う。リポジトリ側で書き換えていた箇所（許可するライセンスの追加など）が
   あれば、写した後に同じ変更を当て直し、PR 本文に書く
 - `.lintstagedrc.json`（コミット時の整形）でリポジトリ側で足していた対象があれば、写した後に同じ変更を当て直し、PR 本文に書く
+- 規約の理由（`.claude/rules-why/`）でリポジトリ側で書き足していた理由は、当て直さない（標準に戻る）。残したい理由があれば、PR 本文に書き、「シン株式会社への要望」に上げる
 - `.github/dependabot.yml` でリポジトリ側で足していた除外や対象があれば、写した後に同じ変更を当て直し、PR 本文に書く
 
 次のものは当て直さない。写すと標準の中身に戻るので、一覧を手順 5 の PR 本文の「当て直さなかったもの」に残す。
@@ -136,7 +139,7 @@ Dependabot の設定（`.github/dependabot.yml`）。
   ほかの行は触らない（案件ごとに書き足すファイルのため）
 - `${CLAUDE_PLUGIN_ROOT}/template/CLAUDE.md` / `.../template/client/CLAUDE.md` / `.../template/server/CLAUDE.md`
   を、それぞれ `CLAUDE.md` / `client/CLAUDE.md` / `server/CLAUDE.md` へ当てる。**案件固有の記述を消さないように**
-  マージする（雛形が変わった箇所だけを当て、埋めてある内容は残す）
+  マージする（雛形が変わった箇所だけを当て、埋めてある内容は残す）。root の `CLAUDE.md` に「案件固有」の節（識別子体系・絶対に守るルール・AI ガードレール・DB のスキーマとロール）があり、中身が埋めてあれば、その中身を `docs/仕様書.md` の「7. Claude 向けのルール」に移す（見出しが無ければ足す）
 - 標準のバージョンは `.claude/rules/.standards-version` の 1 か所だけにあり、上のコピーで新しいバージョンになる。
   ほかのファイルにバージョンを書き写さない（`.shinnn/setup.json` の `templateVersion` は展開したテンプレートの版で、標準のバージョンではない）
 - setup の記録（`.shinnn/setup.json`）を、今の標準の形に揃える。記録の説明・必須項目の一覧・キーの組は標準から来るので、

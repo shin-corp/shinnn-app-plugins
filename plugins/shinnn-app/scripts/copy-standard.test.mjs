@@ -104,6 +104,10 @@ test('copy-standard: 規約・権限の設定・スクリプト・ワークフ�
   for (const name of readdirSync(join(templateRoot, '.claude/rules')).filter((entry) => entry.endsWith('.md'))) {
     assert.ok(sameAsTemplate(repo, `.claude/rules/${name}`), name);
   }
+  // 規約の理由も、すべて写す
+  for (const name of readdirSync(join(templateRoot, '.claude/rules-why'))) {
+    assert.ok(sameAsTemplate(repo, `.claude/rules-why/${name}`), `rules-why/${name}`);
+  }
   assert.match(result.stdout, /^更新 \.github\/workflows\/ci\.yaml$/m);
   assert.match(result.stdout, /^追加 \.github\/PULL_REQUEST_TEMPLATE\.md$/m);
   assert.match(result.stdout, /^更新 \.github\/dependabot\.yml$/m);
@@ -160,14 +164,19 @@ test('copy-standard: サーバー側を持たないリポジトリには、元�
   const templateRules = readdirSync(join(templateRoot, '.claude/rules')).filter((name) => name.endsWith('.md'));
   for (const name of templateRules) {
     const path = `.claude/rules/${name}`;
+    // 規約の理由は、規約と同じく写すか飛ばす
+    const whyPath = `.claude/rules-why/${name}`;
     if (serverOnlyRules.has(name) && name !== existingServerRule) {
       assert.equal(existsSync(join(repo, path)), false, `${path} は写さない`);
+      assert.equal(existsSync(join(repo, whyPath)), false, `${whyPath} は写さない`);
     } else {
       assert.ok(sameAsTemplate(repo, path), `${path} は写す`);
+      assert.ok(sameAsTemplate(repo, whyPath), `${whyPath} は写す`);
     }
   }
   // 飛ばした規約は出力に出す（PR 本文に「追加された規約」として書かないように）
   assert.match(result.stdout, /^飛ばした \.claude\/rules\/db\.md（server\/ が無いリポジトリには/m);
+  assert.match(result.stdout, /^飛ばした \.claude\/rules-why\/db\.md（server\/ が無いリポジトリには/m);
 });
 
 test('check-mandatory.mjs: 必ずある規約の一覧は、テンプレートの規約の顔ぶれと同じ', () => {
