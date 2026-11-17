@@ -105,4 +105,15 @@ export default tseslint.config(
       '@angular-eslint/template/prefer-control-flow': 'error',
     },
   },
+  {
+    // 1 ファイルの長さの上限（空行とコメントは数えない）。超えたら分ける（ルートの CLAUDE.md の「共通方針」）。
+    // 標準の取り込みの時点で超えていたファイルは、この後ろに、ファイルごとの上限を置く（/shinnn-app:update-rules）。
+    files: ['**/*.ts'],
+    ignores: ['**/*.test.ts'],
+    rules: { 'max-lines': ['error', { max: 300, skipBlankLines: true, skipComments: true }] },
+  },
+  {
+    files: ['**/*.test.ts'],
+    rules: { 'max-lines': ['error', { max: 600, skipBlankLines: true, skipComments: true }] },
+  },
 );
