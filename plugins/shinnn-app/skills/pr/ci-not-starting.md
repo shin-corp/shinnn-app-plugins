@@ -8,6 +8,15 @@
    - `/shinnn-app:check` を通し直す。ここでは `check` の 9（実行時の依存の `npm audit`）も含めてすべて緑であること（`check` の冒頭の
      `npm audit` の例外は当てない。10 の開発用の依存の勧告は止めない）。9 が落ちたら、`check` の「`npm audit` で勧告が出たとき」に従う。
      この PR が原因でなければ、直しを先にマージしてから `main` を取り込む
+   - ただし、`check` の 2（`npm test`）は、本文の「確認した結果」の `check を通したコミット: <値>` の行からの変わり方で流し方を変える。
+     ほかの項目はすべて通す
+     - `git rev-parse HEAD` がその値と同じ: 流さない（同じコミットで通っている）
+     - 違う: `git -c core.quotepath=false diff --name-only <その値> HEAD` に出たファイルで決める。
+       `shared/` か、ルートの `package.json`・`package-lock.json` が出たら、全体の `npm test` を流す。
+       `shared/` とルートの依存は、どのパッケージのテストにも響く。
+       それ以外は、出たファイルを含むパッケージ（`client`・`server`）だけを `npm run test -w <パッケージ>` で流す。
+       `client/`・`server/` の外のファイルだけなら流さない
+     - その行が本文に無い: 全体の `npm test` を流す
    - PR 本文に `Closes #<Issue 番号>` があること（`gh pr view <番号> --json body`）
    - `shared/src/api/` を変えたなら、テストも変えているか、本文に「テストを変えない理由」があること
    - 認証情報の混入（gitleaks）は手元では確かめない（9 の `main` の CI が履歴をすべて走査する）

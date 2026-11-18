@@ -84,3 +84,24 @@ test('continue-on-stop.mjs は、題の頭 [後回し] を数えない題の頭�
   assert.ok(line, 'EXCLUDED_TITLE_PREFIXES がありません');
   assert.doesNotMatch(line, /後回し/);
 });
+
+const codeReviewSkill = readFileSync(join(pluginRoot, 'skills/code-review/SKILL.md'), 'utf8');
+const ciNotStarting = readFileSync(join(pluginRoot, 'skills/pr/ci-not-starting.md'), 'utf8');
+
+test('pr の 2 巡目からは、前の巡のコミットからの差分だけを code-review に見せ、前の巡の Critical の箇所も渡す', () => {
+  const step2 = sectionOf(prSkill, '2. コミットして、push の前にレビューを回す');
+  assert.match(step2, /2 巡目からは、前の巡を回したときのコミット/);
+  assert.match(step2, /Critical は箇所のファイルと行も/);
+  const step1 = sectionOf(codeReviewSkill, '1. レビュー対象を決める');
+  assert.match(step1, /\| `pr` の 2 巡目から（上から順に当てはめる） \| `git diff <前の巡を回したときのコミット>\.\.HEAD`/);
+  const step3 = sectionOf(codeReviewSkill, '3. 3 つのエージェントを同時に起動する');
+  assert.match(step3, /前の巡の Critical は、箇所が直した差分の外でも、消えたかを確かめること/);
+  assert.match(step3, /「変更の範囲外」は `origin\/main\.\.\.HEAD` の外のこと/);
+});
+
+test('pr の手順 1 は check を通したコミットを決まった 1 行で書き、手順 8 の 2 はその行から変わったパッケージのテストだけを流す', () => {
+  const step1 = sectionOf(prSkill, '1. PR を出す前に確認する');
+  assert.match(step1, /`check を通したコミット: <40 文字の値>` の 1 行で書く/);
+  assert.match(ciNotStarting, /`check を通したコミット: <値>` の行からの変わり方で流し方を変える/);
+  assert.match(ciNotStarting, /その行が本文に無い: 全体の `npm test` を流す/);
+});

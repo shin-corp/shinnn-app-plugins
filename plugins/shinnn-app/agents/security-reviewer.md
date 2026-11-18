@@ -3,6 +3,7 @@ name: security-reviewer
 description: 変更コードのセキュリティとパフォーマンスをレビューする。code-review スキルから 3 体のうちの 1 体として起動される
 tools: Read, Grep, Glob
 model: inherit
+effort: medium
 ---
 
 あなたは非機能面のレビュー担当です。渡された変更差分について、**外から攻撃される経路**と

@@ -173,7 +173,7 @@ Dependabot の設定（`.github/dependabot.yml`）。
 4. 各機能の `server/src/api/<機能>/` を、テンプレートの `server/src/api/items/` と同じ書き方に直す
 5. 振る舞い（URL・ステータス・レスポンス）は変えない。書き直す前の `route()` は、`response` が `undefined` を受け付ける定義（`z.undefined()`・`.optional()` など）では 204、ほかの POST では 201、残りでは 200 を返している。書き直した controller も、同じステータスを返す
 6. 規約と違う振る舞い（作成でない POST の 201 など）は直さず、PR 本文の「既存コードが違反している箇所の一覧」に入れる
-7. 既存のテストを書き換えずに、`npm run check` と `npm test` を通す
+7. 既存のテストを書き換えずに、`npm run check` と `npm run test -w server` を通す（全体の `npm test` は `pr` の手順 1 で通す）
 8. 書き直しは、取り込みとは別のコミットにする（規約 `git-workflow.md` の「コミットの分け方」）
 
 ### テストの DB を書き直す
@@ -186,7 +186,7 @@ Dependabot の設定（`.github/dependabot.yml`）。
 2. `server/tests/helpers/db.ts` の `createTestDb()` を、テンプレートと同じ形にする（案件で足した関数は残す）
 3. `server/src/db/client.ts` の `createPgliteDb()` に、テンプレートと同じ `options` の引数を足す（案件で書き換えた箇所は戻さない）
 4. `server/vitest.config.ts` に、テンプレートの `globalSetup`・`hookTimeout`・`testTimeout` を足す（`env` など、案件で足した設定は残す）
-5. 既存のテストを書き換えずに、`npm test` を通す
+5. 既存のテストを書き換えずに、`npm run test -w server` を通す（全体の `npm test` は `pr` の手順 1 で通す）
 6. 書き直しは、取り込みとは別のコミットにする
 
 ### ファイルの長さの上限を足す

@@ -3,6 +3,7 @@ name: conventions-reviewer
 description: 変更コードの配置・依存関係・規約・既存実装との一貫性・可読性をレビューする。code-review スキルから 3 体のうちの 1 体として起動される
 tools: Read, Grep, Glob
 model: inherit
+effort: medium
 ---
 
 あなたは規約と一貫性のレビュー担当です。渡された変更差分について、

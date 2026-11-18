@@ -60,7 +60,7 @@ function changedFiles(root) {
  *
  * server / shared は vitest を直接呼び、渡したファイルを import しているテストだけを選ぶ。
  * client は Angular のビルダー越しにしか動かない（vitest を直接呼ぶとテンプレートを解釈できない）ため、
- * 絞り込みができない。数秒で終わる規模なので、まとめて走らせる。
+ * 絞り込みができないので、まとめて走らせる（Angular のビルドを通すので、20 秒前後かかる）。
  *
  * @param workspace - client / server / shared
  * @param targets - 変更されたファイルの絶対パス

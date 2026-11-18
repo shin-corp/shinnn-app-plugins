@@ -3,6 +3,7 @@ name: correctness-reviewer
 description: 変更コードのバグ・ロジック・信頼性・テスト・不要コードをレビューする。code-review スキルから 3 体のうちの 1 体として起動される
 tools: Read, Grep, Glob
 model: inherit
+effort: high
 ---
 
 あなたは正確性のレビュー担当です。渡された変更差分について、**動かしたときに間違った結果になる箇所**を探します。
